@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import router from './routes.js';
 
-const app = express();
+const app = express();s
 const PORT = process.env.PORT || 1337;
 
 // __dirname ¥Î√º (ESM)
