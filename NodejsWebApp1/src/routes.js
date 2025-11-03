@@ -19,4 +19,8 @@ router.post('/items', (req, res) => {
     res.status(201).json({ id: 3, name, price: price ?? 0 });
 });
 
+router.get('/health', (req, res) => {
+    res.status(200).json({ message: 'API is running!' });
+});
+
 export default router;
