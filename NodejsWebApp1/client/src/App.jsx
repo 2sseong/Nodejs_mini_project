@@ -1,18 +1,22 @@
-import { useEffect, useState } from 'react'
-import { get } from './api/http'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import Topbar from './components/Topbar.jsx'
+import LoginPage from './pages/LoginPage.jsx'
+import ChatPage from './pages/ChatPage.jsx'
+import NotificationsPage from './pages/NotificationsPage.jsx'
 
 export default function App() {
-    const [msg, setMsg] = useState('loading...')
-
-    useEffect(() => {
-        // 백엔드에서 /api/health 같은 헬스체크 라우트 하나만 있어도 됩니다.
-        get('/health').then((d) => setMsg(d.message || JSON.stringify(d))).catch(e => setMsg(String(e)))
-    }, [])
-
     return (
-        <main style={{ padding: 24 }}>
-            <h1>React + Node.js + Oracle Starter</h1>
-            <p>Backend says: {msg}</p>
-        </main>
+        <>
+            <Topbar />
+            <div style={{ paddingTop: 64 }}>
+                <Routes>
+                    <Route path="/" element={<Navigate to="/chat" replace />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/chat" element={<ChatPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="*" element={<div style={{ padding: 24 }}>404 Not Found</div>} />
+                </Routes>
+            </div>
+        </>
     )
 }
