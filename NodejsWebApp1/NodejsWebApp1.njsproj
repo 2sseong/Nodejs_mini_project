@@ -40,6 +40,7 @@
     <Content Include="public\style.css">
       <SubType>Code</SubType>
     </Content>
+    <Content Include="routes\auth.js" />
     <Content Include="src\routes.js" />
     <Content Include="src\server.js" />
     <Content Include="package.json" />
@@ -47,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="public\" />
+    <Folder Include="routes\" />
     <Folder Include="src\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
