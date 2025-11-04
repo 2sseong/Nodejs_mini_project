@@ -31,6 +31,7 @@
     <Content Include=".env">
       <SubType>Code</SubType>
     </Content>
+    <Content Include="db\oracle.js" />
     <Content Include="public\index.html">
       <SubType>Code</SubType>
     </Content>
@@ -47,6 +48,7 @@
     <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="db\" />
     <Folder Include="public\" />
     <Folder Include="routes\" />
     <Folder Include="src\" />
