@@ -31,30 +31,7 @@
     <Content Include=".env">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="bin\Microsoft.NodejsTools.WebRole.dll" />
-    <Content Include="client\.env.development" />
-    <Content Include="client\.gitignore" />
-    <Content Include="client\eslint.config.js" />
-    <Content Include="client\index.html" />
-    <Content Include="client\package-lock.json" />
-    <Content Include="client\package.json" />
-    <Content Include="client\public\vite.svg" />
-    <Content Include="client\README.md" />
-    <Content Include="client\src\api\http.js" />
-    <Content Include="client\src\App.css" />
-    <Content Include="client\src\App.jsx" />
-    <Content Include="client\src\assets\react.svg" />
-    <Content Include="client\src\components\Topbar.css" />
-    <Content Include="client\src\components\Topbar.jsx" />
-    <Content Include="client\src\index.css" />
-    <Content Include="client\src\main.jsx" />
-    <Content Include="client\src\pages\ChatPage.jsx" />
-    <Content Include="client\src\pages\LoginPage.css" />
-    <Content Include="client\src\pages\LoginPage.jsx" />
-    <Content Include="client\src\pages\NotificationsPage.jsx" />
-    <Content Include="client\vite.config.js" />
     <Content Include="db\oracle.js" />
-    <Content Include="package-lock.json" />
     <Content Include="public\index.html">
       <SubType>Code</SubType>
     </Content>
@@ -71,14 +48,6 @@
     <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="bin\" />
-    <Folder Include="client\" />
-    <Folder Include="client\public\" />
-    <Folder Include="client\src\" />
-    <Folder Include="client\src\api\" />
-    <Folder Include="client\src\assets\" />
-    <Folder Include="client\src\components\" />
-    <Folder Include="client\src\pages\" />
     <Folder Include="db\" />
     <Folder Include="public\" />
     <Folder Include="routes\" />
