@@ -1,46 +1,53 @@
-// src/server.js
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import router from './routes.js';
+ï»¿// src/server.js (ì •ë¦¬íŒ: í”„ë¡ íŠ¸ì—ì„œ ë¯¸ì‚¬ìš© API/í—¬ìŠ¤ ì œê±°)
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import http from 'http'
+import { Server } from 'socket.io'
 
-const app = express();s
-const PORT = process.env.PORT || 1337;
+const app = express()
+const PORT = process.env.PORT || 1337
 
-// __dirname ´ëÃ¼ (ESM)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __dirname (ESM)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-// ¹Ìµé¿þ¾î
-app.use(cors());
-app.use(express.json());
+// ë¯¸ë“¤ì›¨ì–´
+app.use(cors({ origin: true, credentials: true }))
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
-// Çï½ºÃ¼Å©
-app.get('/health', (_req, res) => res.send('ok'));
+// ì •ì  íŒŒì¼ (Vite ë¹Œë“œ ì‚°ì¶œë¬¼)
+const publicPath = path.join(__dirname, '../client/dist')
+const oneDay = 60 * 60 * 24 * 1000
+app.use(express.static(publicPath, { extensions: ['html'], maxAge: oneDay }))
 
-// API ¶ó¿ìÆ®
-app.use('/api', router);
+// SPA ë¼ìš°íŒ…
+app.get('*', (req, res) => {
+    res.sendFile(path.join(publicPath, '../index.html'))
+})
 
-// ---- Á¤Àû ÆÄÀÏ ¼­ºù (public Æú´õ) ----
-const publicPath = path.join(__dirname, '../public');
+// Socket.IO
+const httpServer = http.createServer(app)
+const io = new Server(httpServer, {
+    cors: { origin: true, credentials: true }
+})
 
-// Ä³½Ã ÃÖÀûÈ­ ¿¹½Ã(ÇÊ¿ä ½Ã)
-const oneDay = 60 * 60 * 24 * 1000;
-app.use(express.static(publicPath, {
-    extensions: ['html'],     // /about ¡æ about.html ÀÚµ¿ ÇØ¼®(¼±ÅÃ)
-    maxAge: oneDay            // ºê¶ó¿ìÀú Ä³½Ã(¼±ÅÃ)
-}));
+io.on('connection', (socket) => {
+    console.log('socket connected', socket.id)
 
-// SPA ¶ó¿ìÆÃ(React/Vue µî Å¬¶óÀÌ¾ðÆ® ¶ó¿ìÅÍ ¾µ ¶§ ¼±ÅÃ)
-// API ¿ÜÀÇ ¸ðµç °æ·Î¸¦ index.html·Î ¸®´ÙÀÌ·ºÆ®
-app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
+    socket.on('chat:message', (msg) => {
+        // ëª¨ë‘ì—ê²Œ ë¸Œë¡œë“œìºìŠ¤íŠ¸
+        io.emit('chat:message', msg)
+    })
 
-// ¼­¹ö ½ÃÀÛ
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+    socket.on('disconnect', () => {
+        console.log('socket disconnected', socket.id)
+    })
+})
+
+httpServer.listen(PORT, () => {
+    console.log(`Server on http://localhost:${PORT}`)
+})

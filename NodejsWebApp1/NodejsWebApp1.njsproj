@@ -31,10 +31,10 @@
     <Content Include=".env">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="public\app.js">
+    <Content Include="public\index.html">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="public\index.html">
+    <Content Include="public\app.js">
       <SubType>Code</SubType>
     </Content>
     <Content Include="public\style.css">
