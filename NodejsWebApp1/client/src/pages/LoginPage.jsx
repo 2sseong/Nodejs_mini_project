@@ -31,7 +31,8 @@ export default function LoginPage() {
         setLoading(true)
         try {
             // 백엔드가 HttpOnly 쿠키를 내려주는 방식이라면 credentials 포함
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch('/api/login', {
+
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -41,6 +42,21 @@ export default function LoginPage() {
             if (!res.ok) {
                 const msg = await safeMessage(res)
                 throw new Error(msg || `로그인 실패 (${res.status})`)
+            }
+
+            // 응답 데이터 파싱 및 JWT 토큰 저장
+            const data = await res.json()
+
+            if (data.token && data.user) {
+                // JWT 토큰 저장
+                localStorage.setItem('authToken', data.token)
+
+                // 사용자 식별 정보 저장
+                localStorage.setItem('userId', data.user.userId)
+                localStorage.setItem('userNickname', data.user.nickname)
+            } else {
+                // 토큰이 없으면 로그인 실패로 간주
+                throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
             }
 
             // 응답 예시: { user: { name: '홍길동' } } 또는 { token: '...' }
