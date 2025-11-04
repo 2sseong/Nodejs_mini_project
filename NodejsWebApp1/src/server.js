@@ -6,6 +6,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import http from 'http'
 import { Server } from 'socket.io'
+import authRouter from '../routes/auth.js'
 
 const app = express()
 const PORT = process.env.PORT || 1337
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true }))
 const publicPath = path.join(__dirname, '../client/dist')
 const oneDay = 60 * 60 * 24 * 1000
 app.use(express.static(publicPath, { extensions: ['html'], maxAge: oneDay }))
+app.use('/api', authRouter)
 
 // SPA 라우팅
 app.get('*', (req, res) => {

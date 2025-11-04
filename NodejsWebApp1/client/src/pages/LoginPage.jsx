@@ -31,7 +31,7 @@ export default function LoginPage() {
         setLoading(true)
         try {
             // 백엔드가 HttpOnly 쿠키를 내려주는 방식이라면 credentials 포함
-            const res = await fetch('/api/login', {
+            const res = await fetch('/login', {
 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
