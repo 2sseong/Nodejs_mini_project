@@ -1,8 +1,7 @@
-﻿// db/oracle.js (ESM 방식, 최적화된 쿼리 실행기 포함)
+﻿// db/oracle.js (ESM 방식, 최종 최적화)
 
 import oracledb from 'oracledb';
 import 'dotenv/config'; // .env 파일 로드
-
 
 // 쿼리 결과를 JavaScript 객체 배열로 자동 변환 (O(1) 설정)
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
@@ -20,9 +19,7 @@ const dbConfig = {
     poolIncrement: 1
 };
 
-/**
- * 1. 서버 시작 시 커넥션 풀 초기화 (O(N) - N은 poolMin)
- */
+// 1. 서버 시작 시 커넥션 풀 초기화 (O(N) - N은 poolMin)
 export async function initialize() {
     try {
         pool = await oracledb.createPool(dbConfig);
@@ -33,14 +30,30 @@ export async function initialize() {
     }
 }
 
+// ==========================================================
+// getConnection 복구 (수동 트랜잭션 관리를 위해 필수)
+// ==========================================================
 /**
- * 2. 쿼리 실행 (SELECT, Auto-commit INSERT/UPDATE)
- * 시간 복잡도: O(1) (풀에서 연결 획득) + O(log N) (DB 인덱스 조회)
+ * 2. 커넥션 풀에서 커넥션 객체를 가져옵니다.
+ * 이 커넥션으로 execute()를 호출할 때는 반드시 autoCommit: false를 설정해야 하며,
+ * 작업 완료 후 connection.commit() 또는 connection.rollback() 후 connection.close()를 수동으로 호출해야 합니다.
+ */
+export function getConnection() {
+    if (!pool) {
+        throw new Error("DB Pool is not initialized. Call initialize() first.");
+    }
+    return pool.getConnection(); // O(1)
+}
+
+
+/*
+ * 3. 쿼리 실행 (SELECT, Auto-commit INSERT/UPDATE)
  */
 export async function executeQuery(sql, binds = [], options = {}) {
     let connection;
     try {
         connection = await pool.getConnection(); // O(1)
+        // AutoCommit은 기본 옵션을 따릅니다 (SELECT는 무시, DML은 true).
         const result = await connection.execute(sql, binds, options);
         return result;
     } catch (err) {
@@ -53,20 +66,14 @@ export async function executeQuery(sql, binds = [], options = {}) {
     }
 }
 
-/**
- * 3. 트랜잭션 실행 (COMMIT/ROLLBACK 수동 관리)
- * (메시지 저장은 단일 INSERT이므로 이 함수를 사용하는 것이 가장 안전함)
- *  변경: options 인자를 추가하여 RETURNING INTO 등의 고급 옵션을 지원
+/*
+ * 4. 트랜잭션 실행 (단일 COMMIT/ROLLBACK 수동 관리)
  */
-export async function executeTransaction(sql, binds = [], options = {}) { // options 인자 추가
+export async function executeTransaction(sql, binds = [], options = {}) {
     let connection;
     try {
         connection = await pool.getConnection(); // O(1)
-
-        // autoCommit: false를 기본으로 설정하되, 외부 옵션을 병합
         const execOptions = { ...options, autoCommit: false };
-
-        // 💡 execute 실행 시 options를 함께 전달
         const result = await connection.execute(sql, binds, execOptions);
 
         await connection.commit(); // O(1)
@@ -84,4 +91,5 @@ export async function executeTransaction(sql, binds = [], options = {}) { // opt
     }
 }
 
+// 5. Oracledb 객체 자체를 내보내어 고급 옵션(oracledb.OUT_FORMAT_OBJECT, oracledb.NUMBER 등) 사용을 지원
 export { oracledb };

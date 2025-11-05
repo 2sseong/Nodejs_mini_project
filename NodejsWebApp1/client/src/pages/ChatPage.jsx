@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios'; // HTTP 요청을 위해 axios 추가
 import '../styles/ChatPage.css';
 
+// 💡 백엔드 라우트 URL. 환경 변수에서 가져오는 것이 좋습니다.
+const BASE_URL = import.meta.env.VITE_BASE_URL || '/';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
 
 function sanitizeStorageValue(v) {
@@ -17,7 +20,7 @@ export default function ChatPage() {
     const navigate = useNavigate();
 
     // 인증 관련
-    const [authLoaded, setAuthLoaded] = useState(false); // 스토리지 로드 완료 여부
+    const [authLoaded, setAuthLoaded] = useState(false);
     const [userId, setUserId] = useState(null);
     const [userNickname, setUserNickname] = useState(null);
 
@@ -29,9 +32,12 @@ export default function ChatPage() {
     const [text, setText] = useState('');
     const bottomRef = useRef(null);
     const currentRoomIdRef = useRef(null);
-
-    // 이전 방 추적용
     const prevRoomIdRef = useRef(null);
+
+    // 💡 채팅방 생성 모달 관련 상태 추가
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newRoomName, setNewRoomName] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
 
     // 1) 최초 1회: 로컬 스토리지에서 인증정보 로드만 담당 (소켓 X)
     useEffect(() => {
@@ -59,13 +65,9 @@ export default function ChatPage() {
         return io(SOCKET_URL, {
             withCredentials: true,
             query: { userId: userId },
-            // 필요 시 transports 지정: transports: ['websocket']
             transports: ['websocket', 'polling'],
-
-            // 💡 연결 안정성 확보를 위해 이 두 옵션을 추가/수정
-            pingTimeout: 30000,   // 서버가 핑 응답을 기다리는 시간을 30초로 늘림
-            pingInterval: 10000,  // 핑을 10초마다 보내 연결을 적극적으로 유지
-
+            pingTimeout: 30000,
+            pingInterval: 10000,
             reconnection: true,
             reconnectionAttempts: Infinity,
         });
@@ -78,18 +80,35 @@ export default function ChatPage() {
         const onConnect = () => {
             setConnected(true);
             console.log("✅ Socket connected successfully.");
-            socket.emit('rooms:fetch', { userId });
+            const authToken = localStorage.getItem('authToken');
+            socket.emit('rooms:fetch', { userId, authToken });
         };
         const onDisconnect = () => setConnected(false);
 
         const onRoomsList = (roomList) => {
-            const normalized = (roomList || []).map(r => ({...r, ROOM_ID: String(r.ROOM_ID)
+            const normalized = (roomList || []).map(r => ({
+                ...r, ROOM_ID: String(r.ROOM_ID)
             }));
             setRooms(normalized);
-            if (normalized.length && currentRoomId === null) {
-                setCurrentRoomId(normalized[0].ROOM_ID); // string
-                }
+
+            // 방 목록이 로드된 후, 첫 번째 방을 선택하거나 기존 방 유지
+            if (currentRoomId === null && normalized.length > 0) {
+                setCurrentRoomId(normalized[0].ROOM_ID);
+            }
         };
+
+        const onNewRoomCreated = (roomData) => {
+            console.log("🔥 New room created and received:", roomData);
+            const normalizedRoom = {
+                ROOM_ID: String(roomData.roomId),
+                ROOM_NAME: roomData.roomName,
+                ROOM_TYPE: 'GROUP' // 서버에서 type을 전달하지 않을 경우 대비
+            };
+
+            // 새 방을 목록 맨 앞에 추가하고, 새 방으로 자동 이동
+            setRooms(prev => [normalizedRoom, ...prev]);
+            setCurrentRoomId(normalizedRoom.ROOM_ID);
+        }
 
         const onChatMessage = (msg) => {
             // Ref를 사용하여 최신 currentRoomId 값에 접근
@@ -107,6 +126,7 @@ export default function ChatPage() {
         socket.on('rooms:list', onRoomsList);
         socket.on('chat:message', onChatMessage);
         socket.on('chat:history', onChatHistory);
+        socket.on('room:new_created', onNewRoomCreated); // 새 방 생성 이벤트
 
         return () => {
             socket.off('connect', onConnect);
@@ -114,6 +134,7 @@ export default function ChatPage() {
             socket.off('rooms:list', onRoomsList);
             socket.off('chat:message', onChatMessage);
             socket.off('chat:history', onChatHistory);
+            socket.off('room:new_created', onNewRoomCreated);
             socket.close();
         };
     }, [socket, userId]);
@@ -121,6 +142,10 @@ export default function ChatPage() {
     // 4) 방 변경 감지: 이전 방 leave → 새 방 join → 히스토리 요청
     useEffect(() => {
         if (!socket || !userId) return;
+
+        // 현재 선택된 방 ID를 Ref에 저장하여 비동기 메시지 수신 핸들러가 참조하도록 함
+        currentRoomIdRef.current = currentRoomId;
+
         const prev = prevRoomIdRef.current;
 
         // 이전 방이 있었다면 떠나기
@@ -141,7 +166,9 @@ export default function ChatPage() {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    // ----------------------------------------------------
     // 핸들러들
+    // ----------------------------------------------------
     const handleRoomSelect = (roomId) => {
         const rid = String(roomId);
         if (!rid || rid === currentRoomId) return;
@@ -152,22 +179,18 @@ export default function ChatPage() {
     const send = () => {
         const trimmed = text.trim();
 
-        // 💡 클라이언트 콘솔에 디버깅 정보 출력
-        if (!trimmed || !currentRoomId || !socket || !userId) {
+        if (!trimmed || !currentRoomId || !socket || !userId || !socket.connected) {
             console.error("🚫 메시지 전송 실패 (클라이언트 유효성):", {
                 trimmed: trimmed.length > 0,
-                currentRoomId: currentRoomId, // 이 값이 null인지 확인하세요.
-                socketConnected: !!socket,
+                currentRoomId: currentRoomId,
+                socketConnected: !!socket && socket.connected,
                 userId: userId,
             });
+            if (!socket.connected) {
+                console.warn("Socket is disconnected. Attempting to reconnect...");
+                socket.connect(); // 연결 재시도
+            }
             return;
-        }
-
-        // 소켓이 연결되어 있지 않으면 재연결을 시도하고 전송을 중단
-        if (!socket.connected) {
-            console.warn("Socket is disconnected. Attempting to reconnect...");
-            socket.connect(); // 연결 재시도
-            return; // 즉시 전송하지 않고 다음 연결 성공 시 재시도하도록 유도
         }
 
         const msg = {
@@ -180,16 +203,59 @@ export default function ChatPage() {
 
         console.log("✅ 서버로 메시지 전송 시도:", msg);
         socket.emit('chat:message', msg);
+        // 즉시 로컬에 메시지 표시 (낙관적 업데이트)
         setMessages((prev) => [...prev, { ...msg, user: 'me' }]);
         setText('');
     };
 
-    // currentRoomId가 변경될 때마다 Ref 업데이트
-    useEffect(() => {
-        currentRoomIdRef.current = currentRoomId;
-    }, [currentRoomId]);
+    // ----------------------------------------------------
+    // 💡 채팅방 생성 로직 (수정된 부분)
+    // ----------------------------------------------------
+    const handleCreateRoom = async () => {
+        if (isCreating) return;
+        const trimmedName = newRoomName.trim();
 
-   const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(currentRoomId));
+        if (!trimmedName) {
+            alert('채팅방 이름을 입력해주세요.');
+            return;
+        }
+        
+        // 💡 userId가 로드되지 않았다면 실행 중단
+        if (!userId) {
+            alert('사용자 정보를 불러올 수 없습니다.');
+            return;
+        }
+
+        setIsCreating(true);
+        // (authToken은 기능 구현 집중 단계에서는 사용하지 않음)
+        // const authToken = localStorage.getItem('authToken'); 
+
+        try {
+            // 백엔드의 POST /chats/create 라우터 호출
+            const response = await axios.post(`${BASE_URL}/chats/create`, {
+                roomName: trimmedName,
+                // 🔑 로컬 스토리지에서 가져온 userId를 요청 본문에 추가하여 전송
+                creatorId: userId 
+            });
+
+            if (response.data.success) {
+                setIsModalOpen(false);
+                setNewRoomName('');
+                // Socket.IO 이벤트 'room:new_created'가 목록 업데이트를 처리
+            } else {
+                alert(`방 생성 실패: ${response.data.message || '알 수 없는 오류'}`);
+            }
+        } catch (error) {
+            console.error('Chatroom creation failed via HTTP:', error.response?.data || error.message);
+            const errorMessage = error.response?.data?.message || '서버 오류로 인해 방 생성에 실패했습니다.';
+            alert(errorMessage);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+
+    const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(currentRoomId));
 
     // 로딩/리다이렉트 처리
     if (!authLoaded) {
@@ -202,7 +268,18 @@ export default function ChatPage() {
     return (
         <div className="chat-container">
             <div className="sidebar">
-                <h3>참여중인 채팅방</h3>
+                <div className="sidebar-header">
+                    <h3>참여중인 채팅방</h3>
+                    {/* 💡 우측 상단 버튼 */}
+                    <button
+                        className="create-room-btn"
+                        onClick={() => setIsModalOpen(true)}
+                        title="새 채팅방 만들기"
+                    >
+                        + 방 만들기
+                    </button>
+                </div>
+
                 <div className="connection-status">현재 사용자: <strong>{userNickname}</strong></div>
                 <div className="connection-status">
                     연결 상태: <span className={connected ? 'connected' : 'disconnected'}>{connected ? 'ON' : 'OFF'}</span>
@@ -215,7 +292,7 @@ export default function ChatPage() {
                             className={`room-item ${String(room.ROOM_ID) === String(currentRoomId) ? 'active' : ''}`}
                             onClick={() => handleRoomSelect(room.ROOM_ID)}
                         >
-                            {room.ROOM_NAME || `방 ID: ${room.ROOM_ID}`}
+                            {room.ROOM_NAME || `방 이름: ${room.ROOM_NAME}`}
                             <span className="room-type">{room.ROOM_TYPE === 'GROUP' ? '👥' : '👤'}</span>
                         </li>
                     ))}
@@ -255,16 +332,48 @@ export default function ChatPage() {
                                 onChange={(e) => setText(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && send()}
                                 placeholder="메시지를 입력하세요..."
+                                disabled={!connected}
                             />
-                            <button onClick={send} disabled={!connected}>보내기</button>
+                            <button onClick={send} disabled={!connected || text.trim().length === 0}>보내기</button>
                         </div>
                     </>
                 ) : (
                     <div className="no-room-selected">
                         {rooms.length === 0 ? '참여중인 방이 없습니다.' : '채팅방을 선택해주세요.'}
+                        {rooms.length === 0 && (
+                            <button
+                                className="create-room-btn-large"
+                                onClick={() => setIsModalOpen(true)}
+                            >
+                                새 채팅방 만들기
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
+
+            {/* 💡 채팅방 생성 모달 컴포넌트 */}
+            {isModalOpen && (
+                <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3>새 그룹 채팅방 만들기</h3>
+                        <input
+                            type="text"
+                            value={newRoomName}
+                            onChange={(e) => setNewRoomName(e.target.value)}
+                            placeholder="채팅방 이름 (필수)"
+                            disabled={isCreating}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateRoom()}
+                        />
+                        <div className="modal-actions">
+                            <button onClick={() => setIsModalOpen(false)} disabled={isCreating}>취소</button>
+                            <button onClick={handleCreateRoom} disabled={isCreating || newRoomName.trim().length === 0}>
+                                {isCreating ? '생성 중...' : '생성'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
