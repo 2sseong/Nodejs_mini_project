@@ -3864,15 +3864,21 @@
     <Content Include="client\package.json" />
     <Content Include="client\public\vite.svg" />
     <Content Include="client\README.md" />
+    <Content Include="client\src\api\friendsApi.jsx">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="client\src\api\http.js" />
     <Content Include="client\src\App.css" />
     <Content Include="client\src\App.jsx" />
     <Content Include="client\src\assets\react.svg" />
+    <Content Include="client\src\components\FriendList.jsx" />
     <Content Include="client\src\components\FriendRequestList.jsx">
       <SubType>Code</SubType>
     </Content>
     <Content Include="client\src\components\Topbar.css" />
     <Content Include="client\src\components\Topbar.jsx" />
+    <Content Include="client\src\components\UserSearch.css" />
+    <Content Include="client\src\components\UserSearch.jsx" />
     <Content Include="client\src\index.css" />
     <Content Include="client\src\main.jsx" />
     <Content Include="client\src\pages\ChatPage.jsx" />
@@ -3882,6 +3888,9 @@
     <Content Include="client\src\pages\LoginPage.css" />
     <Content Include="client\src\pages\LoginPage.jsx" />
     <Content Include="client\src\pages\NotificationsPage.jsx" />
+    <Content Include="client\src\pages\FriendPage.css">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="client\vite.config.js" />
     <Content Include="db\oracle.js" />
     <Content Include="public\index.html">
@@ -3894,10 +3903,22 @@
       <SubType>Code</SubType>
     </Content>
     <Content Include="routes\auth.js" />
+    <Content Include="routes\friendRoutes.js">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="src\controller\friendController.js">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="src\repository\friendRepository.js">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="src\routes.js" />
     <Content Include="src\server.js" />
     <Content Include="package.json" />
     <Content Include="README.md" />
+    <Content Include="src\service\friendService.js">
+      <SubType>Code</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="client\" />
@@ -4408,6 +4429,9 @@
     <Folder Include="public\" />
     <Folder Include="routes\" />
     <Folder Include="src\" />
+    <Folder Include="src\controller\" />
+    <Folder Include="src\service\" />
+    <Folder Include="src\repository\" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="client\node_modules\%40babel\core\src\config\files\index-browser.ts" />

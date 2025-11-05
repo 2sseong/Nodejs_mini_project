@@ -15,6 +15,8 @@ export default function ChatPage() {
         withCredentials: true,
     }), [])
 
+
+
     useEffect(() => {
         socket.on('connect', () => setConnected(true))
         socket.on('disconnect', () => setConnected(false))

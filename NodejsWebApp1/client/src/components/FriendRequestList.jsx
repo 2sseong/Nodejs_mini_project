@@ -53,7 +53,7 @@ function FriendRequestList() {
 
     return (
         <div className="friend-request-list">
-            <h2>?? 받은 친구 요청 ({requests.length})</h2>
+            <h2>💕 받은 친구 요청 ({requests.length})</h2>
             <ul style={{ listStyleType: 'none', padding: 0 }}>
                 {/* map 함수 내에서 직접 아이템을 렌더링 */}
                 {requests.map((request) => (

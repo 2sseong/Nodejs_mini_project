@@ -15,6 +15,8 @@ import { Server } from 'socket.io'
 import { initialize as initOracleDB } from '../db/oracle.js';
 // routes/auth.js에서 export default된 라우터를 가져옵니다.
 import authRouter from '../routes/auth.js';
+
+// import friendRoutes from '../routes/friendRoutes.js';
 // ==========================================================
 
 
@@ -77,3 +79,5 @@ httpServer.listen(PORT, async () => {
         process.exit(1);
     }
 });
+
+// app.use('/api/friends', friendRoutes);
