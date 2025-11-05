@@ -45,6 +45,12 @@
     <Content Include="routes\chats.js">
       <SubType>Code</SubType>
     </Content>
+    <Content Include="routes\invite.js">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="src\socketStore.js">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="src\socket.js">
       <SubType>Code</SubType>
     </Content>

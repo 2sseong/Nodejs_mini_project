@@ -1,13 +1,14 @@
 // src/socket.js (ESM 방식, DB 연동 및 모든 핸들러 통합)
 
 import { executeQuery, executeTransaction, oracledb } from '../db/oracle.js';
-import { v4 as uuidv4 } from 'uuid';
+// SocketStore 모듈 import (ESM 방식)
+import { addSocket, removeSocket } from './socketStore.js';
 
 export default function initSocket(io) {
 
     io.on('connection', (socket) => {
 
-       
+
         // 1. 소켓 연결 시 사용자 ID 저장 (프론트에서 query: { userId: userId }로 전달)
         const connectedUserId = socket.handshake.query.userId;
 
@@ -17,6 +18,10 @@ export default function initSocket(io) {
             return;
         }
 
+        //  [O(1) 소켓 저장]
+        // SocketStore에 소켓 정보 저장
+        addSocket(connectedUserId, socket);
+
         socket.join(`user:${connectedUserId}`)
 
         // 소켓 인스턴스에 사용자 ID 저장 (보안 및 편의성)
@@ -24,10 +29,10 @@ export default function initSocket(io) {
         console.log(`User connected: ${socket.data.userId}`);
 
         // ----------------------------------------------------
-        // ? [rooms:fetch]: 참여중인 채팅방 리스트 조회 (누락된 핸들러)
+        // [rooms:fetch]: 참여중인 채팅방 리스트 조회 (O(log N) 최적화)
         // ----------------------------------------------------
         socket.on('rooms:fetch', async () => {
-            console.log('>>> Received rooms:fetch event with data:'); // 디버깅 로그
+            console.log('>>> Received rooms:fetch event');
             // T_ROOM_MEMBER와 T_CHAT_ROOM을 조인하여 방 정보 조회
             // (인덱스 IDX_MEMBER_USER 사용으로 O(log N) 최적화)
             const sql = `
@@ -43,7 +48,18 @@ export default function initSocket(io) {
             try {
                 // executeQuery 사용 (커넥션 풀 자동 관리)
                 const result = await executeQuery(sql, binds);
-                // ?? 응답: 클라이언트에게 'rooms:list' 이벤트로 방 리스트 전송
+                // 응답: 클라이언트에게 'rooms:list' 이벤트로 방 리스트 전송
+                // 소켓의 방 목록을 갱신합니다.
+                const rooms = result.rows.map(row => String(row.ROOM_ID));
+
+                // 기존 소켓 방을 모두 떠나고 (user:ID 방은 유지), 새로운 방에 가입
+                //  새로운 방 목록에 조인
+                rooms.forEach(roomId => {
+                    if (!socket.rooms.has(roomId)) {
+                        socket.join(roomId);
+                    }
+                });
+
                 socket.emit('rooms:list', result.rows);
             } catch (error) {
                 console.error("Error fetching rooms:", error);
@@ -52,41 +68,47 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // ? [room:join]: 특정 방에 소켓 연결 (채팅방 진입)
+        // [room:join]: 특정 방에 소켓 연결 (채팅방 진입)
         // ----------------------------------------------------
         socket.on('room:join', ({ roomId }) => {
-            console.log('>>> Received room:join event with data:', roomId); // 디버깅 로그
-            socket.join(roomId);
+            console.log('>>> Received room:join event with data:', roomId);
+            //  클라이언트에서 rooms:fetch를 통해 자동으로 join하므로 이 로직은 주로 페이지 이동 시 사용
+            socket.join(String(roomId));
             console.log(`User ${socket.data.userId} joined room ${roomId}`);
         });
 
         // ----------------------------------------------------
-        // ? [room:leave]: 특정 방에서 소켓 연결 해제
+        // [room:leave]: 특정 방에서 소켓 연결 해제
         // ----------------------------------------------------
         socket.on('room:leave', ({ roomId }) => {
-            console.log('>>> Received room:leave event with data:', roomId); // 디버깅 로그
-            socket.leave(roomId);
+            console.log('>>> Received room:leave event with data:', roomId);
+            socket.leave(String(roomId));
             console.log(`User ${socket.data.userId} left room ${roomId}`);
         });
 
         // ----------------------------------------------------
-        // ? [chat:get_history]: 메시지 히스토리 조회
+        // [chat:get_history]: 메시지 히스토리 조회 (O(log N) + I/O 최적화)
         // ----------------------------------------------------
         socket.on('chat:get_history', async ({ roomId }) => {
-            console.log('>>> Received chat:get_history event with data:', roomId); // 디버깅 로그
             const sql = `
                 SELECT 
-                    MSG_ID, ROOM_ID, SENDER_ID, CONTENT, SENT_AT
-                FROM T_MESSAGE
-                WHERE ROOM_ID = :roomId
-                ORDER BY SENT_AT ASC -- 시간 순서대로 (오래된 메시지부터)
-                FETCH FIRST 50 ROWS ONLY -- (성능 최적화: 최근 50개)
+                    T1.MSG_ID, 
+                    T1.ROOM_ID, 
+                    T1.SENDER_ID, 
+                    T1.CONTENT, 
+                    T1.SENT_AT,
+                    T2.NICKNAME  
+                FROM T_MESSAGE T1
+                JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID  
+                WHERE T1.ROOM_ID = :roomId
+                ORDER BY T1.SENT_AT ASC
+                FETCH FIRST 50 ROWS ONLY
             `;
-            const binds = { roomId: roomId };
+            const binds = { roomId: Number(roomId) };
 
             try {
                 const result = await executeQuery(sql, binds);
-                // 응답: 클라이언트에게 'chat:history' 이벤트로 메시지 전송
+                // 클라이언트에게 NICKNAME 필드가 포함된 결과 전송
                 socket.emit('chat:history', result.rows);
             } catch (error) {
                 console.error("Error fetching chat history:", error);
@@ -95,49 +117,42 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // ? [chat:message]: 메시지 수신 및 DB 저장
+        // [chat:message]: 메시지 수신 및 DB 저장 (O(1) 트랜잭션 + 브로드캐스트)
         // ----------------------------------------------------
         socket.on('chat:message', async (msg) => {
-            console.log('>>> Received chat:message event with data:', msg); // 디버깅 로그
             const senderId = socket.data.userId;
             const { ROOM_ID, CONTENT, NICKNAME } = msg;
 
             if (!senderId || !ROOM_ID || !CONTENT?.trim()) {
-                console.error('Validation failed for chat message:', { senderId, ROOM_ID, CONTENT }); // 디버깅 로그
+                console.error('Validation failed for chat message:', { senderId, ROOM_ID, CONTENT });
                 return socket.emit('chat:error', { message: 'Invalid message data' });
             }
 
-            // ROOM_ID는 Number 타입으로 변환 (Oracle DB의 NUMBER 타입과 일치시킴)
             const roomIdNum = Number(ROOM_ID);
 
-            // 쿼리 수정: MSG_ID는 시퀀스 사용, SENT_AT는 DB TIMESTAMP 사용
             const sql = `
-        INSERT INTO T_MESSAGE (ROOM_ID, SENDER_ID, CONTENT, SENT_AT)
-        VALUES (:roomId, :senderId, :content, CURRENT_TIMESTAMP)
-        RETURNING MSG_ID, SENT_AT INTO :outId, :outSentAt
-    `;
+                INSERT INTO T_MESSAGE (ROOM_ID, SENDER_ID, CONTENT, SENT_AT)
+                VALUES (:roomId, :senderId, :content, CURRENT_TIMESTAMP)
+                RETURNING MSG_ID, SENT_AT INTO :outId, :outSentAt
+            `;
 
             const binds = {
                 roomId: roomIdNum,
                 senderId: senderId,
-                // CLOB 바인딩 유지
                 content: { val: CONTENT, type: oracledb.CLOB },
-                // outBinds 설정은 options가 아니라 binds 객체 자체에 정의합니다.
                 outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
                 outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE }
             };
 
-            // 변경: executeQuery 대신 executeTransaction 사용
             try {
-                // executeTransaction 호출 (outBinds를 포함한 binds와 options를 전달)
-                // options는 빈 객체라도 괜찮습니다.
                 const res = await executeTransaction(sql, binds, {});
 
                 const savedId = res.outBinds.outId[0];
-                const savedTime = res.outBinds.outSentAt[0]?.getTime?.() ?? Date.now();
+                // Oracle DATE 객체에서 타임스탬프 추출
+                const savedTime = res.outBinds.outSentAt[0]?.getTime?.();
 
                 const broadcastMsg = {
-                    MSG_ID: savedId, // DB에서 반환 받은 ID 사용
+                    MSG_ID: savedId,
                     ROOM_ID: roomIdNum,
                     SENDER_ID: senderId,
                     NICKNAME: NICKNAME,
@@ -145,21 +160,25 @@ export default function initSocket(io) {
                     SENT_AT: savedTime
                 };
 
-                socket.to(String(roomIdNum)).emit('chat:message', broadcastMsg);
+                // 해당 방에 있는 모든 소켓에게 메시지 전송 (자기 자신 포함)
+                //  to(ROOM_ID)를 사용하면 방에 조인된 모든 멤버에게 메시지가 O(N)으로 브로드캐스트됩니다.
+                io.to(String(roomIdNum)).emit('chat:message', broadcastMsg);
 
             } catch (error) {
-                // ?? 에러 로그를 더 자세히 출력하여 문제 파악 용이
                 console.error("Failed to save/broadcast message:", {
                     code: error.errorNum,
                     message: error.message,
-                    query: sql,
-                    binds: { ...binds, content: '***CONTENT OMITTED***' } // 민감 정보 제거
                 });
                 socket.emit('chat:error', { message: 'Message failed to send' });
             }
         });
 
+        // ----------------------------------------------------
+        // [disconnect]: 연결 해제
+        // ----------------------------------------------------
         socket.on('disconnect', () => {
+            //  [O(1) 소켓 제거]
+            removeSocket(connectedUserId);
             console.log(`User disconnected: ${socket.data.userId}`);
         });
     });
