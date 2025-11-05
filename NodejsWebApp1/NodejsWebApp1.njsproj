@@ -42,6 +42,9 @@
       <SubType>Code</SubType>
     </Content>
     <Content Include="routes\auth.js" />
+    <Content Include="src\socket.js">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="src\routes.js" />
     <Content Include="src\server.js" />
     <Content Include="package.json" />
