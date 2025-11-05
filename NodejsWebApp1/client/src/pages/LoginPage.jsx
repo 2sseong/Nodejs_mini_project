@@ -59,7 +59,6 @@ export default function LoginPage() {
                 throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
             }
 
-            // 응답 예시: { user: { name: '홍길동' } } 또는 { token: '...' }
             // 토큰을 프론트에 저장하는 방식이라면 여기에 처리 추가.
             // const data = await res.json()
 

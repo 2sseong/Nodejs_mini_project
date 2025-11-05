@@ -17,6 +17,8 @@ export default function initSocket(io) {
             return;
         }
 
+        socket.join(`user:${connectedUserId}`)
+
         // 소켓 인스턴스에 사용자 ID 저장 (보안 및 편의성)
         socket.data.userId = connectedUserId;
         console.log(`User connected: ${socket.data.userId}`);
@@ -84,7 +86,7 @@ export default function initSocket(io) {
 
             try {
                 const result = await executeQuery(sql, binds);
-                // ?? 응답: 클라이언트에게 'chat:history' 이벤트로 메시지 전송
+                // 응답: 클라이언트에게 'chat:history' 이벤트로 메시지 전송
                 socket.emit('chat:history', result.rows);
             } catch (error) {
                 console.error("Error fetching chat history:", error);
@@ -108,7 +110,7 @@ export default function initSocket(io) {
             // ROOM_ID는 Number 타입으로 변환 (Oracle DB의 NUMBER 타입과 일치시킴)
             const roomIdNum = Number(ROOM_ID);
 
-            // ?? 쿼리 수정: MSG_ID는 시퀀스 사용, SENT_AT는 DB TIMESTAMP 사용
+            // 쿼리 수정: MSG_ID는 시퀀스 사용, SENT_AT는 DB TIMESTAMP 사용
             const sql = `
         INSERT INTO T_MESSAGE (ROOM_ID, SENDER_ID, CONTENT, SENT_AT)
         VALUES (:roomId, :senderId, :content, CURRENT_TIMESTAMP)
@@ -125,7 +127,7 @@ export default function initSocket(io) {
                 outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE }
             };
 
-            // ?? 변경: executeQuery 대신 executeTransaction 사용
+            // 변경: executeQuery 대신 executeTransaction 사용
             try {
                 // executeTransaction 호출 (outBinds를 포함한 binds와 options를 전달)
                 // options는 빈 객체라도 괜찮습니다.

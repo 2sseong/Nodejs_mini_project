@@ -1,12 +1,12 @@
-/* src/styles/ChatPage.css */
+﻿/* src/styles/ChatPage.css */
 
 .chat-container {
     display: flex;
-    height: 100vh; /* ��ü ȭ�� ���� ��� */
+    height: 100vh; /* 전체 화면 높이 사용 */
     background-color: #f8f9fa;
 }
 
-/* -------------------- ���̵�� (�� ����Ʈ) -------------------- */
+/* -------------------- 사이드바 (방 리스트) -------------------- */
 .sidebar {
     width: 300px;
     background-color: #ffffff;
@@ -16,12 +16,37 @@
     flex-direction: column;
 }
 
-    .sidebar h3 {
-        margin-top: 0;
-        margin-bottom: 15px;
+.sidebar-header {
+    display: flex; /* h3와 버튼을 가로로 배치 */
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 5px;
+}
+
+    .sidebar-header h3 {
+        margin: 0; /* 부모 flex 컨테이너에 맞게 margin 제거 */
         color: #333;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 5px;
+        font-size: 1.2em;
+    }
+
+
+/* 💡 방 만들기 버튼 스타일 */
+.create-room-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: #28a745; /* 녹색 계열 */
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+    .create-room-btn:hover {
+        background-color: #1e7e34;
     }
 
 .connection-status {
@@ -78,7 +103,7 @@
     color: #888;
 }
 
-/* -------------------- ä�� ���� ���� -------------------- */
+/* -------------------- 채팅 메인 영역 -------------------- */
 .chat-main {
     flex: 1;
     display: flex;
@@ -107,7 +132,7 @@
     gap: 10px;
 }
 
-/* �޽��� ���� ��Ÿ�� */
+/* 메시지 버블 스타일 */
 .message-bubble {
     display: flex;
     flex-direction: column;
@@ -119,13 +144,13 @@
 
 .mine {
     align-self: flex-end;
-    background-color: #d1e7ff; /* �Ķ��� �迭 */
+    background-color: #d1e7ff; /* 파란색 계열 */
     border-bottom-right-radius: 4px;
 }
 
 .theirs {
     align-self: flex-start;
-    background-color: #ffffff; /* ��� �Ǵ� ���� ȸ�� �迭 */
+    background-color: #ffffff; /* 흰색 또는 밝은 회색 계열 */
     border: 1px solid #e0e0e0;
     border-bottom-left-radius: 4px;
 }
@@ -151,13 +176,33 @@
 .no-room-selected {
     flex: 1;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     font-size: 1.2em;
     color: #aaa;
 }
 
-/* �Է� ���� */
+/* 💡 방이 없을 때 가운데 표시되는 큰 버튼 스타일 */
+.create-room-btn-large {
+    margin-top: 20px;
+    padding: 12px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background-color: #28a745;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+    .create-room-btn-large:hover {
+        background-color: #1e7e34;
+    }
+
+
+/* 입력 영역 */
 .input-area {
     padding: 15px 20px;
     border-top: 1px solid #e0e0e0;
@@ -190,6 +235,83 @@
         }
 
         .input-area button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+/* -------------------- 모달 스타일 -------------------- */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* 반투명 검은색 배경 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+    .modal-content h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        color: #333;
+    }
+
+    .modal-content input {
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+    }
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+    .modal-actions button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s;
+    }
+
+        .modal-actions button:first-child { /* 취소 버튼 */
+            background-color: #6c757d;
+            color: white;
+        }
+
+            .modal-actions button:first-child:hover {
+                background-color: #5a6268;
+            }
+
+        .modal-actions button:last-child { /* 생성 버튼 */
+            background-color: #007bff;
+            color: white;
+        }
+
+            .modal-actions button:last-child:hover:not(:disabled) {
+                background-color: #0056b3;
+            }
+
+        .modal-actions button:disabled {
             background-color: #ccc;
             cursor: not-allowed;
         }

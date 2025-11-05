@@ -17,6 +17,10 @@ export default defineConfig({
                 ws: true, // WebSocket 프록시 활성화
                 changeOrigin: true,
             },
+            '/chats': {
+                target: 'http://localhost:1337',
+                changeOrigin: true,
+            },
         }
     }
 })
