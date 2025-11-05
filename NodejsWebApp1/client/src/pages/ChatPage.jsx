@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // HTTP 요청을 위해 axios 추가
+import axios from 'axios';
 import '../styles/ChatPage.css';
 
 // 💡 백엔드 라우트 URL. 환경 변수에서 가져오는 것이 좋습니다.
@@ -34,10 +34,22 @@ export default function ChatPage() {
     const currentRoomIdRef = useRef(null);
     const prevRoomIdRef = useRef(null);
 
-    // 💡 채팅방 생성 모달 관련 상태 추가
+    // 채팅방 생성 모달 관련 상태 추가
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newRoomName, setNewRoomName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+
+    //  인원 추가 모달 관련 상태 추가
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [inviteeId, setInviteeId] = useState(''); // **최종 초대할 사용자의 ID (숨겨짐)**
+    const [inviteeUsername, setInviteeUsername] = useState(''); // **검색 입력창에 표시되는 USERNAME**
+    const [isInviting, setIsInviting] = useState(false);
+    const [searchResults, setSearchResults] = useState([]); //   검색 결과 리스트 상태 추가
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState('');
+    const abortRef = useRef(null);
+    const debounceRef = useRef(null);
+
 
     // 1) 최초 1회: 로컬 스토리지에서 인증정보 로드만 담당 (소켓 X)
     useEffect(() => {
@@ -208,9 +220,7 @@ export default function ChatPage() {
         setText('');
     };
 
-    // ----------------------------------------------------
-    // 💡 채팅방 생성 로직 (수정된 부분)
-    // ----------------------------------------------------
+    // 💡 채팅방 생성 로직
     const handleCreateRoom = async () => {
         if (isCreating) return;
         const trimmedName = newRoomName.trim();
@@ -219,23 +229,19 @@ export default function ChatPage() {
             alert('채팅방 이름을 입력해주세요.');
             return;
         }
-        
-        // 💡 userId가 로드되지 않았다면 실행 중단
+
         if (!userId) {
             alert('사용자 정보를 불러올 수 없습니다.');
             return;
         }
 
         setIsCreating(true);
-        // (authToken은 기능 구현 집중 단계에서는 사용하지 않음)
-        // const authToken = localStorage.getItem('authToken'); 
 
         try {
             // 백엔드의 POST /chats/create 라우터 호출
             const response = await axios.post(`${BASE_URL}/chats/create`, {
                 roomName: trimmedName,
-                // 🔑 로컬 스토리지에서 가져온 userId를 요청 본문에 추가하여 전송
-                creatorId: userId 
+                creatorId: userId
             });
 
             if (response.data.success) {
@@ -251,6 +257,98 @@ export default function ChatPage() {
             alert(errorMessage);
         } finally {
             setIsCreating(false);
+        }
+    };
+
+    // 사용자 검색 핸들러
+    const handleSearchUsers = (input) => {
+          const q = input.trim();
+          setInviteeUsername(input);
+          setSearchError('');
+       
+              // 길이 0~1: 즉시 리셋
+              if (q.length < 2) {
+                    if (abortRef.current) abortRef.current.abort();
+                    clearTimeout(debounceRef.current);
+                    setIsSearching(false);
+                    setSearchResults([]);
+                    return;
+                  }
+       
+              // 디바운스
+              clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(async () => {
+                // 이전 요청 중단
+                    if (abortRef.current) abortRef.current.abort();
+                abortRef.current = new AbortController();
+           
+                    setIsSearching(true);
+                setSearchResults([]);
+                try {
+                      const resp = await axios.get(
+                            `${BASE_URL}/users/search`,
+                            { params: { query: q }, signal: abortRef.current.signal }
+                          );
+                      // 응답 호환: {users:[...]} | {data:[...]} | 바로 배열
+                          const payload = resp?.data;
+                      const list =
+                            Array.isArray(payload) ? payload :
+                                Array.isArray(payload?.users) ? payload.users :
+                                    Array.isArray(payload?.data) ? payload.data : [];
+                      setSearchResults(list);
+                    } catch (err) {
+                          if (axios.isCancel?.(err) || err.name === 'CanceledError') return; // 취소는 무시
+                          console.error('User search failed:', err.response?.data || err.message);
+                          setSearchError(err.response?.data?.message || '검색 중 오류가 발생했습니다.');
+                          setSearchResults([]);
+                        } finally {
+                      setIsSearching(false);
+                    }
+           }, 300); // 300ms 디바운스
+     };
+
+    //  검색 결과 클릭 시
+    const handleUserSelect = (user) => {
+        // 1. 최종 초대할 ID를 저장
+        setInviteeId(String(user.USER_ID));
+        // 2. 검색창에 선택된 사용자 이름 표시
+        setInviteeUsername(user.USERNAME);
+        // 3. 검색 결과 목록 숨기기
+        setSearchResults([]);
+    };
+
+    // 인원 추가 요청 핸들러 함수 추가
+    const handleInviteUser = async () => {
+        // 초대할 사용자 ID를 상태에서 가져와 사용
+        if (isInviting || !currentRoomId || !inviteeId) return;
+
+        if (inviteeId === userId) {
+            alert('자기 자신을 초대할 수 없습니다.');
+            return;
+        }
+
+        setIsInviting(true);
+        try {
+            // 백엔드의 POST /chats/invite 라우터 호출 시, ID를 전송
+            const response = await axios.post(`${BASE_URL}/chats/invite`, {
+                roomId: String(currentRoomId),
+                inviterId: userId,
+                inviteeId: inviteeId //   최종 ID 사용
+            });
+
+            if (response.data.success) {
+                alert(`${inviteeUsername} 님을 성공적으로 초대했습니다.`);
+                setIsInviteModalOpen(false);
+                setInviteeId('');
+                setInviteeUsername(''); // 상태 초기화
+                // 방 목록을 새로고침할 필요가 없습니다. (초대된 사용자가 알아서 처리)
+            } else {
+                alert(`초대 실패: ${response.data.message || '알 수 없는 오류'}`);
+            }
+        } catch (error) {
+            // ... (오류 처리 로직 유지)
+        } finally {
+            setIsInviting(false);
         }
     };
 
@@ -270,7 +368,6 @@ export default function ChatPage() {
             <div className="sidebar">
                 <div className="sidebar-header">
                     <h3>참여중인 채팅방</h3>
-                    {/* 💡 우측 상단 버튼 */}
                     <button
                         className="create-room-btn"
                         onClick={() => setIsModalOpen(true)}
@@ -304,6 +401,15 @@ export default function ChatPage() {
                     <>
                         <div className="chat-header">
                             <h2>{currentRoom?.ROOM_NAME || '채팅방'}</h2>
+                            {/* 3. 채팅방 헤더에 인원 추가 버튼 추가 */}
+                            <button
+                                className="invite-user-btn"
+                                onClick={() => setIsInviteModalOpen(true)}
+                                title="인원 초대"
+                                disabled={!currentRoomId}
+                            >
+                                + 초대
+                            </button>
                         </div>
 
                         <div className="message-area">
@@ -352,7 +458,7 @@ export default function ChatPage() {
                 )}
             </div>
 
-            {/* 💡 채팅방 생성 모달 컴포넌트 */}
+            {/* 💡 채팅방 생성 모달 컴포넌트 (이전과 동일) */}
             {isModalOpen && (
                 <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -369,6 +475,62 @@ export default function ChatPage() {
                             <button onClick={() => setIsModalOpen(false)} disabled={isCreating}>취소</button>
                             <button onClick={handleCreateRoom} disabled={isCreating || newRoomName.trim().length === 0}>
                                 {isCreating ? '생성 중...' : '생성'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 인원 추가 모달 컴포넌트 수정 */}
+            {isInviteModalOpen && currentRoomId && (
+                <div className="modal-backdrop" onClick={() => setIsInviteModalOpen(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3>[{currentRoom?.ROOM_NAME}]에 인원 초대</h3>
+
+                        {/* 검색 입력창 */}
+                        <input
+                            type="text"
+                            value={inviteeUsername}
+                            //  입력 시 검색 요청
+                            onChange={(e) => handleSearchUsers(e.target.value)}
+                            placeholder="초대할 사용자 이름(USERNAME) 검색"
+                            disabled={isInviting}
+                        />
+
+                        {/* 검색 결과 리스트 */}
+                         <div className="search-results-wrap">
+                               {isSearching && <div className="loading-indicator">검색 중...</div>}
+                               {!isSearching && searchError && (
+                                     <div className="search-error">{searchError}</div>
+                                )}
+                           {!isSearching && !searchError && inviteeUsername.trim().length >= 2 && searchResults.length === 0 && (
+                                 <div className="search-empty">검색 결과가 없습니다.</div>
+                                              )}
+                       {searchResults.length > 0 && (
+                             <ul className="search-results-list">
+                           {searchResults.map((user) => (
+                                 <li key= { String(user.USER_ID)} onClick={() => handleUserSelect(user)}>
+                               {user.USERNAME} {user.NICKNAME ? `(${user.NICKNAME})` : ''}
+                                 </li>
+                                ))}
+                            </ul>
+                          )}
+                        </div >
+
+                        <div className="modal-actions">
+                            <button onClick={() => {
+                                setIsInviteModalOpen(false);
+                                setSearchResults([]); // 모달 닫을 때 초기화
+                                setInviteeUsername(''); // 모달 닫을 때 초기화
+                                setInviteeId(''); // 모달 닫을 때 초기화
+                            }} disabled={isInviting}>취소</button>
+
+                            <button
+                                onClick={handleInviteUser}
+                                // ID가 선택되었을 때만 활성화
+                                disabled={isInviting || !inviteeId}
+                            >
+                                {isInviting ? '초대 중...' : `초대 (${inviteeUsername || '선택 필요'})`}
                             </button>
                         </div>
                     </div>

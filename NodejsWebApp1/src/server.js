@@ -14,12 +14,15 @@ import { initialize as initOracleDB } from '../db/oracle.js';
 import authRouter from '../routes/auth.js';
 import chatsRouter from '../routes/chats.js';
 import initSocket from './socket.js';
+import inviteRouter from '../routes/invite.js';
+// 🔑 SocketStore에 IO 인스턴스 설정을 위한 import 추가
+import { setIoInstance } from './socketStore.js';
 // ==========================================================
 
 const app = express()
 const PORT = process.env.PORT || 1337
 // CLIENT_URL을 환경 변수에서 가져오는 것이 가장 안정적입니다.
-const CLIENT_URL = 'http://localhost:5173';
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // __dirname (ESM)
 const __filename = fileURLToPath(import.meta.url)
@@ -37,21 +40,9 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/api', authRouter);
 // 채팅방 라우터 추가
 app.use('/chats', chatsRouter);
+// 인원초대 라우터 추가
+app.use('/users', inviteRouter);
 
-// 4. 정적 파일 (Vite 빌드 산출물)
-const publicPath = path.join(__dirname, '../client/dist')
-const oneDay = 60 * 60 * 24 * 1000
-app.use(express.static(publicPath, { extensions: ['html'], maxAge: oneDay }))
-
-// 5. SPA 라우팅 추가
-app.get('*', (req, res) => {
-    // 💡 API 경로로 들어온 요청이 라우터에 의해 처리되지 않은 경우 404 응답 (시간 복잡도 O(1) 검사)
-    if (req.url.startsWith('/api')) {
-        return res.status(404).send("API Not Found");
-    }
-    // 나머지 모든 요청은 index.html을 반환하여 React 라우팅 처리 (시간 복잡도 O(1) I/O)
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
 
 // 6. Socket.IO 서버 설정
 const httpServer = http.createServer(app)
@@ -63,8 +54,11 @@ const io = new Server(httpServer, {
     }
 })
 
-// Socket.io 인스턴스를 Express 앱에 저장
-// 이렇게 해야 routes/chats.js에서 req.app.get('io')로 접근
+// 🔑 [O(1) 소켓 인스턴스 저장]
+// SocketStore 모듈에 io 인스턴스를 저장하여 다른 모듈(라우터)에서 접근 가능하게 함.
+setIoInstance(io);
+
+// Socket.io 인스턴스를 Express 앱에 저장 (레거시 방식이지만, 필요시 대비)
 app.set('io', io);
 
 // 7. Socket.io 로직 분리: 초기화 함수 호출
@@ -73,8 +67,7 @@ initSocket(io);
 // 8. 서버 리스닝 및 DB 초기화
 httpServer.listen(PORT, async () => {
     try {
-        // 🌟 DB 연결 풀 초기화 실행 (시간 복잡도 최우선)
-        // 서버 실행 전 DB 연결 준비를 완료하여 런타임 성능을 극대화합니다.
+        // DB 연결 풀 초기화 실행 (시간 복잡도 최우선)
         await initOracleDB();
         console.log(`Oracle DB Connection Pool established successfully.`);
         console.log(`Server on http://localhost:${PORT}`);
