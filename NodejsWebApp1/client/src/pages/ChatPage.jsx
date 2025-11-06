@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 
-// 개발 중엔 Vite 프록시를 쓰거나 직접 포트를 지정하세요.
+// 개발 중엔 Vite 프록시를 쓰거나 직접 포트를 지정하세요...
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/'
 
 export default function ChatPage() {
