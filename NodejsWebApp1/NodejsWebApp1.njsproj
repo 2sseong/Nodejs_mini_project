@@ -3871,26 +3871,46 @@
     <Content Include="client\src\App.css" />
     <Content Include="client\src\App.jsx" />
     <Content Include="client\src\assets\react.svg" />
-    <Content Include="client\src\components\FriendList.jsx" />
-    <Content Include="client\src\components\FriendRequestList.jsx">
+    <Content Include="client\src\components\Chatpage\Header\ChatHeader.css" />
+    <Content Include="client\src\components\Chatpage\Header\ChatHeader.jsx" />
+    <Content Include="client\src\components\Chatpage\Input\MessageInput.css" />
+    <Content Include="client\src\components\Chatpage\Input\MessageInput.jsx" />
+    <Content Include="client\src\components\Chatpage\Messages\MessageItem.jsx" />
+    <Content Include="client\src\components\Chatpage\Messages\MessageList.css" />
+    <Content Include="client\src\components\Chatpage\Messages\MessageList.jsx" />
+    <Content Include="client\src\components\Chatpage\Modals\CreateRoomModal.jsx" />
+    <Content Include="client\src\components\Chatpage\Modals\InviteUserModal.jsx" />
+    <Content Include="client\src\components\Chatpage\Modals\Modals.css" />
+    <Content Include="client\src\components\Chatpage\Sidebar\ChatSidebar.css" />
+    <Content Include="client\src\components\Chatpage\Sidebar\ChatSidebar.jsx" />
+    <Content Include="client\src\components\Chatpage\Sidebar\RoomListItem.jsx" />
+    <Content Include="client\src\components\Friend\FriendList.jsx" />
+    <Content Include="client\src\components\Friend\FriendRequestList.css" />
+    <Content Include="client\src\components\Friend\FriendRequestList.jsx">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="client\src\components\Topbar.css" />
-    <Content Include="client\src\components\Topbar.jsx" />
-    <Content Include="client\src\components\UserSearch.css" />
-    <Content Include="client\src\components\UserSearch.jsx" />
+    <Content Include="client\src\components\Topbar\Topbar.css" />
+    <Content Include="client\src\components\Topbar\Topbar.jsx" />
+    <Content Include="client\src\components\Friend\UserSearch.css" />
+    <Content Include="client\src\components\Friend\UserSearch.jsx" />
+    <Content Include="client\src\hooks\useAuthFromStorage.js" />
+    <Content Include="client\src\hooks\useChatSocket.js" />
     <Content Include="client\src\index.css" />
+    <Content Include="client\src\lib\api.js" />
+    <Content Include="client\src\lib\socket.js" />
     <Content Include="client\src\main.jsx" />
     <Content Include="client\src\pages\ChatPage.jsx" />
     <Content Include="client\src\pages\FriendPage.jsx">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="client\src\pages\LoginPage.css" />
     <Content Include="client\src\pages\LoginPage.jsx" />
     <Content Include="client\src\pages\NotificationsPage.jsx" />
-    <Content Include="client\src\pages\FriendPage.css">
+    <Content Include="client\src\styles\FriendPage.css">
       <SubType>Code</SubType>
     </Content>
+    <Content Include="client\src\styles\ChatPage.css" />
+    <Content Include="client\src\styles\LoginPage.css" />
+    <Content Include="client\src\utils\sanitizeStorageValue.js" />
     <Content Include="client\vite.config.js" />
     <Content Include="db\oracle.js" />
     <Content Include="routes\auth.js" />
@@ -3923,19 +3943,19 @@
       <SubType>Code</SubType>
     </Content>
     <Content Include="routes\auth.js" />
-    <Content Include="routes\friendRoutes.js">
+    <Content Include="src\features\friend\friendRoutes.js">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="src\controller\friendController.js">
+    <Content Include="src\features\friend\friendController.js">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="src\repository\friendRepository.js">
+    <Content Include="src\features\friend\friendRepository.js">
       <SubType>Code</SubType>
     </Content>
     <Content Include="src\server.js" />
     <Content Include="package.json" />
     <Content Include="README.md" />
-    <Content Include="src\service\friendService.js">
+    <Content Include="src\features\friend\friendService.js">
       <SubType>Code</SubType>
     </Content>
     <Content Include="src\sockets\socket.server.js">
@@ -4446,17 +4466,27 @@
     <Folder Include="client\src\api\" />
     <Folder Include="client\src\assets\" />
     <Folder Include="client\src\components\" />
+    <Folder Include="client\src\components\Chatpage\" />
+    <Folder Include="client\src\components\Chatpage\Header\" />
+    <Folder Include="client\src\components\Chatpage\Input\" />
+    <Folder Include="client\src\components\Chatpage\Messages\" />
+    <Folder Include="client\src\components\Chatpage\Modals\" />
+    <Folder Include="client\src\components\Chatpage\Sidebar\" />
+    <Folder Include="client\src\components\Friend\" />
+    <Folder Include="client\src\components\Topbar\" />
+    <Folder Include="client\src\hooks\" />
+    <Folder Include="client\src\lib\" />
     <Folder Include="client\src\pages\" />
+    <Folder Include="client\src\styles\" />
+    <Folder Include="client\src\utils\" />
     <Folder Include="db\" />
     <Folder Include="routes\" />
     <Folder Include="src\" />
-    <Folder Include="src\controller\" />
     <Folder Include="src\features\" />
     <Folder Include="src\features\chat\" />
     <Folder Include="src\features\invite\" />
+    <Folder Include="src\features\friend\" />
     <Folder Include="src\sockets\" />
-    <Folder Include="src\service\" />
-    <Folder Include="src\repository\" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="client\node_modules\%40babel\core\src\config\files\index-browser.ts" />
