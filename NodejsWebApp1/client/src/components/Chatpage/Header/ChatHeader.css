@@ -1,0 +1,35 @@
+.chat-header {
+    display: flex;
+    justify-content: space-between; /* 제목 - 버튼 양끝 */
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #fff;
+}
+
+    .chat-header h2 {
+        margin: 0;
+        font-size: 1.5em;
+        color: #333;
+    }
+
+/* 인원 추가 버튼 */
+.invite-user-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+    .invite-user-btn:hover:not(:disabled) {
+        background-color: #45a049;
+    }
+
+    .invite-user-btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }

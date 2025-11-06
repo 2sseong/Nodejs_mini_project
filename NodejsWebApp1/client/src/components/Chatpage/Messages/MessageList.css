@@ -1,0 +1,49 @@
+.message-area {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 버블 */
+.message-bubble {
+    display: flex;
+    flex-direction: column;
+    max-width: 60%;
+    padding: 10px 15px;
+    border-radius: 18px;
+    word-break: break-word;
+}
+
+.mine {
+    align-self: flex-end;
+    background-color: #d1e7ff; /* 파란계열 */
+    border-bottom-right-radius: 4px;
+}
+
+.theirs {
+    align-self: flex-start;
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-bottom-left-radius: 4px;
+}
+
+.message-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    opacity: 0.7;
+    margin-bottom: 3px;
+}
+
+.mine .message-info {
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.message-content {
+    font-size: 14px;
+    line-height: 1.4;
+}

@@ -32,15 +32,6 @@
       <SubType>Code</SubType>
     </Content>
     <Content Include="db\oracle.js" />
-    <Content Include="public\index.html">
-      <SubType>Code</SubType>
-    </Content>
-    <Content Include="public\app.js">
-      <SubType>Code</SubType>
-    </Content>
-    <Content Include="public\style.css">
-      <SubType>Code</SubType>
-    </Content>
     <Content Include="routes\auth.js" />
     <Content Include="routes\chats.js">
       <SubType>Code</SubType>
@@ -60,7 +51,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="db\" />
-    <Folder Include="public\" />
     <Folder Include="routes\" />
     <Folder Include="src\" />
   </ItemGroup>
