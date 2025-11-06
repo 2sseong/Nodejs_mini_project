@@ -91,7 +91,7 @@ export default function InviteUserModal({
         }
         setIsInviting(true);
         try {
-            const res = await api.post('/users/invite', {
+            const res = await api.post('/chats/invite', {
                 roomId: String(currentRoomId),
                 inviterId: userId,
                 inviteeId,

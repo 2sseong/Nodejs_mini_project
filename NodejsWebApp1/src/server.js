@@ -12,9 +12,9 @@ import { initialize as initOracleDB } from '../db/oracle.js'
 
 // 기존 라우터 그대로 사용(프론트 경로 안 깨짐)
 import authRouter from '../routes/auth.js'
-import chatsRouter from '../routes/chats.js'
-import inviteRouter from '../routes/invite.js'
-import friendRoutes from './features/friend/friendRoutes.js'
+import chatsRouter from './features/chat/chat.routes.js'
+import searchRouter from './features/search/search.routes.js'
+import friendRoutes from '../routes/friendRoutes.js'
 
 // 소켓 초기화/스토어
 import initSocket from './socket.js'            // ← 현재 initSocket(io)를 쓰는 형태라면 그대로
@@ -36,7 +36,7 @@ app.use(express.urlencoded({ extended: true }))
 // API 라우터 
 app.use('/api', authRouter)
 app.use('/chats', chatsRouter)
-app.use('/users', inviteRouter)
+app.use('/users', searchRouter)
 app.use('/api/friends', friendRoutes)
 
 // 정적 파일

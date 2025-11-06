@@ -1,4 +1,4 @@
-import userService from './invite.service.js';
+import userService from './search.service.js';
 
 export async function search(req, res, next) {
     try {
