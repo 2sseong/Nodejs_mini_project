@@ -44,6 +44,7 @@ app.use('/chats', chatsRouter);
 app.use('/users', inviteRouter);
 
 
+
 // 6. Socket.IO 서버 설정
 const httpServer = http.createServer(app)
 const io = new Server(httpServer, {
