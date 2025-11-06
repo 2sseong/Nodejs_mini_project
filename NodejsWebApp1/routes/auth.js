@@ -71,5 +71,4 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// 2. module.exports 대신 export default 사용
 export default router;

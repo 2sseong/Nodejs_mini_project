@@ -17,6 +17,7 @@ import initSocket from './socket.js';
 import inviteRouter from '../routes/invite.js';
 // 🔑 SocketStore에 IO 인스턴스 설정을 위한 import 추가
 import { setIoInstance } from './socketStore.js';
+import friendRoutes from '../routes/friendRoutes.js';
 // ==========================================================
 
 const app = express()
@@ -43,6 +44,13 @@ app.use('/chats', chatsRouter);
 // 인원초대 라우터 추가
 app.use('/users', inviteRouter);
 
+// 친구
+app.use('/api/friends', friendRoutes);
+
+// 4. 정적 파일 (Vite 빌드 산출물)
+const publicPath = path.join(__dirname, '../client/dist')
+const oneDay = 60 * 60 * 24 * 1000
+app.use(express.static(publicPath, { extensions: ['html'], maxAge: oneDay }))
 
 
 // 6. Socket.IO 서버 설정
@@ -78,3 +86,4 @@ httpServer.listen(PORT, async () => {
         process.exit(1);
     }
 });
+
