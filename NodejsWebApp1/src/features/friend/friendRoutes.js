@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Controller 계층을 가져옴
 // Controller 파일의 이름이 friendController.js 이며 ESM으로 export 했으므로 import * as 로 가져옴
-import * as friendController from '../src/controller/friendController.js';
+import * as friendController from './friendController.js';
 
 // GET /friends 경로에 getFriendList 함수를 연결
 // (server.js에서 /api/friends로 마운트할 예정이므로, 최종 경로는 /api/friends/friends가 됨)

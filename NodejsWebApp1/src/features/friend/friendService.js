@@ -1,4 +1,4 @@
-﻿import * as friendRepository from '../repository/friendRepository.js';
+﻿import * as friendRepository from './friendRepository.js';
 
 /**
  * 친구 목록 조회 비즈니스 로직

@@ -1,4 +1,4 @@
-﻿import * as friendService from '../service/friendService.js';
+﻿import * as friendService from './friendService.js';
 
 // -- GET /api/friends/friends - 친구 목록 조회
 

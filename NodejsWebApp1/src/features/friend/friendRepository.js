@@ -1,5 +1,5 @@
 ﻿// import db from '../../db/oracle.js';
-import { getConnection, oracledb } from '../../db/oracle.js';
+import { getConnection, oracledb } from '../../../db/oracle.js';
 export const findFriendList = async (userId) => {
 
     // !!! 친구목록조회
@@ -175,6 +175,6 @@ WHERE
         console.error("Repository Error: 사용자 검색 DB 조회 실패:", error);
         throw new Error("사용자 검색 DB 조회 중 오류 발생");
     } finally {
-        if (connection) await connection.close() 
+        if (connection) await connection.close()
     }
 };

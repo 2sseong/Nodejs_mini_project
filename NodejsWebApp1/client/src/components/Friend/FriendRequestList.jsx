@@ -1,6 +1,6 @@
 ﻿// 받은요청목록 - 수락/거절
 import React, { useState, useEffect } from 'react';
-import { fetchReceivedRequests, acceptFriendRequest } from '../api/friendsApi';
+import { fetchReceivedRequests, acceptFriendRequest } from '../../api/friendsApi';
 import './FriendRequestList.css';
 
 // 이 컴포넌트는 FriendPage.jsx에 포함되어 사용할 예정

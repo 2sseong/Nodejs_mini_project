@@ -1,7 +1,7 @@
 ﻿// client/src/pages/UserSearch.jsx
 
 import React, { useEffect, useState } from 'react';
-import { searchUsers, sendFriendRequest } from '../api/friendsApi.jsx';
+import { searchUsers, sendFriendRequest } from '../../api/friendsApi.jsx';
 import './UserSearch.css';
 
 function UserSearch() {

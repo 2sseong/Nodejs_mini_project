@@ -71,7 +71,7 @@ export const acceptFriendRequest = (requestId) => {
     return Promise.resolve({ success: true, message: "요청이 수락되었습니다." });
 };
 
-// 5. 사용자 검색 API (GET /api/v1/users/search?query=...)
+// 5. 사용자 검색 API (구현)
 export const searchUsers = async (query, userId) => {
     const response = await axios.get(`${API_URL}/search`, {
         params: {

@@ -14,7 +14,7 @@ import { initialize as initOracleDB } from '../db/oracle.js'
 import authRouter from '../routes/auth.js'
 import chatsRouter from '../routes/chats.js'
 import inviteRouter from '../routes/invite.js'
-import friendRoutes from '../routes/friendRoutes.js'
+import friendRoutes from './features/friend/friendRoutes.js'
 
 // 소켓 초기화/스토어
 import initSocket from './socket.js'            // ← 현재 initSocket(io)를 쓰는 형태라면 그대로

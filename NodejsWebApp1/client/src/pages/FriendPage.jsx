@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
-import FriendRequestList from '../components/FriendRequestList';
-import UserSearch from '../components/UserSearch.jsx';
-import './FriendPage.css';
+import FriendRequestList from '../components/Friend/FriendRequestList';
+import UserSearch from '../components/Friend/UserSearch.jsx';
+import '../styles/FriendPage.css';
 
 export default function FriendPage() {
     return (
