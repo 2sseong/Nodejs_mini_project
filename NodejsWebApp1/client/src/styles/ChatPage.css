@@ -2,8 +2,9 @@
 
 .chat-container {
     display: flex;
-    height: 100vh; /* 전체 화면 높이 사용 */
+    height: 91vh; /* 전체 화면 높이 사용 */
     background-color: #f8f9fa;
+    width: 100%;
 }
 
 /* -------------------- 사이드바 (방 리스트) -------------------- */
@@ -14,6 +15,7 @@
     padding: 15px;
     display: flex;
     flex-direction: column;
+    width: 20%
 }
 
 .sidebar-header {
@@ -109,6 +111,7 @@
     display: flex;
     flex-direction: column;
     padding: 0;
+    width:80%;
 }
 
 .chat-header {
