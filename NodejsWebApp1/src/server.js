@@ -15,8 +15,7 @@ import { Server } from 'socket.io'
 import { initialize as initOracleDB } from '../db/oracle.js';
 // routes/auth.js에서 export default된 라우터를 가져옵니다.
 import authRouter from '../routes/auth.js';
-
-// import friendRoutes from '../routes/friendRoutes.js';
+import friendRoutes from '../routes/friendRoutes.js';
 // ==========================================================
 
 
@@ -34,6 +33,9 @@ app.use(express.urlencoded({ extended: true })) // URL 인코딩 본문 파싱
 
 // 3. API 라우터 마운트
 app.use('/api', authRouter);
+
+// 친구
+app.use('/api/friends', friendRoutes);
 
 // 4. 정적 파일 (Vite 빌드 산출물)
 const publicPath = path.join(__dirname, '../client/dist')
@@ -80,4 +82,3 @@ httpServer.listen(PORT, async () => {
     }
 });
 
-// app.use('/api/friends', friendRoutes);

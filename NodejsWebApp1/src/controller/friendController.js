@@ -1,95 +1,93 @@
-import * as friendService from '../service/friendService.js';
+ï»¿import * as friendService from '../service/friendService.js';
 
-// -- GET /api/friends/friends - Ä£±¸ ¸ñ·Ï Á¶È¸
+// -- GET /api/friends/friends - ì¹œêµ¬ ëª©ë¡ ì¡°íšŒ
 
 export const getFriendList = async (req, res) => {
-    // ½ÇÁ¦ ÀÎÁõ ¹Ìµé¿ş¾î¸¦ ÅëÇØ req.user.id¿¡¼­ ·Î±×ÀÎµÈ »ç¿ëÀÚ ID¸¦ °¡Á®¿Í¾ß ÇÔ
-    // ÀÓ½Ã·Î 'TEST_USER_A'¸¦ »ç¿ë (³ªÁß¿¡ req.user.id·Î º¯°æÇÏ±â)
+    // ì‹¤ì œ ì¸ì¦ ë¯¸ë“¤ì›¨ì–´ë¥¼ í†µí•´ req.user.idì—ì„œ ë¡œê·¸ì¸ëœ ì‚¬ìš©ì IDë¥¼ ê°€ì ¸ì™€ì•¼ í•¨
+    // ì„ì‹œë¡œ 'TEST_USER_A'ë¥¼ ì‚¬ìš© (ë‚˜ì¤‘ì— req.user.idë¡œ ë³€ê²½í•˜ê¸°)
     const currentUserId = 'TEST_USER_A';
     // const currentUserId = req.user.id; 
 
     try {
-        // 1. Service °èÃş¿¡°Ô ºñÁî´Ï½º ·ÎÁ÷ ½ÇÇàÀ» À§ÀÓÇÕ
+        // 1. Service ê³„ì¸µì—ê²Œ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§ ì‹¤í–‰ì„ ìœ„ì„í•©
         const friends = await friendService.getFriendList(currentUserId);
 
-        // 2. HTTP »óÅÂ ÄÚµå 200(OK)°ú ÇÔ²² °á°ú¸¦ JSON ÇüÅÂ·Î Å¬¶óÀÌ¾ğÆ®¿¡°Ô ÀÀ´ä
+        // 2. HTTP ìƒíƒœ ì½”ë“œ 200(OK)ê³¼ í•¨ê»˜ ê²°ê³¼ë¥¼ JSON í˜•íƒœë¡œ í´ë¼ì´ì–¸íŠ¸ì—ê²Œ ì‘ë‹µ
         return res.status(200).json(friends);
 
     } catch (error) {
-        // 3. ¿¡·¯ Ã³¸® (Service³ª Repository¿¡¼­ ´øÁ®Áø ¿¡·¯¸¦ ¹ŞÀ½)
-        console.error("Ä£±¸ ¸ñ·Ï Á¶È¸ Áß Controller ¿À·ù:", error.message);
+        // 3. ì—ëŸ¬ ì²˜ë¦¬ (Serviceë‚˜ Repositoryì—ì„œ ë˜ì ¸ì§„ ì—ëŸ¬ë¥¼ ë°›ìŒ)
+        console.error("ì¹œêµ¬ ëª©ë¡ ì¡°íšŒ ì¤‘ Controller ì˜¤ë¥˜:", error.message);
 
-        // ÀÔ·Â°ª ¿À·ù µî Å¬¶óÀÌ¾ğÆ® ¹®Á¦¶ó¸é 400 Bad Request¸¦ ÁÙ ¼ö ÀÖÁö¸¸,
-        // ÇöÀç´Â ÀÏ¹İÀûÀÎ ¼­¹ö ¿À·ù(500)·Î Ã³¸®
+        // ì…ë ¥ê°’ ì˜¤ë¥˜ ë“± í´ë¼ì´ì–¸íŠ¸ ë¬¸ì œë¼ë©´ 400 Bad Requestë¥¼ ì¤„ ìˆ˜ ìˆì§€ë§Œ,
+        // í˜„ì¬ëŠ” ì¼ë°˜ì ì¸ ì„œë²„ ì˜¤ë¥˜(500)ë¡œ ì²˜ë¦¬
         return res.status(500).json({
-            message: "Ä£±¸ ¸ñ·ÏÀ» ºÒ·¯¿À´Âµ¥ ½ÇÆĞÇß½À´Ï´Ù."
+            message: "ì¹œêµ¬ ëª©ë¡ì„ ë¶ˆëŸ¬ì˜¤ëŠ”ë° ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤."
         });
     }
 };
 
 /**
- * POST /api/friends/request - Ä£±¸ Ãß°¡ ¿äÃ»
+ * POST /api/friends/request - ì¹œêµ¬ ì¶”ê°€ ìš”ì²­
  */
 export const requestFriendship = async (req, res) => {
-    // ½ÇÁ¦ ÀÎÁõ ¹Ìµé¿ş¾î¸¦ ÅëÇØ ·Î±×ÀÎµÈ »ç¿ëÀÚ ID¸¦ °¡Á®¿Í¾ß ÇÔ
-    const requesterId = 'A1111111-B222-C333-D444-E55555555555'; // ·Î±×ÀÎ »ç¿ëÀÚ ID (±è¶¯¶¯)
-    // const requesterId = req.user.id; // ÃÖÁ¾ÀûÀ¸·Î ÀÌ ÄÚµå¸¦ »ç¿ëÇØ¾ß ÇÔ
+    // ì‹¤ì œ ì¸ì¦ ë¯¸ë“¤ì›¨ì–´ë¥¼ í†µí•´ ë¡œê·¸ì¸ëœ ì‚¬ìš©ì IDë¥¼ ê°€ì ¸ì™€ì•¼ í•¨
+    const { recipientId, requesterId } = req.body;
 
-    // 1. HTTP ¿äÃ» º»¹®¿¡¼­ ¿äÃ»À» ¹Ş´Â »ç¶÷ÀÇ ID¸¦ °¡Á®¿È
-    // ÇÁ·ĞÆ®¿£µå¿¡¼­ { recipientId: '...' } ÇüÅÂ·Î º¸³Â´Ù°í °¡Á¤
-    const { recipientId } = req.body;
+    // 1. HTTP ìš”ì²­ ë³¸ë¬¸ì—ì„œ ìš”ì²­ì„ ë°›ëŠ” ì‚¬ëŒì˜ IDë¥¼ ê°€ì ¸ì˜´
+    // í”„ë¡ íŠ¸ì—”ë“œì—ì„œ { recipientId: '...' } í˜•íƒœë¡œ ë³´ëƒ„
 
     try {
-        // 2. ÀÔ·Â°ª °ËÁõ (Controller Ã¥ÀÓ)
-        if (!recipientId) {
-            return res.status(400).json({ message: "¿äÃ»À» ¹Ş´Â »ç¿ëÀÚ ID°¡ ÇÊ¿äÇÕ´Ï´Ù." });
+        // 2. ì…ë ¥ê°’ ê²€ì¦ (Controller ì±…ì„)
+        if (!recipientId || !requesterId) {
+            return res.status(400).json({ message: "ìš”ì²­ì„ ë°›ëŠ” ì‚¬ìš©ì IDê°€ í•„ìš”í•©ë‹ˆë‹¤." });
         }
 
-        // 3. Service °èÃş¿¡°Ô ºñÁî´Ï½º ·ÎÁ÷ ½ÇÇàÀ» À§ÀÓ
+        // 3. Service ê³„ì¸µì—ê²Œ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§ ì‹¤í–‰ì„ ìœ„ì„
         await friendService.requestFriendship(requesterId, recipientId);
 
-        // 4. ¼º°ø ÀÀ´ä: HTTP »óÅÂ ÄÚµå 201 (Created)
+        // 4. ì„±ê³µ ì‘ë‹µ: HTTP ìƒíƒœ ì½”ë“œ 201 (Created)
         return res.status(201).json({
-            message: "Ä£±¸ ¿äÃ»ÀÌ ¼º°øÀûÀ¸·Î Àü¼ÛµÇ¾ú½À´Ï´Ù."
+            message: "ì¹œêµ¬ ìš”ì²­ì´ ì„±ê³µì ìœ¼ë¡œ ì „ì†¡ë˜ì—ˆìŠµë‹ˆë‹¤."
         });
 
     } catch (error) {
-        console.error("Ä£±¸ ¿äÃ» Áß Controller ¿À·ù:", error.message);
+        console.error("ì¹œêµ¬ ìš”ì²­ ì¤‘ Controller ì˜¤ë¥˜:", error.message);
 
-        // Service¿¡¼­ ¹ß»ı½ÃÅ² ºñÁî´Ï½º ·ÎÁ÷ ¿À·ù Ã³¸®
-        if (error.message.includes('º»ÀÎ ÀÔ´Ï´Ù') || error.message.includes('ÀÌ¹Ì Ä£±¸') || error.message.includes('ÀÌ¹Ì Ã³¸®µÇÁö ¾ÊÀº ¿äÃ»')) {
+        // Serviceì—ì„œ ë°œìƒì‹œí‚¨ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§ ì˜¤ë¥˜ ì²˜ë¦¬
+        if (error.message.includes('ë³¸ì¸ ì…ë‹ˆë‹¤') || error.message.includes('ì´ë¯¸ ì¹œêµ¬') || error.message.includes('ì´ë¯¸ ì²˜ë¦¬ë˜ì§€ ì•Šì€ ìš”ì²­')) {
             return res.status(400).json({ message: error.message });
         }
 
-        // ÀÏ¹İ ¼­¹ö ¿À·ù Ã³¸®
+        // ì¼ë°˜ ì„œë²„ ì˜¤ë¥˜ ì²˜ë¦¬
         return res.status(500).json({
-            message: "Ä£±¸ ¿äÃ» Ã³¸®¿¡ ½ÇÆĞÇß½À´Ï´Ù."
+            message: "ì¹œêµ¬ ìš”ì²­ ì²˜ë¦¬ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤."
         });
     }
 };
 
 /**
- * »ç¿ëÀÚ °Ë»ö API ÇÚµé·¯
- * GET /api/friends/search?query=°Ë»ö¾î
- * @param {object} req - ¿äÃ» °´Ã¼ (query, userId Æ÷ÇÔ)
- * @param {object} res - ÀÀ´ä °´Ã¼
+ * ì‚¬ìš©ì ê²€ìƒ‰ API í•¸ë“¤ëŸ¬
+ * GET /api/friends/search?query=ê²€ìƒ‰ì–´
+ * @param {object} req - ìš”ì²­ ê°ì²´ (query, userId í¬í•¨)
+ * @param {object} res - ì‘ë‹µ ê°ì²´
  */
 export const searchUsers = async (req, res) => {
-    // 1. URL Äõ¸® ÆÄ¶ó¹ÌÅÍ¿¡¼­ °Ë»ö¾î(query)¿Í userId ÃßÃâ
-    const { query, userId: paramUserId } = req.query; // paramUserId·Î Äõ¸®¿¡¼­ ¹ŞÀ½
+    // 1. URL ì¿¼ë¦¬ íŒŒë¼ë¯¸í„°ì—ì„œ ê²€ìƒ‰ì–´(query)ì™€ userId ì¶”ì¶œ
+    const { query, userId: paramUserId } = req.query; // paramUserIdë¡œ ì¿¼ë¦¬ì—ì„œ ë°›ìŒ
 
-    // 2. ·Î±×ÀÎ »ç¿ëÀÚ ID È®Á¤: ÇÁ·ĞÆ®¿£µå¿¡¼­ º¸³½ ID¸¦ »ç¿ë
+    // 2. ë¡œê·¸ì¸ ì‚¬ìš©ì ID í™•ì •: í”„ë¡ íŠ¸ì—”ë“œì—ì„œ ë³´ë‚¸ IDë¥¼ ì‚¬ìš©
     const userId = paramUserId;
 
     if (!query || !userId) {
-        return res.status(400).json({ error: '°Ë»ö¾î ¶Ç´Â »ç¿ëÀÚ ID¸¦ Á¦°øÇØ¾ß ÇÕ´Ï´Ù.' });
+        return res.status(400).json({ error: 'ê²€ìƒ‰ì–´ ë˜ëŠ” ì‚¬ìš©ì IDë¥¼ ì œê³µí•´ì•¼ í•©ë‹ˆë‹¤.' });
     }
 
     try {
         const results = await friendService.searchUsers(userId, query);
         return res.status(200).json(results);
     } catch (error) {
-        // ... (¿¡·¯ Ã³¸® ·ÎÁ÷) ...
-        return res.status(500).json({ error: "»ç¿ëÀÚ °Ë»ö Ã³¸® Áß ¼­¹ö ¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù." });
+        // ... (ì—ëŸ¬ ì²˜ë¦¬ ë¡œì§) ...
+        return res.status(500).json({ error: "ì‚¬ìš©ì ê²€ìƒ‰ ì²˜ë¦¬ ì¤‘ ì„œë²„ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤." });
     }
 };

@@ -29,26 +29,28 @@ export const fetchFriendList = async () => {
 };
 
 // 2. 친구 요청 보내기 API (POST /api/friends/request) 
-export const sendFriendRequest = async (recipientId) => {
+export const sendFriendRequest = async (recipientId, requesterId) => {
     console.log(`실제 API: ${recipientId}에게 친구 요청 전송. (요청자: ${requesterId})`);
-    const data = { recipientId };
 
     try {
-        const response = await axios.post(`${API_URL}/request`,
-            { recipientId }, // POST 요청의 body
-            {
-                params: { userId: requesterId } // 👈 요청자 ID를 쿼리 파라미터 'userId'로 전달
-            }
-        );
+        // const response = await axios.post(`${API_URL}/request`,
+        const response = await axios.post(`/api/friends/request`, {
+            recipientId: recipientId,
+            requesterId: requesterId // 로그인 ID를 백엔드에 전달
+        });
         return response.data;
     } catch (error) {
         console.error("API Error: 친구 요청 전송 실패", error);
 
-        // 백엔드에서 던진 비즈니스 오류 메시지를 프론트엔드에 전달
-        if (error.response && error.response.data && error.response.data.message) {
-            throw new Error(error.response.data.message);
+        // 백엔드 메시지를 안전하게 추출하고, 없으면 기본 메시지를 사용
+        const backendMessage = error.response?.data?.message;
+
+        if (backendMessage) {
+            // 백엔드에서 받은 비즈니스 오류 메시지를 프론트엔드에 전달
+            throw new Error(backendMessage);
         }
 
+        // 서버 응답(response)이 없거나 (네트워크 오류 등) 메시지가 없는 경우
         throw new Error("친구 요청을 보내는 데 실패했습니다.");
     }
 };
@@ -77,5 +79,23 @@ export const searchUsers = async (query, userId) => {
             userId: userId
         }
     });
-    return response.data;
+    console.log("검색 API 응답 원본 데이터 구조:", response.data);
+    // DB에서 온 배열 데이터를 객체 형태로 변환하는 매핑 로직
+
+    // 백엔드 Controller의 반환 값 (배열)을 가정하고 매핑
+    // [userId, username, relationshipStatus] 순서
+    if (Array.isArray(response.data) && response.data.length > 0 && Array.isArray(response.data[0])) {
+
+        return response.data.map(item => ({
+            userId: item[0],
+            username: item[1], 
+            relationshipStatus: item[2] 
+        }));
+
+    } else if (Array.isArray(response.data)) {
+        // 이미 객체 배열일 경우 (혹시 모를 상황 대비)
+        return response.data;
+    }
+
+    return []; // 검색 결과가 없으면 빈 배열 반환
 };

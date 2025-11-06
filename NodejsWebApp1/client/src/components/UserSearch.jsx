@@ -1,6 +1,6 @@
 ﻿// client/src/pages/UserSearch.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { searchUsers, sendFriendRequest } from '../api/friendsApi.jsx';
 // import '/UserSearch.css';
 
@@ -42,6 +42,7 @@ function UserSearch() {
         try {
             // API 호출시 currentUSerId도 같이 전달
             const results = await searchUsers(searchQuery, currentUserId);
+            console.log("프론트엔드가 받은 최종 데이터 구조:", results);
             setSearchResults(results);
             setMessage(`검색 결과 ${results.length}건.`);
         } catch (error) {
@@ -50,8 +51,11 @@ function UserSearch() {
     };
 
     // 친구 요청 처리
-    const handleSendRequest = async (recipientId, userName) => {
+    const handleSendRequest = async (recipientId, username) => {
         setMessage('');
+
+        console.log("요청 전송 시 recipientId (상대방 ID):", recipientId);
+        console.log("요청 전송 시 requesterId (내 로그인 ID):", currentUserId);
 
         // 로그인 ID가 없는 경우 체크
         if (!currentUserId) {
@@ -62,13 +66,13 @@ function UserSearch() {
         try {
             // API 호출 시 currentUserId를 함께 전달
             await sendFriendRequest(recipientId, currentUserId);
-            setMessage(`${userName}님에게 친구 요청을 성공적으로 보냈습니다!`);
+            setMessage(`${username}님에게 친구 요청을 성공적으로 보냈습니다!`);
 
             // 요청을 보내면 버튼을 요청보냄으로 바꾸는 로직
             setSearchResults(prevResults =>
                 prevResults.map(user => {
                     if (user.userId === recipientId) {
-                        return { ...user, isPending: true }; // isPending 플래그 설정
+                        return { ...user, relationshipStatus: 2 }; // isPending 플래그 설정
                     }
                     return user;
                 })
@@ -100,17 +104,16 @@ function UserSearch() {
                 {searchResults.map((user) => (
                     <div key={user.userId} className="user-item">
                         <span className="user-name">
-                            {user.userName} ({user.userId})
+                            {user.username} ({user.userNickname})
                         </span>
 
-                        {/* 🌟 수정된 버튼 렌더링 로직 (isPending 추가) 🌟 */}
-                        {user.isFriend ? (
+                        {user.relationshipStatus === 1 ? ( // 1 : 친구(ACCEPTED)
                             <button disabled className="btn-friend">친구</button>
-                        ) : user.isPending ? ( // 👈 요청 보냄 상태 확인
+                        ) : user.relationshipStatus === 2 ? ( // 2: 요청 중 (PENDING)
                             <button disabled className="btn-pending">요청 보냄</button>
                         ) : (
                             <button
-                                onClick={() => handleSendRequest(user.userId, user.userName)}
+                                        onClick={() => handleSendRequest(user.userId, user.username)}
                                 className="btn-request"
                             >
                                 요청

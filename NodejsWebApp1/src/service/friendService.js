@@ -1,88 +1,86 @@
-import * as friendRepository from '../repository/friendRepository.js';
+ï»¿import * as friendRepository from '../repository/friendRepository.js';
 
 /**
- * Ä£±¸ ¸ñ·Ï Á¶È¸ ºñÁî´Ï½º ·ÎÁ÷
- * Repository¸¦ È£ÃâÇÏ¿© µ¥ÀÌÅÍ¸¦ °¡Á®¿À°í, ºñÁî´Ï½º ±ÔÄ¢À» Ã³¸®
- * @param {string} userId - ÇöÀç ·Î±×ÀÎµÈ »ç¿ëÀÚ ID
- * @returns {Promise<Array<Object>>} - Ä£±¸ ¸ñ·Ï (ID¿Í ÀÌ¸§ Æ÷ÇÔ)
+ * ì¹œêµ¬ ëª©ë¡ ì¡°íšŒ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§
+ * Repositoryë¥¼ í˜¸ì¶œí•˜ì—¬ ë°ì´í„°ë¥¼ ê°€ì ¸ì˜¤ê³ , ë¹„ì¦ˆë‹ˆìŠ¤ ê·œì¹™ì„ ì²˜ë¦¬
+ * @param {string} userId - í˜„ì¬ ë¡œê·¸ì¸ëœ ì‚¬ìš©ì ID
+ * @returns {Promise<Array<Object>>} - ì¹œêµ¬ ëª©ë¡ (IDì™€ ì´ë¦„ í¬í•¨)
  */
 export const getFriendList = async (userId) => {
-    // 1. ÀÔ·Â°ª °ËÁõ (Service °èÃşÀÇ Ã¥ÀÓ)
+    // 1. ì…ë ¥ê°’ ê²€ì¦ (Service ê³„ì¸µì˜ ì±…ì„)
     if (!userId) {
-        // HTTP 400 Bad Request¿¡ ÇØ´çÇÏ´Â ¿¡·¯¸¦ ´øÁöµµ·Ï ÇÒ ¼ö ÀÖÀ½
-        throw new Error("»ç¿ëÀÚ ID°¡ ÇÊ¿äÇÕ´Ï´Ù.");
+        // HTTP 400 Bad Requestì— í•´ë‹¹í•˜ëŠ” ì—ëŸ¬ë¥¼ ë˜ì§€ë„ë¡ í•  ìˆ˜ ìˆìŒ
+        throw new Error("ì‚¬ìš©ì IDê°€ í•„ìš”í•©ë‹ˆë‹¤.");
     }
 
-    // 2. Repository¸¦ ÅëÇØ DB µ¥ÀÌÅÍ °¡Á®¿À±â
+    // 2. Repositoryë¥¼ í†µí•´ DB ë°ì´í„° ê°€ì ¸ì˜¤ê¸°
     const friends = await friendRepository.findFriendList(userId);
 
-    // 3. µ¥ÀÌÅÍ Controller¿¡ ¹İÈ¯
+    // 3. ë°ì´í„° Controllerì— ë°˜í™˜
     return friends;
 };
 
 /**
- * Ä£±¸ Ãß°¡ ¿äÃ» ºñÁî´Ï½º ·ÎÁ÷
- * 1. ÀÚ±â ÀÚ½Å¿¡°Ô ¿äÃ» ºÒ°¡ È®ÀÎ
- * 2. ±âÁ¸ °ü°è (Ä£±¸/¿äÃ») Á¸Àç ¿©ºÎ È®ÀÎ
- * 3. ¿äÃ» ·¹ÄÚµå »ı¼º
- * @param {string} requesterId - ¿äÃ»À» º¸³»´Â »ç¿ëÀÚ ID
- * @param {string} recipientId - ¿äÃ»À» ¹Ş´Â »ç¿ëÀÚ ID
- * @returns {Promise<Object>} - ¿äÃ» ¼º°ø/½ÇÆĞ ¿©ºÎ
+ * ì¹œêµ¬ ì¶”ê°€ ìš”ì²­ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§
+ * 1. ìê¸° ìì‹ ì—ê²Œ ìš”ì²­ ë¶ˆê°€ í™•ì¸
+ * 2. ê¸°ì¡´ ê´€ê³„ (ì¹œêµ¬/ìš”ì²­) ì¡´ì¬ ì—¬ë¶€ í™•ì¸
+ * 3. ìš”ì²­ ë ˆì½”ë“œ ìƒì„±
+ * @param {string} requesterId - ìš”ì²­ì„ ë³´ë‚´ëŠ” ì‚¬ìš©ì ID
+ * @param {string} recipientId - ìš”ì²­ì„ ë°›ëŠ” ì‚¬ìš©ì ID
+ * @returns {Promise<Object>} - ìš”ì²­ ì„±ê³µ/ì‹¤íŒ¨ ì—¬ë¶€
  */
 export const requestFriendship = async (requesterId, recipientId) => {
-    // 1. ÀÚ±â ÀÚ½Å¿¡°Ô ¿äÃ»ÇÏ´ÂÁö È®ÀÎ (ºñÁî´Ï½º ·ÎÁ÷)
+    // 1. ìê¸° ìì‹ ì—ê²Œ ìš”ì²­í•˜ëŠ”ì§€ í™•ì¸ (ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§)
     if (requesterId === recipientId) {
-        // Å¬¶óÀÌ¾ğÆ®¿¡°Ô 400 Bad Request¿¡ ÇØ´çÇÏ´Â ¿¡·¯¸¦ ´øÁü
-        throw new Error("ÀÚ±â ÀÚ½Å¿¡°Ô´Â Ä£±¸ ¿äÃ»À» º¸³¾ ¼ö ¾ø½À´Ï´Ù.");
+        // í´ë¼ì´ì–¸íŠ¸ì—ê²Œ 400 Bad Requestì— í•´ë‹¹í•˜ëŠ” ì—ëŸ¬ë¥¼ ë˜ì§
+        throw new Error("ìê¸° ìì‹ ì—ê²ŒëŠ” ì¹œêµ¬ ìš”ì²­ì„ ë³´ë‚¼ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
     }
 
-    // 2. Repository¸¦ ÅëÇØ ±âÁ¸ °ü°è°¡ ÀÖ´ÂÁö È®ÀÎ (DB ·ÎÁ÷)
+    // 2. Repositoryë¥¼ í†µí•´ ê¸°ì¡´ ê´€ê³„ê°€ ìˆëŠ”ì§€ í™•ì¸ (DB ë¡œì§)
     const existingRelationship = await friendRepository.findExistingRelationship(requesterId, recipientId);
 
     if (existingRelationship.length > 0) {
         const status = existingRelationship[0].STATUS;
         if (status === 'ACCEPTED') {
-            throw new Error("ÀÌ¹Ì Ä£±¸ °ü°èÀÔ´Ï´Ù.");
+            throw new Error("ì´ë¯¸ ì¹œêµ¬ ê´€ê³„ì…ë‹ˆë‹¤.");
         }
         if (status === 'PENDING') {
-            throw new Error("ÀÌ¹Ì Ã³¸®µÇÁö ¾ÊÀº Ä£±¸ ¿äÃ»ÀÌ Á¸ÀçÇÕ´Ï´Ù.");
+            throw new Error("ì´ë¯¸ ì²˜ë¦¬ë˜ì§€ ì•Šì€ ì¹œêµ¬ ìš”ì²­ì´ ì¡´ì¬í•©ë‹ˆë‹¤.");
         }
     }
 
-    // 3. Repository¸¦ ÅëÇØ »õ·Î¿î Ä£±¸ ¿äÃ» ·¹ÄÚµå »ı¼º
+    // 3. Repositoryë¥¼ í†µí•´ ìƒˆë¡œìš´ ì¹œêµ¬ ìš”ì²­ ë ˆì½”ë“œ ìƒì„±
     const result = await friendRepository.createFriendRequest(requesterId, recipientId);
 
     return result;
 };
 
 /**
- * »ç¿ëÀÚ °Ë»ö ºñÁî´Ï½º ·ÎÁ÷
- * 1. Repository¸¦ ÅëÇØ DB¿¡¼­ »ç¿ëÀÚ¸¦ °Ë»ö
- * 2. Ä£±¸ °ü°è »óÅÂ(RELATIONSHIP_STATUS)¸¦ ÇÁ·ĞÆ®¿£µå°¡ »ç¿ëÇÏ±â ½±µµ·Ï °¡°ø
- * @param {string} userId - ÇöÀç ·Î±×ÀÎµÈ »ç¿ëÀÚ ID
- * @param {string} query - °Ë»ö¾î
- * @returns {Promise<Array>} - °Ë»öµÈ »ç¿ëÀÚ ¸ñ·Ï
+ * ì‚¬ìš©ì ê²€ìƒ‰ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§
+ * 1. Repositoryë¥¼ í†µí•´ DBì—ì„œ ì‚¬ìš©ìë¥¼ ê²€ìƒ‰
+ * 2. ì¹œêµ¬ ê´€ê³„ ìƒíƒœ(RELATIONSHIP_STATUS)ë¥¼ í”„ë¡ íŠ¸ì—”ë“œê°€ ì‚¬ìš©í•˜ê¸° ì‰½ë„ë¡ ê°€ê³µ
+ * @param {string} userId - í˜„ì¬ ë¡œê·¸ì¸ëœ ì‚¬ìš©ì ID
+ * @param {string} query - ê²€ìƒ‰ì–´
+ * @returns {Promise<Array>} - ê²€ìƒ‰ëœ ì‚¬ìš©ì ëª©ë¡
  */
 export const searchUsers = async (userId, query) => {
-    // 1. ÀÔ·Â°ª °ËÁõ (Service Ã¥ÀÓ)
+    // 1. ì…ë ¥ê°’ ê²€ì¦ (Service ì±…ì„)
     if (!query || query.length < 2) {
-        // °Ë»ö¾î´Â ÃÖ¼Ò 2ÀÚ ÀÌ»óÀÌ¾î¾ß ÇÑ´Ù´Â ºñÁî´Ï½º Á¤Ã¥ °¡Á¤
-        throw new Error("°Ë»ö¾î´Â ÃÖ¼Ò 2ÀÚ ÀÌ»ó ÀÔ·ÂÇØ¾ß ÇÕ´Ï´Ù.");
+        // ê²€ìƒ‰ì–´ëŠ” ìµœì†Œ 2ì ì´ìƒì´ì–´ì•¼ í•œë‹¤ëŠ” ë¹„ì¦ˆë‹ˆìŠ¤ ì •ì±… ê°€ì •
+        throw new Error("ê²€ìƒ‰ì–´ëŠ” ìµœì†Œ 2ì ì´ìƒ ì…ë ¥í•´ì•¼ í•©ë‹ˆë‹¤.");
     }
 
-    // 2. Repository¸¦ ÅëÇØ DB¿¡¼­ »ç¿ëÀÚ °Ë»ö ¹× °ü°è Á¶È¸
+    // 2. Repositoryë¥¼ í†µí•´ DBì—ì„œ ì‚¬ìš©ì ê²€ìƒ‰ ë° ê´€ê³„ ì¡°íšŒ
     const rawResults = await friendRepository.searchUsersByQuery(userId, query);
 
-    // 3. µ¥ÀÌÅÍ¸¦ ÇÁ·ĞÆ®¿£µå Çü½Ä¿¡ ¸Â°Ô °¡°ø
+    // 3. ë°ì´í„°ë¥¼ í”„ë¡ íŠ¸ì—”ë“œ í˜•ì‹ì— ë§ê²Œ ê°€ê³µ
     const formattedResults = rawResults.map(user => {
-        const isFriend = user.RELATIONSHIP_STATUS === 1; // 1: ACCEPTED
-        const isPending = user.RELATIONSHIP_STATUS === 2; // 2: PENDING
 
         return {
-            userId: user.USER_ID,
-            userName: user.USER_NAME,
-            isFriend: isFriend,
-            isPending: isPending,
+            userId: user[0],
+            username: user[1], //user.username dbì—ì„œ ê°’ì´ ë°°ì—´í˜•íƒœë¡œ ë°›ì•„ì™€ì ¸ì„œ ë°›ì€ ë°°ì—´ì—ì„œ ê°ì²´ë¡œ ì „í™˜
+            userNickname: user[2], // user.userNickname
+            relationshipStatus: user[3], //user.relationshipStatus
         };
     });
 

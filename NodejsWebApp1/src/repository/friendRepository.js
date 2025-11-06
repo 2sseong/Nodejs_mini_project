@@ -1,48 +1,55 @@
-import db from '../../db/oracle.js';
+ï»¿// import db from '../../db/oracle.js';
+import { getConnection, oracledb } from '../../db/oracle.js';
 export const findFriendList = async (userId) => {
 
-    // !!! Ä£±¸¸ñ·ÏÁ¶È¸
-    // T_USER Å×ÀÌºí°ú JOINÇÏ¿© Ä£±¸ ÀÌ¸§À» °¡Á®¿È
+    // !!! ì¹œêµ¬ëª©ë¡ì¡°íšŒ
+    // T_USER í…Œì´ë¸”ê³¼ JOINí•˜ì—¬ ì¹œêµ¬ ì´ë¦„ì„ ê°€ì ¸ì˜´
     const sql = `
         SELECT 
-            -- Ä£±¸ÀÇ ID¸¦ °áÁ¤ (µÎ ID Áß ÇöÀç »ç¿ëÀÚ°¡ ¾Æ´Ñ ÂÊ)
+            -- ì¹œêµ¬ì˜ IDë¥¼ ê²°ì • (ë‘ ID ì¤‘ í˜„ì¬ ì‚¬ìš©ìê°€ ì•„ë‹Œ ìª½)
             CASE
                 WHEN F.USER_ID = :userId THEN F.FRIEND_USER_ID
                 ELSE F.USER_ID
             END AS FRIEND_USER_ID,
-            -- T_USER Å×ÀÌºí(U)¿¡¼­ Ä£±¸ÀÇ ÀÌ¸§(USER_NAME)À» °¡Á®¿È
-            U.USER_NAME AS FRIEND_NAME 
+            -- T_USER í…Œì´ë¸”(U)ì—ì„œ ì¹œêµ¬ì˜ ì´ë¦„(USERNAME)ì„ ê°€ì ¸ì˜´
+            U.USERNAME AS FRIEND_NAME 
         FROM T_FRIEND F
-        -- T_USER Å×ÀÌºí(U)°ú Á¶ÀÎ. U.USER_ID´Â T_USER Å×ÀÌºíÀÇ PK
+        -- T_USER í…Œì´ë¸”(U)ê³¼ ì¡°ì¸. U.USER_IDëŠ” T_USER í…Œì´ë¸”ì˜ PK
         JOIN T_USER U ON U.USER_ID = 
             CASE
                 WHEN F.USER_ID = :userId THEN F.FRIEND_USER_ID
                 ELSE F.USER_ID
             END
-        -- ÇöÀç »ç¿ëÀÚ°¡ Æ÷ÇÔµÇ¾î ÀÖ°í, »óÅÂ°¡ 'ACCEPTED'ÀÎ Ä£±¸ °ü°è¸¸ Á¶È¸
+        -- í˜„ì¬ ì‚¬ìš©ìê°€ í¬í•¨ë˜ì–´ ìˆê³ , ìƒíƒœê°€ 'ACCEPTED'ì¸ ì¹œêµ¬ ê´€ê³„ë§Œ ì¡°íšŒ
         WHERE (F.USER_ID = :userId OR F.FRIEND_USER_ID = :userId) 
           AND F.STATUS = 'ACCEPTED'
     `;
+    const binds = { userId: userId };
+
+    let connection; // DB ì»¤ë„¥ì…˜ ë³€ìˆ˜ ì„ ì–¸
 
     try {
-        const result = await db.execute(sql, { userId });
-        return result.rows;
+        connection = await getConnection();
+        const result = await connection.execute(sql, binds, { autoCommit: true });
+        return result;
     } catch (error) {
-        console.error("Repository Error: Ä£±¸ ¸ñ·Ï Á¶È¸ ½ÇÆĞ:", error);
-        throw new Error("Ä£±¸ ¸ñ·Ï DB Á¶È¸ Áß ¿À·ù ¹ß»ı");
+        console.error("Repository Error: ì¹œêµ¬ ëª©ë¡ ì¡°íšŒ ì‹¤íŒ¨:", error);
+        throw new Error("ì¹œêµ¬ ëª©ë¡ DB ì¡°íšŒ ì¤‘ ì˜¤ë¥˜ ë°œìƒ");
+    } finally {
+        if (connection) await connection.close();
     }
 };
 
-// -- Ä£±¸Ãß°¡¿äÃ»
+// -- ì¹œêµ¬ì¶”ê°€ìš”ì²­
 /**
- * !!! µÎ »ç¿ëÀÚ °£ÀÇ ±âÁ¸ Ä£±¸/¿äÃ» °ü°è¸¦ Á¶È¸
- * USER_ID¿Í FRIEND_USER_IDÀÇ ¼ø¼­¿¡ °ü°è¾øÀÌ Á¶È¸ÇØ¾ß ÇÔ
- * @param {string} userId1 - »ç¿ëÀÚ ID 1
- * @param {string} userId2 - »ç¿ëÀÚ ID 2
- * @returns {Promise<Array<Object>>} - STATUS ('ACCEPTED', 'PENDING' µî)¸¦ Æ÷ÇÔÇÑ ·¹ÄÚµå
+ * !!! ë‘ ì‚¬ìš©ì ê°„ì˜ ê¸°ì¡´ ì¹œêµ¬/ìš”ì²­ ê´€ê³„ë¥¼ ì¡°íšŒ
+ * USER_IDì™€ FRIEND_USER_IDì˜ ìˆœì„œì— ê´€ê³„ì—†ì´ ì¡°íšŒí•´ì•¼ í•¨
+ * @param {string} userId1 - ì‚¬ìš©ì ID 1
+ * @param {string} userId2 - ì‚¬ìš©ì ID 2
+ * @returns {Promise<Array<Object>>} - STATUS ('ACCEPTED', 'PENDING' ë“±)ë¥¼ í¬í•¨í•œ ë ˆì½”ë“œ
  */
 export const findExistingRelationship = async (userId1, userId2) => {
-    // T_FRIEND Å×ÀÌºí¿¡¼­ µÎ »ç¿ëÀÚ ID¸¦ ¾ç¹æÇâÀ¸·Î Á¶È¸
+    // T_FRIEND í…Œì´ë¸”ì—ì„œ ë‘ ì‚¬ìš©ì IDë¥¼ ì–‘ë°©í–¥ìœ¼ë¡œ ì¡°íšŒ
     const sql = `
         SELECT STATUS
         FROM T_FRIEND
@@ -52,33 +59,50 @@ export const findExistingRelationship = async (userId1, userId2) => {
 
     const binds = { userId1, userId2 };
 
+    let connection;
+
     try {
-        const result = await db.execute(sql, binds);
+        // getConnectionì„ ì‚¬ìš©í•˜ì—¬ ì»¤ë„¥ì…˜ íšë“
+        connection = await getConnection();
+
+        // db.execute ëŒ€ì‹  connection.execute ì‚¬ìš©
+        const result = await connection.execute(sql, binds, {
+            outFormat: oracledb.OUT_FORMAT_OBJECT // dbì—ì„œ ë°ì´í„° ë°°ì—´ë¡œ ë„˜ì–´ì˜¤ëŠ”ê±° ë°©ì§€. ê°ì²´ ì†ì„± ì°¸ì¡°
+        });
+
         return result.rows;
     } catch (error) {
-        console.error("Repository Error: ±âÁ¸ °ü°è Á¶È¸ ½ÇÆĞ", error);
-        throw new Error("DB °ü°è Á¶È¸ Áß ¿À·ù ¹ß»ı");
+        console.error("Repository Error: ê¸°ì¡´ ê´€ê³„ ì¡°íšŒ ì‹¤íŒ¨", error);
+        throw new Error("DB ê´€ê³„ ì¡°íšŒ ì¤‘ ì˜¤ë¥˜ ë°œìƒ");
+    } finally {
+        // ì‘ì—…ì´ ëë‚˜ë©´ ë°˜ë“œì‹œ ì»¤ë„¥ì…˜ í•´ì œ
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Error closing connection:", e);
+            }
+        }
     }
 };
 
 
 /**
- * !!! Ä£±¸ ¿äÃ» ·¹ÄÚµå¸¦ DB¿¡ »ğÀÔ (»óÅÂ´Â 'PENDING')
- * @param {string} requesterId - ¿äÃ»À» º¸³½ »ç¿ëÀÚ ID (USER_ID)
- * @param {string} recipientId - ¿äÃ»À» ¹Ş´Â »ç¿ëÀÚ ID (FRIEND_USER_ID)
- * @returns {Promise<Object>} - »ğÀÔ °á°ú
+ * !!! ì¹œêµ¬ ìš”ì²­ ë ˆì½”ë“œë¥¼ DBì— ì‚½ì… (ìƒíƒœëŠ” 'PENDING')
+ * @param {string} requesterId - ìš”ì²­ì„ ë³´ë‚¸ ì‚¬ìš©ì ID (USER_ID)
+ * @param {string} recipientId - ìš”ì²­ì„ ë°›ëŠ” ì‚¬ìš©ì ID (FRIEND_USER_ID)
+ * @returns {Promise<Object>} - ì‚½ì… ê²°ê³¼
  */
 export const createFriendRequest = async (requesterId, recipientId) => {
-    // T_FRIEND Å×ÀÌºí¿¡ »õ·Î¿î ¿äÃ» ·¹ÄÚµå¸¦ INSERT
+    // T_FRIEND í…Œì´ë¸”ì— ìƒˆë¡œìš´ ìš”ì²­ ë ˆì½”ë“œë¥¼ INSERT
     const sql = `
         INSERT INTO T_FRIEND (
-            FRIEND_ID, USER_ID, FRIEND_USER_ID, STATUS
+            USER_ID, FRIEND_USER_ID, STATUS, CREATED_AT
         ) VALUES (
-            -- FRIEND_ID´Â ½ÃÄö½º(nextval)¸¦ »ç¿ëÇÏ°Å³ª, Å×ÀÌºí Á¤ÀÇ¿¡ µû¶ó NULL Ã³¸®
-            NULL, 
             :requesterId, 
             :recipientId, 
-            'PENDING'
+            'PENDING',
+            CURRENT_TIMESTAMP
         )
     `;
 
@@ -87,53 +111,70 @@ export const createFriendRequest = async (requesterId, recipientId) => {
         recipientId: recipientId
     };
 
+    let connection;
+
     try {
-        // DB ½ÇÇà (INSERT ¹®)
-        const result = await db.execute(sql, binds);
-        return result;
+        connection = await getConnection();
+        const options = { autoCommit: true };
+        // DB ì‹¤í–‰ (INSERT ë¬¸)
+        const result = await connection.execute(sql, binds, options);
+        // ì‚½ì… ì„±ê³µ(1ê±´) ì—¬ë¶€ë¥¼ ë°˜í™˜
+        return result.rowsAffected === 1;;
     } catch (error) {
-        console.error("Repository Error: Ä£±¸ ¿äÃ» »ı¼º ½ÇÆĞ", error);
-        throw new Error("Ä£±¸ ¿äÃ» DB »ğÀÔ Áß ¿À·ù ¹ß»ı");
+        console.error("Repository Error: ì¹œêµ¬ ìš”ì²­ ìƒì„± ì‹¤íŒ¨", error);
+        throw new Error("ì¹œêµ¬ ìš”ì²­ DB ì‚½ì… ì¤‘ ì˜¤ë¥˜ ë°œìƒ");
+    } finally {
+        if (connection) await connection.close();
     }
 };
 
 /**
- * !!! »ç¿ëÀÚ °Ë»ö ¹× Ä£±¸ °ü°è »óÅÂ Á¶È¸ (GET /users/search)
- * @param {string} userId - ÇöÀç ·Î±×ÀÎµÈ »ç¿ëÀÚ ID
- * @param {string} query - °Ë»ö¾î
- * @returns {Promise<Array>} - °Ë»öµÈ »ç¿ëÀÚ ¸ñ·Ï ¹× Ä£±¸ »óÅÂ
+ * !!! ì‚¬ìš©ì ê²€ìƒ‰ ë° ì¹œêµ¬ ê´€ê³„ ìƒíƒœ ì¡°íšŒ (GET /users/search)
+ * @param {string} userId - í˜„ì¬ ë¡œê·¸ì¸ëœ ì‚¬ìš©ì ID
+ * @param {string} query - ê²€ìƒ‰ì–´
+ * @returns {Promise<Array>} - ê²€ìƒ‰ëœ ì‚¬ìš©ì ëª©ë¡ ë° ì¹œêµ¬ ìƒíƒœ
  */
 export const searchUsersByQuery = async (userId, query) => {
+
     const sql = `
-        SELECT
-            U.USER_ID,
-            U.USER_NAME,
-            -- °ü°è »óÅÂ¸¦ ¼ıÀÚ·Î ¹İÈ¯ (PENDING Æ÷ÇÔ)
-            CASE
-                WHEN F.STATUS = 'ACCEPTED' THEN 1 -- Ä£±¸ÀÓ
-                WHEN F.STATUS = 'PENDING' THEN 2 -- ¿äÃ» Áß
-                ELSE 0                         -- °ü°è ¾øÀ½
-            END AS RELATIONSHIP_STATUS
-        FROM T_USER U
-        -- T_FRIEND Å×ÀÌºí°ú LEFT JOIN ÇÕ´Ï´Ù.
-        -- °ü°è°¡ (U.USER_ID <-> :userId) ¶Ç´Â (:userId <-> U.USER_ID) ÀÎ ·¹ÄÚµå¸¦ Ã£½À´Ï´Ù.
-        LEFT JOIN T_FRIEND F ON
-            (F.USER_ID = U.USER_ID AND F.FRIEND_USER_ID = :userId) 
-            OR (F.USER_ID = :userId AND F.FRIEND_USER_ID = U.USER_ID)
-        WHERE
-            -- 1. °Ë»ö¾î°¡ ID³ª ÀÌ¸§¿¡ Æ÷ÇÔµÇ°í
-            (U.USER_ID LIKE '%' || :query || '%' OR U.USER_NAME LIKE '%' || :query || '%')
-            -- 2. ·Î±×ÀÎ »ç¿ëÀÚ(ÀÚ±â ÀÚ½Å)´Â Á¦¿ÜÇÕ´Ï´Ù.
-            AND U.USER_ID != :userId
-    `;
+SELECT
+    U.USER_ID AS userId,
+    U.USERNAME AS username,
+    U.NICKNAME AS userNickname,
+    CASE
+        WHEN F.STATUS = 'ACCEPTED' THEN 1
+        WHEN F.STATUS = 'PENDING' THEN 2
+        ELSE 0
+    END AS relationshipStatus
+FROM T_USER U
+LEFT JOIN T_FRIEND F ON
+    (F.USER_ID = U.USER_ID AND F.FRIEND_USER_ID = :userId)
+    OR (F.USER_ID = :userId AND F.FRIEND_USER_ID = U.USER_ID)
+WHERE
+    (U.USER_ID LIKE '%' || :query || '%' OR U.USERNAME LIKE '%' || :query || '%')
+    AND U.USER_ID != :userId
+`;
 
     const binds = { userId: userId, query: query };
 
+    let connection;
+
     try {
-        const result = await db.execute(sql, binds);
+        connection = await getConnection();
+
+        // ë””ë²„ê¹… ì½”ë“œ
+        console.log("ì‹¤í–‰ë  SQL:", sql);
+
+        const result = await connection.execute(sql, binds);
+
+        // ë””ë²„ê¹… ì½”ë“œ
+        console.log("DB ì‘ë‹µ ê²°ê³¼:", result.rows);
+
         return result.rows;
     } catch (error) {
-        console.error("Repository Error: »ç¿ëÀÚ °Ë»ö DB Á¶È¸ ½ÇÆĞ:", error);
-        throw new Error("»ç¿ëÀÚ °Ë»ö DB Á¶È¸ Áß ¿À·ù ¹ß»ı");
+        console.error("Repository Error: ì‚¬ìš©ì ê²€ìƒ‰ DB ì¡°íšŒ ì‹¤íŒ¨:", error);
+        throw new Error("ì‚¬ìš©ì ê²€ìƒ‰ DB ì¡°íšŒ ì¤‘ ì˜¤ë¥˜ ë°œìƒ");
+    } finally {
+        if (connection) await connection.close() 
     }
 };
