@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Topbar from './components/Topbar.jsx'
+import Topbar from './components/Topbar/Topbar.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import ChatPage from './pages/ChatPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
