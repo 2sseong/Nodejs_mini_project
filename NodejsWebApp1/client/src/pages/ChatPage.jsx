@@ -330,7 +330,7 @@ export default function ChatPage() {
         setIsInviting(true);
         try {
             // 백엔드의 POST /chats/invite 라우터 호출 시, ID를 전송
-            const response = await axios.post(`${BASE_URL}/chats/invite`, {
+            const response = await axios.post(`${BASE_URL}/users/invite`, {
                 roomId: String(currentRoomId),
                 inviterId: userId,
                 inviteeId: inviteeId //   최종 ID 사용
