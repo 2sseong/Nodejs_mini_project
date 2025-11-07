@@ -72,6 +72,7 @@ export const acceptFriendRequest = (requestId) => {
 };
 
 // 5. 사용자 검색 API (구현)
+
 export const searchUsers = async (query, userId) => {
     const response = await axios.get(`${API_URL}/search`, {
         params: {
@@ -79,23 +80,13 @@ export const searchUsers = async (query, userId) => {
             userId: userId
         }
     });
+
     console.log("검색 API 응답 원본 데이터 구조:", response.data);
-    // DB에서 온 배열 데이터를 객체 형태로 변환하는 매핑 로직
 
-    // 백엔드 Controller의 반환 값 (배열)을 가정하고 매핑
-    // [userId, username, relationshipStatus] 순서
-    if (Array.isArray(response.data) && response.data.length > 0 && Array.isArray(response.data[0])) {
-
-        return response.data.map(item => ({
-            userId: item[0],
-            username: item[1], 
-            relationshipStatus: item[2] 
-        }));
-
-    } else if (Array.isArray(response.data)) {
-        // 이미 객체 배열일 경우 (혹시 모를 상황 대비)
+    if (Array.isArray(response.data)) {
         return response.data;
     }
 
-    return []; // 검색 결과가 없으면 빈 배열 반환
+    return []; // 배열이 아니거나 결과가 없으면 빈 배열 반환
 };
+

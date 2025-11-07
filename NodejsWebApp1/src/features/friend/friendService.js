@@ -77,10 +77,10 @@ export const searchUsers = async (userId, query) => {
     const formattedResults = rawResults.map(user => {
 
         return {
-            userId: user[0],
-            username: user[1], //user.username db에서 값이 배열형태로 받아와져서 받은 배열에서 객체로 전환
-            userNickname: user[2], // user.userNickname
-            relationshipStatus: user[3], //user.relationshipStatus
+            userId: user.USERID,
+            username: user.USERNAME,
+            userNickname: user.USERNICKNAME,
+            relationshipStatus: user.RELATIONSHIPSTATUS,
         };
     });
 

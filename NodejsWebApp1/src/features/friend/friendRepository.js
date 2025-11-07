@@ -161,11 +161,13 @@ WHERE
 
     try {
         connection = await getConnection();
+        // DB 드라이버에게 결과를 SQL에서 정의한 별칭을 키로 사용하는 객체 배열로 반환하라고 지시
+        const options = {
+            outFormat: oracledb.OUT_FORMAT_OBJECT
+        };
 
-        // 디버깅 코드
-        console.log("실행될 SQL:", sql);
-
-        const result = await connection.execute(sql, binds);
+        // options 객체를 execute 함수의 세 번째 인자로 전달
+        const result = await connection.execute(sql, binds, options);
 
         // 디버깅 코드
         console.log("DB 응답 결과:", result.rows);
