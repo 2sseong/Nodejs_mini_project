@@ -8,11 +8,26 @@ export function useChatSocket({ userId, userNickname }) {
     const [currentRoomId, setCurrentRoomId] = useState(null);
     const [messages, setMessages] = useState([]);
 
+    // 메세지 초기화
+    const clearMessages = useCallback(() => {
+        setMessages([]);
+    }, []);
+
     // 최신 값 보관
     const currentRoomIdRef = useRef(null);
     const prevRoomIdRef = useRef(null);
 
     const socket = useMemo(() => createSocket(userId), [userId]);
+
+    // 방 목록 갱신 함수
+    const refreshRooms = useCallback(() => {
+        if (!socket || !userId) return;
+
+        const authToken = localStorage.getItem('authToken');
+        socket.emit('rooms:fetch', { userId, authToken });
+
+    }, [socket, userId]);
+
 
     // --- 방 이동 + 히스토리 ---
     const handleRoomChange = useCallback((newRoomId) => {
@@ -45,10 +60,13 @@ export function useChatSocket({ userId, userNickname }) {
     useEffect(() => {
         if (!socket || !userId) return;
 
+
         const onConnect = () => {
             setConnected(true);
             const authToken = localStorage.getItem('authToken');
             socket.emit('rooms:fetch', { userId, authToken });
+
+            refreshRooms();
 
             // 재연결 시 현재 방 자동 재입장
             const rid = currentRoomIdRef.current;
@@ -89,22 +107,15 @@ export function useChatSocket({ userId, userNickname }) {
         const onNewRoomCreated = (roomData) => {
             if (!roomData) return; // 방 데이터가 없는 경우 무시
 
-            // 서버에서 오는 키(key)에 맞게 유연하게 처리
-            const normalizedRoom = {
-                ROOM_ID: String(roomData.roomId || roomData.ROOM_ID),
-                ROOM_NAME: roomData.roomName || roomData.ROOM_NAME,
-                ROOM_TYPE: roomData.roomType || 'GROUP',
-            };
+            refreshRooms();
 
-            // 1. rooms 상태에 새 방을 추가합니다 (사이드바 즉시 업데이트).
-            // (시간복잡도 O(N)이지만, 리스트의 앞에 추가하는 최적의 방식)
-            setRooms(prev => [normalizedRoom, ...prev]);
+            const newRoomId = String(roomData.roomId || roomData.ROOM_ID);
 
-            // 2. 새로 생성된 방을 즉시 선택합니다.
-            setCurrentRoomId(normalizedRoom.ROOM_ID);
+            setCurrentRoomId(newRoomId);
 
-            // 3. 새 방에 입장하고 히스토리를 요청합니다.
-            handleRoomChange(normalizedRoom.ROOM_ID);
+            // 3. 새 방에 입장하고 히스토리를 요청합니다. (이 로직은 유지)
+            handleRoomChange(newRoomId);
+
         };
 
 
@@ -123,7 +134,7 @@ export function useChatSocket({ userId, userNickname }) {
             socket.off('chat:message', onChatMessage);
             socket.off('room:new_created', onNewRoomCreated);
         };
-    }, [socket, userId, handleRoomChange]); 
+    }, [socket, userId, handleRoomChange, refreshRooms]);
 
     // 언마운트 시에만 소켓 닫기
     useEffect(() => {
@@ -154,8 +165,6 @@ export function useChatSocket({ userId, userNickname }) {
             SENT_AT: Date.now(),
         };
 
-        // 즉시 UI 반영
-        // setMessages(prev => [...prev, { ...msg, _optimistic: true }]);
 
         socket.emit('chat:message', msg);
     }, [currentRoomId, socket, userId, userNickname]);
@@ -168,5 +177,7 @@ export function useChatSocket({ userId, userNickname }) {
         currentRoomId,
         selectRoom,
         sendMessage,
+        refreshRooms,
+        clearMessages,
     };
 }

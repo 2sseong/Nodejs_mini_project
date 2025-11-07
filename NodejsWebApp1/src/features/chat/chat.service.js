@@ -37,10 +37,24 @@ export async function inviteUserToRoom({ roomId, inviterId, inviteeId }) {
     return { roomId, inviteeId };
 }
 
+// ---  방 나가기 함수 추가 ---
+
+export async function leaveRoom({ roomId, userId }) {
+    // Repository 레이어의 멤버 삭제 함수를 호출
+    const rowsAffected = await repo.deleteMember({ roomId, userId });
+
+    if (rowsAffected === 0) {
+        throw { status: 404, message: '채팅방 멤버로 등록되어 있지 않습니다.' };
+    }
+
+    return rowsAffected;
+}
+// ------------------------------
 export default {
     createRoom,
     listRoomsForUser,
     getHistory,
     saveMessage,
     inviteUserToRoom,
+    leaveRoom,
 };

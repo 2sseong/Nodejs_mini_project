@@ -1,14 +1,14 @@
-// src/components/Modals/InviteUserModal.jsx
+// src/components/Chatpage/Modals/InviteUserModal.jsx
 import { useEffect, useRef, useState } from 'react';
 import './Modals.css';
-import { api } from '../../../lib/api';
+import { apiSearchUsers, apiInviteUser } from '../../../api/roomApi';
+
 
 export default function InviteUserModal({
     isOpen,
     onClose,
     currentRoomId,
     userId,
-    selectRoom,
 }) {
     const [inviteeId, setInviteeId] = useState('');
     const [inviteeUsername, setInviteeUsername] = useState('');
@@ -18,6 +18,7 @@ export default function InviteUserModal({
     const [isInviting, setIsInviting] = useState(false);
     const abortRef = useRef(null);
     const debounceRef = useRef(null);
+
 
     useEffect(() => {
         if (!isOpen) {
@@ -53,10 +54,9 @@ export default function InviteUserModal({
             setIsSearching(true);
             setSearchResults([]);
             try {
-                const resp = await api.get('/users/search', {
-                    params: { query: q },
-                    signal: abortRef.current.signal,
-                });
+                // 2. [수정] apiSearchUsers 모듈 함수 사용
+                const resp = await apiSearchUsers(q, abortRef.current.signal);
+
                 const payload = resp?.data;
                 const list = Array.isArray(payload)
                     ? payload
@@ -84,18 +84,20 @@ export default function InviteUserModal({
     };
 
     const handleInviteUser = async () => {
-        if (isInviting || !currentRoomId || !inviteeId) return;
-        if (inviteeId === userId) {
-            alert('자기 자신을 초대할 수 없습니다.');
+        if (isInviting || !currentRoomId || !inviteeId || inviteeId === userId) {
+            if (inviteeId === userId) alert('자기 자신을 초대할 수 없습니다.');
             return;
         }
+
         setIsInviting(true);
         try {
-            const res = await api.post('/chats/invite', {
-                roomId: String(currentRoomId),
-                inviterId: userId,
-                inviteeId,
-            });
+            // apiInviteUser 모듈 함수 사용
+            const res = await apiInviteUser(
+                String(currentRoomId),
+                userId,
+                inviteeId
+            );
+
             if (res.data?.success) {
                 alert(`${inviteeUsername} 님을 성공적으로 초대했습니다.`);
                 onClose(true);

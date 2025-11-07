@@ -115,3 +115,44 @@ export async function saveMessageTx({ roomId, senderId, content }) {
     const sentAt = res.outBinds.outSentAt[0]?.getTime?.();
     return { msgId, sentAt };
 }
+
+
+// --- 멤버 삭제 리포지토리 함수 ---
+export async function deleteMember({ roomId, userId }) {
+    let conn; // 1. conn 변수 선언 (ReferenceError 해결)
+    try {
+        conn = await getConnection(); // 2. 커넥션 획득
+
+        const sql = `
+            DELETE FROM T_ROOM_MEMBER
+            WHERE ROOM_ID = :roomId AND USER_ID = :userId
+        `;
+        const binds = {
+            roomId: Number(roomId),
+            userId: userId
+        };
+
+        // 3. 쿼리 실행 (autoCommit: false)
+        const result = await conn.execute(sql, binds, { autoCommit: false });
+
+        await conn.commit(); // 4. 명시적 커밋 실행 (여기서 에러 발생 지점)
+
+        const rowsAffected = result.rowsAffected;
+        console.log(`[DB DELETE RESULT] rowsAffected: ${rowsAffected}`);
+
+        return rowsAffected;
+
+    } catch (e) {
+        // 5. 에러 시 롤백
+        if (conn) {
+            console.error("Delete transaction failed, rolling back.");
+            try { await conn.rollback(); } catch (rbkErr) { console.error("Rollback error:", rbkErr); }
+        }
+        throw e; // 서비스 레이어로 에러 던지기
+    } finally {
+        // 6. 커넥션 닫기
+        if (conn) {
+            try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); }
+        }
+    }
+}
