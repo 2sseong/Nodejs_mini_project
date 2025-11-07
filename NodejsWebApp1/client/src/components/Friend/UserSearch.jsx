@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { searchUsers, sendFriendRequest } from '../api/friendsApi.jsx';
-// import '/UserSearch.css';
+import './UserSearch.css';
 
 function UserSearch() {
     const [searchQuery, setSearchQuery] = useState('');
