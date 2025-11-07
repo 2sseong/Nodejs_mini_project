@@ -21,7 +21,7 @@ export function useAuthFromStorage() {
         setAuthLoaded(true);
 
         if (!id || !nickname) {
-            console.error('·Î±×ÀÎ Á¤º¸°¡ null/invalid. ·Î±×ÀÎÀ¸·Î ¸®µğ·º¼Ç.');
+            console.error('ë¡œê·¸ì¸ ì •ë³´ê°€ null/invalid. ë¡œê·¸ì¸ìœ¼ë¡œ ë¦¬ë””ë ‰ì…˜.');
             navigate('/login', { replace: true });
         }
     }, [navigate]);

@@ -8,13 +8,13 @@ export function useChatSocket({ userId, userNickname }) {
     const [currentRoomId, setCurrentRoomId] = useState(null);
     const [messages, setMessages] = useState([]);
 
-    // ÃÖ½Å °ª º¸°ü
+    // ìµœì‹  ê°’ ë³´ê´€
     const currentRoomIdRef = useRef(null);
     const prevRoomIdRef = useRef(null);
 
     const socket = useMemo(() => createSocket(userId), [userId]);
 
-    // --- ¹æ ÀÌµ¿ + È÷½ºÅä¸® ---
+    // --- ë°© ì´ë™ + ížˆìŠ¤í† ë¦¬ ---
     const handleRoomChange = useCallback((newRoomId) => {
         const rid = String(newRoomId || '');
         if (!socket || !userId || !rid) return;
@@ -31,17 +31,17 @@ export function useChatSocket({ userId, userNickname }) {
         prevRoomIdRef.current = rid;
     }, [socket, userId]);
 
-    // ¼±ÅÃ ÇÔ¼ö
+    // ì„ íƒ í•¨ìˆ˜
     const selectRoom = useCallback((roomId) => {
         const rid = String(roomId || '');
         if (!rid || rid === currentRoomId) return;
-        setMessages([]);            // UI Áï½Ã Å¬¸®¾î
-        setCurrentRoomId(rid);      // »óÅÂ ¹Ý¿µ
-        handleRoomChange(rid);      // ¼­¹ö join + history
+        setMessages([]);            // UI ì¦‰ì‹œ í´ë¦¬ì–´
+        setCurrentRoomId(rid);      // ìƒíƒœ ë°˜ì˜
+        handleRoomChange(rid);      // ì„œë²„ join + history
     }, [currentRoomId, handleRoomChange]);
 
-    // ---------- ¼ÒÄÏ ÀÌº¥Æ® ¹ÙÀÎµù ----------
-    // Áß¿ä: ÀÇÁ¸¼º¿¡¼­ currentRoomId / handleRoomChange Á¦°Å
+    // ---------- ì†Œì¼“ ì´ë²¤íŠ¸ ë°”ì¸ë”© ----------
+    // ì¤‘ìš”: ì˜ì¡´ì„±ì—ì„œ currentRoomId / handleRoomChange ì œê±°
     useEffect(() => {
         if (!socket || !userId) return;
 
@@ -50,7 +50,7 @@ export function useChatSocket({ userId, userNickname }) {
             const authToken = localStorage.getItem('authToken');
             socket.emit('rooms:fetch', { userId, authToken });
 
-            // Àç¿¬°á ½Ã ÇöÀç ¹æ ÀÚµ¿ ÀçÀÔÀå
+            // ìž¬ì—°ê²° ì‹œ í˜„ìž¬ ë°© ìžë™ ìž¬ìž…ìž¥
             const rid = currentRoomIdRef.current;
             if (rid) {
                 socket.emit('room:join', { roomId: rid, userId });
@@ -59,7 +59,7 @@ export function useChatSocket({ userId, userNickname }) {
         };
         const onDisconnect = (reason) => {
             setConnected(false);
-            // µð¹ö±ë¿¡ µµ¿ò
+            // ë””ë²„ê¹…ì— ë„ì›€
             console.warn('socket disconnected:', reason);
         };
 
@@ -67,7 +67,7 @@ export function useChatSocket({ userId, userNickname }) {
             const normalized = (roomList || []).map(r => ({ ...r, ROOM_ID: String(r.ROOM_ID) }));
             setRooms(normalized);
 
-            // Ã¹ ¹æ ÀÚµ¿ ÁøÀÔ
+            // ì²« ë°© ìžë™ ì§„ìž…
             if (currentRoomIdRef.current == null && normalized.length > 0) {
                 const first = normalized[0].ROOM_ID;
                 setCurrentRoomId(first);
@@ -87,23 +87,23 @@ export function useChatSocket({ userId, userNickname }) {
         };
 
         const onNewRoomCreated = (roomData) => {
-            if (!roomData) return; // ¹æ µ¥ÀÌÅÍ°¡ ¾ø´Â °æ¿ì ¹«½Ã
+            if (!roomData) return; // ë°© ë°ì´í„°ê°€ ì—†ëŠ” ê²½ìš° ë¬´ì‹œ
 
-            // ¼­¹ö¿¡¼­ ¿À´Â Å°(key)¿¡ ¸Â°Ô À¯¿¬ÇÏ°Ô Ã³¸®
+            // ì„œë²„ì—ì„œ ì˜¤ëŠ” í‚¤(key)ì— ë§žê²Œ ìœ ì—°í•˜ê²Œ ì²˜ë¦¬
             const normalizedRoom = {
                 ROOM_ID: String(roomData.roomId || roomData.ROOM_ID),
                 ROOM_NAME: roomData.roomName || roomData.ROOM_NAME,
                 ROOM_TYPE: roomData.roomType || 'GROUP',
             };
 
-            // 1. rooms »óÅÂ¿¡ »õ ¹æÀ» Ãß°¡ÇÕ´Ï´Ù (»çÀÌµå¹Ù Áï½Ã ¾÷µ¥ÀÌÆ®).
-            // (½Ã°£º¹Àâµµ O(N)ÀÌÁö¸¸, ¸®½ºÆ®ÀÇ ¾Õ¿¡ Ãß°¡ÇÏ´Â ÃÖÀûÀÇ ¹æ½Ä)
+            // 1. rooms ìƒíƒœì— ìƒˆ ë°©ì„ ì¶”ê°€í•©ë‹ˆë‹¤ (ì‚¬ì´ë“œë°” ì¦‰ì‹œ ì—…ë°ì´íŠ¸).
+            // (ì‹œê°„ë³µìž¡ë„ O(N)ì´ì§€ë§Œ, ë¦¬ìŠ¤íŠ¸ì˜ ì•žì— ì¶”ê°€í•˜ëŠ” ìµœì ì˜ ë°©ì‹)
             setRooms(prev => [normalizedRoom, ...prev]);
 
-            // 2. »õ·Î »ý¼ºµÈ ¹æÀ» Áï½Ã ¼±ÅÃÇÕ´Ï´Ù.
+            // 2. ìƒˆë¡œ ìƒì„±ëœ ë°©ì„ ì¦‰ì‹œ ì„ íƒí•©ë‹ˆë‹¤.
             setCurrentRoomId(normalizedRoom.ROOM_ID);
 
-            // 3. »õ ¹æ¿¡ ÀÔÀåÇÏ°í È÷½ºÅä¸®¸¦ ¿äÃ»ÇÕ´Ï´Ù.
+            // 3. ìƒˆ ë°©ì— ìž…ìž¥í•˜ê³  ížˆìŠ¤í† ë¦¬ë¥¼ ìš”ì²­í•©ë‹ˆë‹¤.
             handleRoomChange(normalizedRoom.ROOM_ID);
         };
 
@@ -125,23 +125,23 @@ export function useChatSocket({ userId, userNickname }) {
         };
     }, [socket, userId, handleRoomChange]); 
 
-    // ¾ð¸¶¿îÆ® ½Ã¿¡¸¸ ¼ÒÄÏ ´Ý±â
+    // ì–¸ë§ˆìš´íŠ¸ ì‹œì—ë§Œ ì†Œì¼“ ë‹«ê¸°
     useEffect(() => {
         return () => { socket?.close(); };
     }, [socket]);
 
-    // ref µ¿±âÈ­
+    // ref ë™ê¸°í™”
     useEffect(() => {
         currentRoomIdRef.current = currentRoomId;
     }, [currentRoomId]);
 
-    // Àü¼Û (³«°üÀû ¾÷µ¥ÀÌÆ® Ãß°¡)
+    // ì „ì†¡ (ë‚™ê´€ì  ì—…ë°ì´íŠ¸ ì¶”ê°€)
     const sendMessage = useCallback(({ text }) => {
         const trimmed = text.trim();
         if (!trimmed || !currentRoomId || !socket || !userId) return;
 
         if (!socket.connected) {
-            // Àç¿¬°á ½Ãµµ¸¸ ÇÏ°í Á¾·á (¿øÇÏ¸é Å¥À× ·ÎÁ÷ Ãß°¡ °¡´É)
+            // ìž¬ì—°ê²° ì‹œë„ë§Œ í•˜ê³  ì¢…ë£Œ (ì›í•˜ë©´ íìž‰ ë¡œì§ ì¶”ê°€ ê°€ëŠ¥)
             socket.connect();
             return;
         }
@@ -154,7 +154,7 @@ export function useChatSocket({ userId, userNickname }) {
             SENT_AT: Date.now(),
         };
 
-        // Áï½Ã UI ¹Ý¿µ
+        // ì¦‰ì‹œ UI ë°˜ì˜
         // setMessages(prev => [...prev, { ...msg, _optimistic: true }]);
 
         socket.emit('chat:message', msg);

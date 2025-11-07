@@ -3900,7 +3900,23 @@
     <Content Include="routes\invite.js">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="src\socketStore.js">
+    <Content Include="src\features\chat\chat.routes.js" />
+    <Content Include="src\features\chat\chat.controller.js" />
+    <Content Include="src\features\chat\chat.service.js" />
+    <Content Include="src\features\chat\chat.repository.js" />
+    <Content Include="src\features\chat\chat.socket.js" />
+    <Content Include="src\features\chat\chat.dto.js" />
+    <Content Include="src\features\invite\invite.controller.js" />
+    <Content Include="src\features\invite\invite.repository.js" />
+    <Content Include="src\features\invite\invite.dto.js" />
+    <Content Include="src\features\invite\invite.service.js" />
+    <Content Include="src\features\invite\invite.routes.js">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="src\sockets\socket.gateway.js">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="src\sockets\socketStore.js">
       <SubType>Code</SubType>
     </Content>
     <Content Include="src\socket.js">
@@ -3916,11 +3932,13 @@
     <Content Include="src\repository\friendRepository.js">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="src\routes.js" />
     <Content Include="src\server.js" />
     <Content Include="package.json" />
     <Content Include="README.md" />
     <Content Include="src\service\friendService.js">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="src\sockets\socket.server.js">
       <SubType>Code</SubType>
     </Content>
   </ItemGroup>
@@ -4433,6 +4451,10 @@
     <Folder Include="routes\" />
     <Folder Include="src\" />
     <Folder Include="src\controller\" />
+    <Folder Include="src\features\" />
+    <Folder Include="src\features\chat\" />
+    <Folder Include="src\features\invite\" />
+    <Folder Include="src\sockets\" />
     <Folder Include="src\service\" />
     <Folder Include="src\repository\" />
   </ItemGroup>

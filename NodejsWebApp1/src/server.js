@@ -1,5 +1,4 @@
-﻿// src/server.js (채팅 및 Socket.IO 모듈 통합 최종 버전)
-
+﻿// src/server.js
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
@@ -8,82 +7,72 @@ import { fileURLToPath } from 'url'
 import http from 'http'
 import { Server } from 'socket.io'
 
-// ==========================================================
-// 1. ESM 모듈 불러오기 (DB, 인증, 채팅 라우터, 소켓 초기화)
-import { initialize as initOracleDB } from '../db/oracle.js';
-import authRouter from '../routes/auth.js';
-import chatsRouter from '../routes/chats.js';
-import initSocket from './socket.js';
-import inviteRouter from '../routes/invite.js';
-// 🔑 SocketStore에 IO 인스턴스 설정을 위한 import 추가
-import { setIoInstance } from './socketStore.js';
-import friendRoutes from '../routes/friendRoutes.js';
-// ==========================================================
+// 그대로 사용: 네 oracle.js
+import { initialize as initOracleDB } from '../db/oracle.js'
+
+// 기존 라우터 그대로 사용(프론트 경로 안 깨짐)
+import authRouter from '../routes/auth.js'
+import chatsRouter from '../routes/chats.js'
+import inviteRouter from '../routes/invite.js'
+import friendRoutes from '../routes/friendRoutes.js'
+
+// 소켓 초기화/스토어
+import initSocket from './socket.js'            // ← 현재 initSocket(io)를 쓰는 형태라면 그대로
+import { setIoInstance } from './sockets/socketStore.js'
 
 const app = express()
 const PORT = process.env.PORT || 1337
-// CLIENT_URL을 환경 변수에서 가져오는 것이 가장 안정적입니다.
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
 // __dirname (ESM)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 2. 미들웨어 설정
-app.use(cors({
-    origin: CLIENT_URL,
-    credentials: true
-}))
+// 미들웨어
+app.use(cors({ origin: CLIENT_URL, credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// 3. API 라우터 마운트
-app.use('/api', authRouter);
-// 채팅방 라우터 추가
-app.use('/chats', chatsRouter);
-// 인원초대 라우터 추가
-app.use('/users', inviteRouter);
+// API 라우터 
+app.use('/api', authRouter)
+app.use('/chats', chatsRouter)
+app.use('/users', inviteRouter)
+app.use('/api/friends', friendRoutes)
 
-// 친구
-app.use('/api/friends', friendRoutes);
-
-// 4. 정적 파일 (Vite 빌드 산출물)
+// 정적 파일
 const publicPath = path.join(__dirname, '../client/dist')
 const oneDay = 60 * 60 * 24 * 1000
 app.use(express.static(publicPath, { extensions: ['html'], maxAge: oneDay }))
 
-
-// 6. Socket.IO 서버 설정
-const httpServer = http.createServer(app)
-const io = new Server(httpServer, {
-    cors: {
-        origin: CLIENT_URL,
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
-})
-
-// 🔑 [O(1) 소켓 인스턴스 저장]
-// SocketStore 모듈에 io 인스턴스를 저장하여 다른 모듈(라우터)에서 접근 가능하게 함.
-setIoInstance(io);
-
-// Socket.io 인스턴스를 Express 앱에 저장 (레거시 방식이지만, 필요시 대비)
-app.set('io', io);
-
-// 7. Socket.io 로직 분리: 초기화 함수 호출
-initSocket(io);
-
-// 8. 서버 리스닝 및 DB 초기화
-httpServer.listen(PORT, async () => {
+// 서버 스타트 함수로 감싸서 DB 먼저 초기화
+async function start() {
     try {
-        // DB 연결 풀 초기화 실행 (시간 복잡도 최우선)
-        await initOracleDB();
-        console.log(`Oracle DB Connection Pool established successfully.`);
-        console.log(`Server on http://localhost:${PORT}`);
-    } catch (e) {
-        // DB 초기화 실패 시 서버 종료
-        console.error("Server failed to start due to DB initialization error:", e.message);
-        process.exit(1);
-    }
-});
+        // 1) DB 풀 먼저 준비
+        await initOracleDB()
+        console.log('Oracle DB Connection Pool established successfully.')
 
+        // 2) HTTP + Socket.IO
+        const httpServer = http.createServer(app)
+        const io = new Server(httpServer, {
+            cors: { origin: CLIENT_URL, methods: ['GET', 'POST'], credentials: true }
+        })
+
+        // SocketStore에 보관(게이트웨이 패턴)
+        setIoInstance(io)
+
+        // (선택) 레거시 호환 필요 없으면 다음 줄은 제거 가능
+        // app.set('io', io)
+
+        // 현재 구조가 initSocket(io)라면 그대로
+        initSocket(io)
+
+        httpServer.listen(PORT, () => {
+            console.log(`Server on http://localhost:${PORT}`)
+        })
+    } catch (e) {
+        console.error('Server failed to start:', e)
+        process.exit(1)
+    }
+}
+
+start()
