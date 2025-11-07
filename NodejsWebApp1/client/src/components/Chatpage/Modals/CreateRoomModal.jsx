@@ -1,7 +1,7 @@
 // src/components/Chatpage/Modals/CreateRoomModal.jsx
 import { useState } from 'react';
 import './Modals.css';
-import { api } from '../../../lib/api';
+import { apiCreateRoom } from '../../../api/roomApi';
 
 export default function CreateRoomModal({ isOpen, onClose, userId }) {
     const [newRoomName, setNewRoomName] = useState('');
@@ -11,17 +11,16 @@ export default function CreateRoomModal({ isOpen, onClose, userId }) {
 
     const handleCreate = async () => {
         const trimmedName = newRoomName.trim();
-        if (!trimmedName) {
-            alert('채팅방 이름을 입력해주세요.');
+        if (!trimmedName || !userId) {
+            alert(trimmedName ? '사용자 정보를 불러올 수 없습니다.' : '채팅방 이름을 입력해주세요.');
             return;
         }
-        if (!userId) {
-            alert('사용자 정보를 불러올 수 없습니다.');
-            return;
-        }
+
         setIsCreating(true);
         try {
-            const res = await api.post('/chats/create', { roomName: trimmedName, creatorId: userId });
+            // 2. [수정] apiCreateRoom 모듈 함수 사용
+            const res = await apiCreateRoom(trimmedName, userId);
+
             if (res.data?.success) {
                 onClose(true); // 성공
                 setNewRoomName('');
