@@ -3914,25 +3914,17 @@
     <Content Include="client\vite.config.js" />
     <Content Include="db\oracle.js" />
     <Content Include="routes\auth.js" />
-    <Content Include="routes\chats.js">
-      <SubType>Code</SubType>
-    </Content>
-    <Content Include="routes\invite.js">
-      <SubType>Code</SubType>
-    </Content>
     <Content Include="src\features\chat\chat.routes.js" />
     <Content Include="src\features\chat\chat.controller.js" />
     <Content Include="src\features\chat\chat.service.js" />
     <Content Include="src\features\chat\chat.repository.js" />
     <Content Include="src\features\chat\chat.socket.js" />
     <Content Include="src\features\chat\chat.dto.js" />
-    <Content Include="src\features\invite\invite.controller.js" />
-    <Content Include="src\features\invite\invite.repository.js" />
-    <Content Include="src\features\invite\invite.dto.js" />
-    <Content Include="src\features\invite\invite.service.js" />
-    <Content Include="src\features\invite\invite.routes.js">
-      <SubType>Code</SubType>
-    </Content>
+    <Content Include="src\features\search\search.controller.js" />
+    <Content Include="src\features\search\search.dto.js" />
+    <Content Include="src\features\search\search.repository.js" />
+    <Content Include="src\features\search\search.routes.js" />
+    <Content Include="src\features\search\search.service.js" />
     <Content Include="src\sockets\socket.gateway.js">
       <SubType>Code</SubType>
     </Content>
@@ -4484,6 +4476,7 @@
     <Folder Include="src\" />
     <Folder Include="src\features\" />
     <Folder Include="src\features\chat\" />
+    <Folder Include="src\features\search\" />
     <Folder Include="src\features\invite\" />
     <Folder Include="src\features\friend\" />
     <Folder Include="src\sockets\" />
