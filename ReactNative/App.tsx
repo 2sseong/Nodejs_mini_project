@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+
 // 모듈화된 GlobalStyles를 가져옵니다. (경로 가정: '../constants/GlobalStyles')
 // 프로젝트 루트에서 상대 경로로 수정했습니다.
 // import { GlobalStyles } from './constants/GlobalStyles,js';
