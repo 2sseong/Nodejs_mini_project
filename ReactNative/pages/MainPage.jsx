@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     Dimensions,
 } from 'react-native';
+import Roompage from './RoomPage.jsx'
 
 // NOTE: 이 환경에서는 react-native-vector-icons 패키지를 직접 불러올 수 없으므로,
 // 사용자 프로젝트에 'react-native-vector-icons/Feather'가 설치 및 링크되었다고 가정하고 코드를 작성합니다.
@@ -79,9 +80,9 @@ export default function MainPage({ onLogout, userInfo }) {
             case 'User':
                 return <UserPage />;
             case 'Chat':
-                return <ChatPage />;
+                return <Roompage />;
             default:
-                return <ChatPage />;
+                return <UserPage />;
         }
     };
     
