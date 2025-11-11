@@ -1,7 +1,7 @@
-// routes/auth.js (½Ã°£ º¹Àâµµ ÃÖÀûÈ­ ¹öÀü)
+// routes/auth.js (ì‹œê°„ ë³µìž¡ë„ ìµœì í™” ë²„ì „)
 
 import express from 'express';
-// ?? getConnection ´ë½Å executeQuery¿Í executeTransaction¸¸ °¡Á®¿É´Ï´Ù.
+// ?? getConnection ëŒ€ì‹  executeQueryì™€ executeTransactionë§Œ ê°€ì ¸ì˜µë‹ˆë‹¤.
 import { executeQuery, executeTransaction } from '../db/oracle.js';
 import jwt from 'jsonwebtoken';
 
@@ -11,53 +11,53 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
 // /api/auth/login
 router.post('/login', async (req, res) => {
-    // **½Ã°£ º¹Àâµµ O(1)ÀÇ °´Ã¼ ºñ±¸Á¶È­ ÇÒ´ç**
+    // **ì‹œê°„ ë³µìž¡ë„ O(1)ì˜ ê°ì²´ ë¹„êµ¬ì¡°í™” í• ë‹¹**
     const { email, password } = req.body;
 
     try {
-        // 1. »ç¿ëÀÚ Á¤º¸ ¹× ÀúÀåµÈ ºñ¹Ð¹øÈ£ Á¶È¸
-        // executeQuery¸¦ »ç¿ëÇÏ¸é ³»ºÎÀûÀÎ ¿¬°á È¹µæ/¹ÝÈ¯ ·ÎÁ÷ÀÌ O(1)·Î ÃÖÀûÈ­µÊ
+        // 1. ì‚¬ìš©ìž ì •ë³´ ë° ì €ìž¥ëœ ë¹„ë°€ë²ˆí˜¸ ì¡°íšŒ
+        // executeQueryë¥¼ ì‚¬ìš©í•˜ë©´ ë‚´ë¶€ì ì¸ ì—°ê²° íšë“/ë°˜í™˜ ë¡œì§ì´ O(1)ë¡œ ìµœì í™”ë¨
         const selectSql = `
             SELECT USER_ID, PASSWORD_HASH, NICKNAME, USERNAME
             FROM T_USER
             WHERE USERNAME = :email
         `;
-        // **DB Äõ¸® ½Ã°£ º¹Àâµµ´Â O(log N) ¶Ç´Â O(1) (ÀÎµ¦½º »ç¿ë)**
+        // **DB ì¿¼ë¦¬ ì‹œê°„ ë³µìž¡ë„ëŠ” O(log N) ë˜ëŠ” O(1) (ì¸ë±ìŠ¤ ì‚¬ìš©)**
         const result = await executeQuery(selectSql, { email });
 
         const user = result.rows[0];
 
-        // »ç¿ëÀÚ ID Á¸Àç È®ÀÎ (O(1) °Ë»ç)
+        // ì‚¬ìš©ìž ID ì¡´ìž¬ í™•ì¸ (O(1) ê²€ì‚¬)
         if (!user) {
-            return res.status(401).json({ message: '»ç¿ëÀÚ ID°¡ Á¸ÀçÇÏÁö ¾Ê½À´Ï´Ù.' });
+            return res.status(401).json({ message: 'ì‚¬ìš©ìž IDê°€ ì¡´ìž¬í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.' });
         }
 
-        // 2. ºñ¹Ð¹øÈ£ Á÷Á¢ ºñ±³ (O(L) ¶Ç´Â O(1))
+        // 2. ë¹„ë°€ë²ˆí˜¸ ì§ì ‘ ë¹„êµ (O(L) ë˜ëŠ” O(1))
         const isMatch = (password === user.PASSWORD_HASH);
 
         if (!isMatch) {
-            return res.status(401).json({ message: 'ºñ¹Ð¹øÈ£°¡ ÀÏÄ¡ÇÏÁö ¾Ê½À´Ï´Ù.' });
+            return res.status(401).json({ message: 'ë¹„ë°€ë²ˆí˜¸ê°€ ì¼ì¹˜í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.' });
         }
 
-        // 3. ·Î±×ÀÎ ¼º°ø: JWT ÅäÅ« ¹ßÇà (O(1))
+        // 3. ë¡œê·¸ì¸ ì„±ê³µ: JWT í† í° ë°œí–‰ (O(1))
         const token = jwt.sign(
             { userId: user.USER_ID, username: user.USERNAME },
             JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // 4. LAST_LOGIN ½Ã°£ ¾÷µ¥ÀÌÆ® ¹× Æ®·£Àè¼Ç Ã³¸®
-        // Æ®·£Àè¼Ç Ã³¸®°¡ ÇÊ¿äÇÏ¹Ç·Î executeTransactionÀ» »ç¿ëÇÕ´Ï´Ù.
+        // 4. LAST_LOGIN ì‹œê°„ ì—…ë°ì´íŠ¸ ë° íŠ¸ëžœìž­ì…˜ ì²˜ë¦¬
+        // íŠ¸ëžœìž­ì…˜ ì²˜ë¦¬ê°€ í•„ìš”í•˜ë¯€ë¡œ executeTransactionì„ ì‚¬ìš©í•©ë‹ˆë‹¤.
         const updateSql = `
             UPDATE T_USER
             SET LAST_LOGIN = CURRENT_TIMESTAMP
             WHERE USER_ID = :userId
         `;
-        // **DB Äõ¸® ½Ã°£ º¹Àâµµ´Â O(log N) ¶Ç´Â O(1) (ÀÎµ¦½º »ç¿ë)**
-        // executeTransactionÀÌ ³»ºÎÀûÀ¸·Î Ä¿¹Ô/·Ñ¹é/¿¬°á¹ÝÈ¯À» Ã³¸®ÇÕ´Ï´Ù.
+        // **DB ì¿¼ë¦¬ ì‹œê°„ ë³µìž¡ë„ëŠ” O(log N) ë˜ëŠ” O(1) (ì¸ë±ìŠ¤ ì‚¬ìš©)**
+        // executeTransactionì´ ë‚´ë¶€ì ìœ¼ë¡œ ì»¤ë°‹/ë¡¤ë°±/ì—°ê²°ë°˜í™˜ì„ ì²˜ë¦¬í•©ë‹ˆë‹¤.
         await executeTransaction(updateSql, { userId: user.USER_ID });
 
-        // 5. Å¬¶óÀÌ¾ðÆ®¿¡°Ô ÅäÅ« ¹× »ç¿ëÀÚ Á¤º¸ ÀÀ´ä (O(1))
+        // 5. í´ë¼ì´ì–¸íŠ¸ì—ê²Œ í† í° ë° ì‚¬ìš©ìž ì •ë³´ ì‘ë‹µ (O(1))
         res.json({
             success: true,
             token: token,
@@ -66,8 +66,8 @@ router.post('/login', async (req, res) => {
 
     } catch (err) {
         console.error('Login Error:', err);
-        // DB ·ÎÁ÷ÀÌ ºÐ¸®µÇ¾úÀ¸¹Ç·Î ¿©±â¼­´Â º°µµÀÇ ·Ñ¹é/Å¬·ÎÁî Ã³¸®°¡ ÇÊ¿ä ¾ø½À´Ï´Ù. (°ø°£ º¹Àâµµ °¨¼Ò)
-        res.status(500).json({ message: '¼­¹ö ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù.' });
+        // DB ë¡œì§ì´ ë¶„ë¦¬ë˜ì—ˆìœ¼ë¯€ë¡œ ì—¬ê¸°ì„œëŠ” ë³„ë„ì˜ ë¡¤ë°±/í´ë¡œì¦ˆ ì²˜ë¦¬ê°€ í•„ìš” ì—†ìŠµë‹ˆë‹¤. (ê³µê°„ ë³µìž¡ë„ ê°ì†Œ)
+        res.status(500).json({ message: 'ì„œë²„ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.' });
     }
 });
 
