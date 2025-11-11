@@ -1,23 +1,23 @@
 import { api } from '../lib/api.js';
 
-// --- ¹æ »ı¼º (CreateRoomModal ·ÎÁ÷ ºĞ¸®) ---
+// --- ë°© ìƒì„± (CreateRoomModal ë¡œì§ ë¶„ë¦¬) ---
 /**
- * [POST] »õ Ã¤ÆÃ¹æÀ» »ı¼ºÇÏ°í »ı¼ºÀÚ¸¦ ¸â¹ö·Î Ãß°¡ÇÕ´Ï´Ù.
+ * [POST] ìƒˆ ì±„íŒ…ë°©ì„ ìƒì„±í•˜ê³  ìƒì„±ìë¥¼ ë©¤ë²„ë¡œ ì¶”ê°€í•©ë‹ˆë‹¤.
  * @param {string} roomName 
  * @param {string|number} creatorId 
  * @returns {Promise}
  */
 export const apiCreateRoom = (roomName, creatorId) => {
-    // ±âÁ¸ InviteUserModal¿¡¼­ »ç¿ëµÈ '/chats/create' ¿£µåÆ÷ÀÎÆ® »ç¿ë
+    // ê¸°ì¡´ InviteUserModalì—ì„œ ì‚¬ìš©ëœ '/chats/create' ì—”ë“œí¬ì¸íŠ¸ ì‚¬ìš©
     return api.post('/chats/create', { roomName, creatorId });
 };
 
-// --- »ç¿ëÀÚ ÃÊ´ë (InviteUserModal ·ÎÁ÷ ºĞ¸®) ---
+// --- ì‚¬ìš©ì ì´ˆëŒ€ (InviteUserModal ë¡œì§ ë¶„ë¦¬) ---
 /**
- * [GET] »ç¿ëÀÚ °Ë»ö (ÃÊ´ë¸¦ À§ÇÑ)
- * ½Ã°£ º¹Àâµµ: O(1) (³×Æ®¿öÅ©) / ¹é¿£µå O(log N) (ÀÎµ¦½º °Ë»ö)
+ * [GET] ì‚¬ìš©ì ê²€ìƒ‰ (ì´ˆëŒ€ë¥¼ ìœ„í•œ)
+ * ì‹œê°„ ë³µì¡ë„: O(1) (ë„¤íŠ¸ì›Œí¬) / ë°±ì—”ë“œ O(log N) (ì¸ë±ìŠ¤ ê²€ìƒ‰)
  * @param {string} query 
- * @param {AbortSignal} signal - ¿äÃ» Ãë¼Ò¸¦ À§ÇÑ AbortSignal
+ * @param {AbortSignal} signal - ìš”ì²­ ì·¨ì†Œë¥¼ ìœ„í•œ AbortSignal
  * @returns {Promise}
  */
 export const apiSearchUsers = (query, signal) => {
@@ -28,14 +28,14 @@ export const apiSearchUsers = (query, signal) => {
 };
 
 /**
- * [POST] Ã¤ÆÃ¹æ¿¡ »ç¿ëÀÚ¸¦ ÃÊ´ëÇÕ´Ï´Ù.
+ * [POST] ì±„íŒ…ë°©ì— ì‚¬ìš©ìë¥¼ ì´ˆëŒ€í•©ë‹ˆë‹¤.
  * @param {string|number} roomId 
  * @param {string|number} inviterId 
  * @param {string|number} inviteeId 
  * @returns {Promise}
  */
 export const apiInviteUser = (roomId, inviterId, inviteeId) => {
-    // ±âÁ¸ InviteUserModal¿¡¼­ »ç¿ëµÈ '/chats/invite' ¿£µåÆ÷ÀÎÆ® »ç¿ë
+    // ê¸°ì¡´ InviteUserModalì—ì„œ ì‚¬ìš©ëœ '/chats/invite' ì—”ë“œí¬ì¸íŠ¸ ì‚¬ìš©
     return api.post('/chats/invite', {
         roomId,
         inviterId,
@@ -43,14 +43,14 @@ export const apiInviteUser = (roomId, inviterId, inviteeId) => {
     });
 };
 
-// --- ¹æ ³ª°¡±â (ChatPage ·ÎÁ÷ ºĞ¸®) ---
+// --- ë°© ë‚˜ê°€ê¸° (ChatPage ë¡œì§ ë¶„ë¦¬) ---
 /**
- * [DELETE] T_ROOM_MEMBER¿¡¼­ »ç¿ëÀÚ¸¦ »èÁ¦ÇÕ´Ï´Ù. (¹æ ³ª°¡±â)
+ * [DELETE] T_ROOM_MEMBERì—ì„œ ì‚¬ìš©ìë¥¼ ì‚­ì œí•©ë‹ˆë‹¤. (ë°© ë‚˜ê°€ê¸°)
  * @param {string|number} roomId 
  * @param {string|number} userId 
  * @returns {Promise}
  */
 export const apiLeaveRoom = (roomId, userId) => {
-    // 1. [¼öÁ¤]: µ¥ÀÌÅÍ¸¦ URL ÆÄ¶ó¹ÌÅÍ·Î Àü¼Û
+    // 1. [ìˆ˜ì •]: ë°ì´í„°ë¥¼ URL íŒŒë¼ë¯¸í„°ë¡œ ì „ì†¡
     return api.delete(`/chats/exit/${roomId}/${userId}`);
 };

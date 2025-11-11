@@ -1,4 +1,4 @@
-/* ÀüÃ¼ ÄÁÅ×ÀÌ³Ê */
+/* ì „ì²´ ì»¨í…Œì´ë„ˆ */
 .login-wrap {
     height: calc(86vh - 56px); 
     display: flex;
@@ -8,7 +8,7 @@
     padding: 40px 20px;
 }
 
-/* ·Î±×ÀÎ Ä«µå */
+/* ë¡œê·¸ì¸ ì¹´ë“œ */
 .login-card {
     width: 100%;
     min-width: 720px;
@@ -40,7 +40,7 @@
     color: #1e293b;
 }
 
-/* ÇÊµå */
+/* í•„ë“œ */
 .field {
     display: grid;
     gap: 8px;
@@ -91,7 +91,7 @@
         color: #111827;
     }
 
-/* ¿¡·¯ */
+/* ì—ëŸ¬ */
 .error {
     margin: 6px 0 10px;
     color: #b91c1c;
@@ -102,7 +102,7 @@
     font-size: 13px;
 }
 
-/* Á¦Ãâ ¹öÆ° */
+/* ì œì¶œ ë²„íŠ¼ */
 .submit {
     width: 100%;
     margin-top: 12px;
@@ -126,7 +126,7 @@
         cursor: not-allowed;
     }
 
-/* ÇÏ´Ü µµ¿ò ¸µÅ© */
+/* í•˜ë‹¨ ë„ì›€ ë§í¬ */
 .help-row {
     margin-top: 16px;
     display: flex;
