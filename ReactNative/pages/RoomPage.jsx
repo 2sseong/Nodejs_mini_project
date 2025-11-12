@@ -17,19 +17,21 @@ import {
 } from 'react-native';
 import io from 'socket.io-client';
 import { CHAT_CONTRACT as C } from '../constants/chatContract';
+import { openExternalChat } from '../services/nativeChat';
+
 
 const { ChatWindowManager } = NativeModules;
 
-/** 외부 보조창 오픈 (성공 시 true/false 반환) */
+/** 외부 보조창 오픈 (성공 시 true/false 반환) — O(1) 
 async function openExternalChat(roomId, roomName) {
-  if (!ChatWindowManager?.open) return false;
+  if (typeof ChatWindowManager?.open !== 'function') return false;
   try {
     const ok = await ChatWindowManager.open(String(roomId), String(roomName || '채팅'));
     return !!ok;
   } catch {
     return false;
   }
-}
+}*/
 
 /** ────────────── 간단 토스트 ────────────── */
 const Toast = React.memo(({ msg, type }) => {
@@ -42,8 +44,12 @@ const Toast = React.memo(({ msg, type }) => {
 });
 
 /** ─────────────────────────────────────────────────────────
- * ChatRoomWindow(오버레이): 드래그/다중/포커스
- * 시간복잡도: 렌더 O(M), 드래그 O(1) per move
+ * ChatRoomWindow(오버레이)
+ * - 드래그 / 포커스 / 다중창 / 자동 스크롤
+ * 시간복잡도:
+ *  • 렌더 O(M) (M=표시 메시지 수)
+ *  • 드래그 O(1) per move
+ *  • 전송 O(1)
  * ───────────────────────────────────────────────────────── */
 const ChatRoomWindow = React.memo(function ChatRoomWindow({
   roomId,
@@ -57,10 +63,12 @@ const ChatRoomWindow = React.memo(function ChatRoomWindow({
   zIndex,
   onFocus,
   onClose,
+  onUpdatePos, // (rid, {x, y})
 }) {
   const [text, setText] = useState('');
   const [pos, setPos] = useState(initialPos || { x: 360, y: 80 });
   const offset = useRef({ x: pos.x, y: pos.y });
+  const listRef = useRef(null);
 
   // join + history (mount/unmount)
   useEffect(() => {
@@ -71,6 +79,18 @@ const ChatRoomWindow = React.memo(function ChatRoomWindow({
       socket.emit(C.events.leaveRoom, { roomId });
     };
   }, [socket, roomId]);
+
+  // 메시지 변경 시 하단 자동 스크롤 — O(1)
+  useEffect(() => {
+    if (!listRef.current) return;
+    // 다음 프레임에 스크롤(플랫리스트 레이아웃 완료 보장)
+    const t = setTimeout(() => {
+      try {
+        listRef.current.scrollToEnd({ animated: true });
+      } catch {}
+    }, 0);
+    return () => clearTimeout(t);
+  }, [messages?.length]);
 
   const handleSend = useCallback(() => {
     const v = text.trim();
@@ -91,32 +111,42 @@ const ChatRoomWindow = React.memo(function ChatRoomWindow({
         onPanResponderMove: (_, g) => {
           setPos({ x: offset.current.x + g.dx, y: offset.current.y + g.dy });
         },
+        onPanResponderRelease: (_, g) => {
+          const nx = offset.current.x + g.dx;
+          const ny = offset.current.y + g.dy;
+          setPos({ x: nx, y: ny });
+          onUpdatePos?.(roomId, { x: nx, y: ny });
+        },
       }),
-    [pos, onFocus]
+    [pos, onFocus, onUpdatePos, roomId]
   );
 
-  const Bubble = ({ m }) => {
-    const mine = m.USER_ID === userId;
-    const ts =
-      m.TIMESTAMP instanceof Date
-        ? m.TIMESTAMP.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-        : '';
-    return (
-      <View style={mine ? wS.myRow : wS.otherRow}>
-        <View style={[wS.wrap, { flexDirection: mine ? 'row-reverse' : 'row' }]}>
-          <View>
-            {!mine && <Text style={wS.nick}>{m.NICKNAME || m.USER_ID?.slice(0, 8)}</Text>}
-            <View style={mine ? wS.my : wS.other}>
-              <Text style={mine ? wS.myTxt : wS.otherTxt}>{m.TEXT}</Text>
+  const Bubble = React.useMemo(
+    () =>
+      React.memo(function BubbleInner({ m }) {
+        const mine = m.USER_ID === userId;
+        const ts =
+          m.TIMESTAMP instanceof Date
+            ? m.TIMESTAMP.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+            : '';
+        return (
+          <View style={mine ? wS.myRow : wS.otherRow}>
+            <View style={[wS.wrap, { flexDirection: mine ? 'row-reverse' : 'row' }]}>
+              <View>
+                {!mine && <Text style={wS.nick}>{m.NICKNAME || m.USER_ID?.slice(0, 8)}</Text>}
+                <View style={mine ? wS.my : wS.other}>
+                  <Text style={mine ? wS.myTxt : wS.otherTxt}>{m.TEXT}</Text>
+                </View>
+              </View>
+              <View style={wS.time}>
+                <Text style={mine ? wS.myTime : wS.otherTime}>{ts}</Text>
+              </View>
             </View>
           </View>
-          <View style={wS.time}>
-            <Text style={mine ? wS.myTime : wS.otherTime}>{ts}</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
+        );
+      }),
+    [userId]
+  );
 
   return (
     <View
@@ -129,7 +159,7 @@ const ChatRoomWindow = React.memo(function ChatRoomWindow({
           {roomName || `방 ${roomId}`}
         </Text>
         <View style={{ flexDirection: 'row', columnGap: 8 }}>
-          <TouchableOpacity onPress={onClose} style={wS.close}>
+          <TouchableOpacity onPress={onClose} style={wS.close} accessibilityLabel="채팅창 닫기">
             <Text style={wS.closeTxt}>×</Text>
           </TouchableOpacity>
         </View>
@@ -138,10 +168,14 @@ const ChatRoomWindow = React.memo(function ChatRoomWindow({
       {/* 메시지 */}
       <View style={wS.body}>
         <FlatList
+          ref={listRef}
           data={messages}
-          keyExtractor={(it) => it.id}
+          keyExtractor={(it) => String(it.id ?? `${it.ROOM_ID}-${it.TIMESTAMP?.valueOf?.() ?? Math.random()}`)}
           renderItem={({ item }) => <Bubble m={item} />}
           contentContainerStyle={wS.listContent}
+          removeClippedSubviews
+          initialNumToRender={20}
+          windowSize={7}
         />
       </View>
 
@@ -188,10 +222,10 @@ export default function RoomPage() {
   const [windows, setWindows] = useState([]);
   const topZ = useRef(10);
 
-  // 외부창 오픈 확인: 네이티브 'ChatWindowOpened' 이벤트 못 받으면 폴백
+  // 외부창 오픈 확인용 — 네이티브 'ChatWindowOpened' 받지 못하면 폴백
   const externalOpenWait = useRef(new Map()); // roomId -> timeoutId
 
-  // 외부창 이벤트 수신 (DeviceEventEmitter 사용)
+  // 외부창 이벤트 수신
   useEffect(() => {
     const onOpened = DeviceEventEmitter.addListener('ChatWindowOpened', (payload) => {
       const rid = String(payload?.roomId || '');
@@ -265,7 +299,7 @@ export default function RoomPage() {
     };
   }, [userId]);
 
-  /** 메시지 전송: O(1) */
+  /** 메시지 전송 — O(1) */
   const sendMessage = useCallback(
     (roomId, text) => {
       if (!socket?.connected) {
@@ -297,42 +331,43 @@ export default function RoomPage() {
     [socket, userId, userNickname]
   );
 
-  /** 방 클릭 → 외부창 우선, 실패/타임아웃시 오버레이 */
-  const openRoom = useCallback(
-    async (rid, title) => {
-      const hasNative = typeof ChatWindowManager?.open === 'function';
-      if (!hasNative) {
-        openWindowForRoom(rid);
-        return;
-      }
-      try {
-        const tid = setTimeout(() => {
-          if (externalOpenWait.current.has(rid)) {
-            externalOpenWait.current.delete(rid);
-            openWindowForRoom(rid);
-          }
-        }, 700); // 0.7s
-        externalOpenWait.current.set(rid, tid);
+  /** 방 클릭 → 외부창 우선, 실패/타임아웃시 오버레이 — O(1) */
+  const openRoom = useCallback(async (rid, title) => {
+    const roomId = String(rid);
+    const roomName = String(title || '채팅');
 
-        const ok = await openExternalChat(rid, title);
-        if (ok === false) {
-          // 즉시 실패 리턴 시 폴백
-          const t = externalOpenWait.current.get(rid);
-          if (t) clearTimeout(t);
-          externalOpenWait.current.delete(rid);
-          openWindowForRoom(rid);
+    // 네이티브 미지원이면 즉시 오버레이
+    if (typeof ChatWindowManager?.open !== 'function') {
+      openWindowForRoom(roomId);
+      return;
+    }
+
+    try {
+      // 타임아웃 타이머: 네이티브 'ChatWindowOpened' 신호가 없으면 폴백
+      const tid = setTimeout(() => {
+        if (externalOpenWait.current.has(roomId)) {
+          externalOpenWait.current.delete(roomId);
+          openWindowForRoom(roomId);
         }
-      } catch {
-        const t = externalOpenWait.current.get(rid);
-        if (t) clearTimeout(t);
-        externalOpenWait.current.delete(rid);
-        openWindowForRoom(rid);
-      }
-    },
-    []
-  );
+      }, 700); // 0.7s
+      externalOpenWait.current.set(roomId, tid);
 
-  /** 오버레이 창 열기/포커스/닫기 — 각 O(N) (N=열린 창 수, 일반적으로 적음) */
+      const ok = await openExternalChat(roomId, roomName);
+      if (!ok) {
+        const t = externalOpenWait.current.get(roomId);
+        if (t) clearTimeout(t);
+        externalOpenWait.current.delete(roomId);
+        openWindowForRoom(roomId);
+      }
+    } catch {
+      const t = externalOpenWait.current.get(roomId);
+      if (t) clearTimeout(t);
+      externalOpenWait.current.delete(roomId);
+      openWindowForRoom(roomId);
+    }
+  }, []);
+
+  /** 오버레이 창 열기/포커스/닫기 — 각 O(N) (N=열린 창 수) */
   const openWindowForRoom = useCallback((roomId) => {
     setWindows((prev) => {
       const exists = prev.find((w) => String(w.roomId) === String(roomId));
@@ -434,6 +469,9 @@ export default function RoomPage() {
               zIndex={w.z}
               onFocus={() => focusWindow(w.roomId)}
               onClose={() => closeWindow(w.roomId)}
+              onUpdatePos={(rid, p) => {
+                setWindows((prev) => prev.map((it) => (it.roomId === rid ? { ...it, ...p } : it)));
+              }}
             />
           );
         })}
