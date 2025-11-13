@@ -22,7 +22,7 @@ import { setIoInstance } from './sockets/socketStore.js'
 
 const app = express()
 const PORT = process.env.PORT || 1337
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:8081'
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
 // __dirname (ESM)
 const __filename = fileURLToPath(import.meta.url)
