@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 // 백엔드 서버 주소
-const BACKEND_URL = 'http://192.168.0.3:1337';
+const BACKEND_URL = 'http://192.168.0.5:1337';
 
 // PC 레이아웃을 위해 창 크기를 가져옵니다.
 const { width } = Dimensions.get('window');

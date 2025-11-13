@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../styles/LoginPage.css'
-
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 export default function LoginPage() {
     const nav = useNavigate()
     const [form, setForm] = useState({ email: '', password: '' })
@@ -31,7 +31,7 @@ export default function LoginPage() {
         setLoading(true)
         try {
             // 백엔드가 HttpOnly 쿠키를 내려주는 방식이라면 credentials 포함
-            const res = await fetch('/api/login', {
+            const res = await fetch(`${API_BASE_URL}/api/login`, {
 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

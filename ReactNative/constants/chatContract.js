@@ -4,8 +4,8 @@ import { Platform } from 'react-native';
 // 네가 올린 로그인 페이지의 BACKEND_URL과 동일하게 사용
 export const BACKEND_URL =
   Platform.OS === 'android'
-    ? 'http://192.168.0.3:1337' // 에뮬레이터도 같은 IP면 OK
-    : 'http://192.168.0.3:1337'; // RNW 데스크톱
+    ? 'http://192.168.0.5:1337' // 에뮬레이터도 같은 IP면 OK
+    : 'http://192.168.0.5:1337'; // RNW 데스크톱
 
 export const CHAT_CONTRACT = {
   url: BACKEND_URL,

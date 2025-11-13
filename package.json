@@ -1,0 +1,26 @@
+{
+  "name": "electron-app",
+  "version": "1.0.0",
+  "description": "Integrated Electron, React, and Node.js Server Application",
+  "main": "electron/main.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "concurrently --kill-others-on-fail \"npm run start:server\" \"npm run start:electron\"",
+    "start:server": "npm start --prefix NodejsWebApp1",
+    "start:electron": "npm run build:react && electron .",
+    "build:react": "npm run build --prefix client",
+    "pack": "npm run build:react && electron-builder --dir",
+    "build:installer": "npm run build:react && electron-builder",
+    "rebuild": "electron-rebuild -f -w oracledb",
+    "postinstall": "npm run rebuild"
+  },
+  "dependencies": {
+    "electron": "^28.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron-builder": "^24.0.0",
+    "electron-rebuild": "^3.2.9"
+  }
+}

@@ -1,57 +1,57 @@
-// src/socketStore.js (ESM ¹æ½Ä)
+// src/socketStore.js (ESM ë°©ì‹)
 
-//   ÃÖÀûÀÇ ÀÚ·á±¸Á¶: Map (Hash Map)À» »ç¿ëÇÏ¿© USER_ID¸¦ Key·Î O(1) °Ë»öÀ» º¸ÀåÇÕ´Ï´Ù.
+//   ìµœì ì˜ ìë£Œêµ¬ì¡°: Map (Hash Map)ì„ ì‚¬ìš©í•˜ì—¬ USER_IDë¥¼ Keyë¡œ O(1) ê²€ìƒ‰ì„ ë³´ì¥í•©ë‹ˆë‹¤.
 // Key: String(USER_ID), Value: Socket.IO Socket Object
 const userSocketMap = new Map();
-let ioInstance = null; // Socket.IO Server ÀÎ½ºÅÏ½º¸¦ ÀúÀå
+let ioInstance = null; // Socket.IO Server ì¸ìŠ¤í„´ìŠ¤ë¥¼ ì €ì¥
 
-// --- ¼­¹ö ÀÎ½ºÅÏ½º °ü¸® ---
+// --- ì„œë²„ ì¸ìŠ¤í„´ìŠ¤ ê´€ë¦¬ ---
 
 /**
- * Socket.IO ¼­¹ö ÀÎ½ºÅÏ½º¸¦ ÀúÀåÇÕ´Ï´Ù. (O(1))
- * @param {import('socket.io').Server} io - Socket.IO Server ÀÎ½ºÅÏ½º
+ * Socket.IO ì„œë²„ ì¸ìŠ¤í„´ìŠ¤ë¥¼ ì €ì¥í•©ë‹ˆë‹¤. (O(1))
+ * @param {import('socket.io').Server} io - Socket.IO Server ì¸ìŠ¤í„´ìŠ¤
  */
 export function setIoInstance(io) {
     ioInstance = io;
 }
 
 /**
- * ÀúÀåµÈ Socket.IO ¼­¹ö ÀÎ½ºÅÏ½º¸¦ ¹İÈ¯ÇÕ´Ï´Ù. (O(1))
+ * ì €ì¥ëœ Socket.IO ì„œë²„ ì¸ìŠ¤í„´ìŠ¤ë¥¼ ë°˜í™˜í•©ë‹ˆë‹¤. (O(1))
  * @returns {import('socket.io').Server | null}
  */
 export function getIoInstance() {
     return ioInstance;
 }
 
-// --- »ç¿ëÀÚ ¼ÒÄÏ °ü¸® (O(1) ·ÎÁ÷) ---
+// --- ì‚¬ìš©ì ì†Œì¼“ ê´€ë¦¬ (O(1) ë¡œì§) ---
 
 /**
- * »ç¿ëÀÚ ID¿Í ¼ÒÄÏÀ» Map¿¡ ¸ÅÇÎÇÕ´Ï´Ù. (O(1))
- * @param {string} userId - »ç¿ëÀÚ °íÀ¯ ID
- * @param {import('socket.io').Socket} socket - ÇØ´ç »ç¿ëÀÚÀÇ Socket °´Ã¼
+ * ì‚¬ìš©ì IDì™€ ì†Œì¼“ì„ Mapì— ë§¤í•‘í•©ë‹ˆë‹¤. (O(1))
+ * @param {string} userId - ì‚¬ìš©ì ê³ ìœ  ID
+ * @param {import('socket.io').Socket} socket - í•´ë‹¹ ì‚¬ìš©ìì˜ Socket ê°ì²´
  */
 export function addSocket(userId, socket) {
-    //   O(1) »ğÀÔ/¾÷µ¥ÀÌÆ®
+    //   O(1) ì‚½ì…/ì—…ë°ì´íŠ¸
     userSocketMap.set(String(userId), socket);
     console.log(`[SocketStore] ? User ${userId} connected. Total online: ${userSocketMap.size}`);
 }
 
 /**
- * »ç¿ëÀÚ ID¸¦ ÅëÇØ ÇØ´ç ¼ÒÄÏ °´Ã¼¸¦ O(1)¿¡ °Ë»öÇÏ¿© ¹İÈ¯ÇÕ´Ï´Ù. (O(1))
- * @param {string} userId - »ç¿ëÀÚ °íÀ¯ ID
+ * ì‚¬ìš©ì IDë¥¼ í†µí•´ í•´ë‹¹ ì†Œì¼“ ê°ì²´ë¥¼ O(1)ì— ê²€ìƒ‰í•˜ì—¬ ë°˜í™˜í•©ë‹ˆë‹¤. (O(1))
+ * @param {string} userId - ì‚¬ìš©ì ê³ ìœ  ID
  * @returns {import('socket.io').Socket | undefined}
  */
 export function getSocketByUserId(userId) {
-    //   O(1) °Ë»ö
+    //   O(1) ê²€ìƒ‰
     return userSocketMap.get(String(userId));
 }
 
 /**
- * ¿¬°á ÇØÁ¦ ½Ã »ç¿ëÀÚ ID¸¦ Map¿¡¼­ Á¦°ÅÇÕ´Ï´Ù. (O(1))
- * @param {string} userId - »ç¿ëÀÚ °íÀ¯ ID
+ * ì—°ê²° í•´ì œ ì‹œ ì‚¬ìš©ì IDë¥¼ Mapì—ì„œ ì œê±°í•©ë‹ˆë‹¤. (O(1))
+ * @param {string} userId - ì‚¬ìš©ì ê³ ìœ  ID
  */
 export function removeSocket(userId) {
-    //   O(1) »èÁ¦
+    //   O(1) ì‚­ì œ
     const wasDeleted = userSocketMap.delete(String(userId));
     if (wasDeleted) {
         console.log(`[SocketStore] ??? User ${userId} disconnected. Total online: ${userSocketMap.size}`);
