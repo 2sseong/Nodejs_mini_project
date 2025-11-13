@@ -4,7 +4,7 @@ import UserSearch from '../components/Friend/UserSearch.jsx';
 import FriendList from '../components/Friend/FriendList.jsx';
 import '../styles/FriendPage.css';
 
-const MY_USER_ID = localStorage.getItem('userId');
+// const MY_USER_ID = localStorage.getItem('userId'); // 상수로 존재 코드수정 완료 후 삭제
 
 export default function FriendPage() {
     // 1. 유저 목록 상태 관리
@@ -12,8 +12,22 @@ export default function FriendPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // 사용자 ID 상태 - 동적관리
+    const [myUserId, setMyUserId] = useState(null);
     // 2. 검색어 상태 (UserSearch에서 전달받을 값)
     const [searchQuery, setSearchQuery] = useState('');
+
+    // 컴포넌트 마운트 시 로컬 스토리지에서 최신 userId를 로드
+    useEffect(() => {
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            setMyUserId(storedUserId);
+        } else {
+            // ID가 없으면 로딩을 끝내고 에러 표시
+            setIsLoading(false);
+            setError("사용자 ID를 찾을 수 없습니다. 로그인 상태를 확인하세요.");
+        }
+    }, []); // 최초 마운트 시점에만 실행
 
     // 3. UserSearch에서 폼 제출 시 호출될 핸들러 함수
     const handleQueryChange = (query) => {
@@ -23,6 +37,16 @@ export default function FriendPage() {
 
     // 4. 데이터 페칭 (검색어 변경 시마다 실행)
     useEffect(() => {
+        // ID를 불러오지 못했거나 ID가 없으면 페칭을 실행하지 않음
+        if (!myUserId) {
+            // myUserId가 로드될 때까지 기다람
+            if (myUserId === null) return; 
+
+            // 로드되었는데 ID가 null이면 에러를 표시
+            setIsLoading(false);
+            return;
+        }
+
         const fetchUserList = async () => {
             setIsLoading(true);
             setError(null);
@@ -41,7 +65,24 @@ export default function FriendPage() {
                 const data = await response.json();
 
                 // 서버 응답 형태가 {success: true, users: [...]}라고 쳤을때
-                setUserList(data.users || data);
+                const usersFromServer = data.users || data;
+
+                // 이름순 정렬 (localeCompare 한글 정렬 지원)
+                const sortedUsers = [...usersFromServer].sort((a, b) => 
+                    a.userNickname.localeCompare(b.userNickname)
+                );
+
+                // 필터링: 사용자 ID가 검색어에 포함되는지 확인 (대소문자 무시)
+                const filteredUsers = sortedUsers.filter(user => {
+                    const searchLower = searchQuery.toLowerCase();
+                    const nameLower = (user.name || user.username).toLowerCase();
+                    const idLower = user.id.toLowerCase();
+                    
+                    // 이름 또는 ID에 검색어가 포함되는지 확인
+                    return nameLower.includes(searchLower) || idLower.includes(searchLower);
+                });
+            
+            setUserList(filteredUsers);
                 
             } catch (err) {
                 setError(err.message);
@@ -51,13 +92,13 @@ export default function FriendPage() {
         };
 
         fetchUserList();
-    }, [searchQuery]); // 검색어(searchQuery)가 바뀔 때마다 이펙트가 재실행
+    }, [myUserId, searchQuery]); // myUserId나 검색어(searchQuery)가 바뀔 때마다 이펙트가 재실행
 
     // 렌더링 시 로딩, 에러 상태 처리
     let listContent;
     
-    if (isLoading) {
-        listContent = <p className="loading-text">사용자 목록을 불러오는 중...</p>;
+    if (myUserId === null || isLoading) {
+        listContent = <p className="loading-text">사용자 정보 및 목록을 불러오는 중...</p>;
     } else if (error) {
         listContent = <p className="error-text">오류: {error}</p>;
     } else {
@@ -65,7 +106,7 @@ export default function FriendPage() {
         listContent = (
             <FriendList 
                 users={userList} // 불러온 전체 유저 목록
-                myUserId={MY_USER_ID} // 로컬 저장소에서 가져온 내 ID
+                myUserId={myUserId} // 로컬 저장소에서 가져온 내 ID
                 searchQuery={searchQuery} // 검색어 상태 전달
             />
         );
