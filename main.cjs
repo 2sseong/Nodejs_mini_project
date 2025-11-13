@@ -27,10 +27,12 @@ function startBackendServer() {
     // 서버가 완전히 준비된 후 창을 띄우기 위해, 실제 서버 로그 메시지를 감지하는 것이 좋음
     // ex)서버가 'Listening on port 8080' 이라는 로그를 출력하면 그 때 createWindow()를 호출
     
-    // 3초 대기
-    if (!mainWindow) {
-        setTimeout(createWindow, 3000); 
-    }
+    setTimeout(() => {
+        // 💡 타이머가 실행되는 시점에 다시 한번 mainWindow가 없는지 확인
+        if (!mainWindow) {
+    createWindow();
+        }
+    }, 3000);
   });
 
   backendProcess.stderr.on('data', (data) => {
@@ -47,10 +49,15 @@ function createWindow () {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
+    frame: false,
+    transparent: true, // 💡 1. 창을 투명하게 만듭니다.
+    hasShadow: false,  // 💡 2. 투명 창의 기본 그림자를 제거합니다. (CSS로 직접 만듭니다)
+    resizable: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true, 
-      // preload: path.join(__dirname, 'preload.js') // IPC 통신이 필요하면 추가
+      // preload 스크립트 경로를 지정합니다.
+      preload: path.join(__dirname, 'preload.js')
     }
   });
   
@@ -80,4 +87,26 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// === 💡 IPC 핸들러 추가 ===
+const { ipcMain } = require('electron');
+
+// 최소화 요청 처리
+ipcMain.on('window-minimize', () => {
+  mainWindow.minimize();
+});
+
+// 최대화/복원 요청 처리
+ipcMain.on('window-maximize', () => {
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow.maximize();
+  }
+});
+
+// 닫기 요청 처리
+ipcMain.on('window-close', () => {
+  mainWindow.close();
 });

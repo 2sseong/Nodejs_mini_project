@@ -1,12 +1,12 @@
 // src/socket.js
-// ����: DB ���� ����(����/���񽺷� �̰�), ���� �̺�Ʈ�� ���
+// 목적: DB 접근 제거(레포/서비스로 이관), 소켓 이벤트만 담당
 
 import { addSocket, removeSocket } from './sockets/socketStore.js';
 import chatService from './features/chat/chat.service.js';
 
 export default function initSocket(io) {
     io.on('connection', (socket) => {
-        // 1) ���� ����� �ĺ�
+        // 1) 접속 사용자 식별
         const rawUserId = socket.handshake?.query?.userId;
         const userId = rawUserId ? String(rawUserId).trim() : '';
 
@@ -16,19 +16,19 @@ export default function initSocket(io) {
             return;
         }
 
-        // 2) ���� ���� + ���� ä�� join
+        // 2) 소켓 저장 + 개인 채널 join
         addSocket(userId, socket);
         socket.data.userId = userId;
         socket.join(`user:${userId}`);
         console.log(`[socket] user connected: ${userId}`);
 
         // ----------------------------------------------------
-        // [rooms:fetch] ����� �� ��� ��ȸ & �� ����
+        // [rooms:fetch] 사용자 방 목록 조회 & 방 조인
         // ----------------------------------------------------
         socket.on('rooms:fetch', async () => {
             try {
                 const rooms = await chatService.listRoomsForUser({ userId });
-                // �� ����(�̹� ���ε� ���� �ǳʶ�)
+                // 방 조인(이미 조인된 방은 건너뜀)
                 rooms.forEach((r) => {
                     const rid = String(r.ROOM_ID);
                     if (!socket.rooms.has(rid)) socket.join(rid);
@@ -41,7 +41,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [room:join] ������ �� ���� (������ ��ȯ ��)
+        // [room:join] 명시적 방 진입 (페이지 전환 등)
         // ----------------------------------------------------
         socket.on('room:join', ({ roomId }) => {
             const rid = String(roomId || '').trim();
@@ -51,7 +51,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [room:leave] ������ �� ��Ż
+        // [room:leave] 명시적 방 이탈
         // ----------------------------------------------------
         socket.on('room:leave', ({ roomId }) => {
             const rid = String(roomId || '').trim();
@@ -61,7 +61,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [chat:get_history] �޽��� �����丮 �ҷ�����
+        // [chat:get_history] 메시지 히스토리 불러오기
         // ----------------------------------------------------
         socket.on('chat:get_history', async ({ roomId, limit }) => {
             const rid = String(roomId || '').trim();
@@ -79,14 +79,14 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [chat:message] �޽��� ���� & ��ε�ĳ��Ʈ
-        //  - ���񽺰� DB Ʈ����� ĸ��ȭ
-        //  - ack �ݹ�(����): Ŭ���̾�Ʈ���� ���� Ȯ�ο� ��� ����
+        // [chat:message] 메시지 저장 & 브로드캐스트
+        //  - 서비스가 DB 트랜잭션 캡슐화
+        //  - ack 콜백(선택): 클라이언트에서 전송 확인에 사용 가능
         // ----------------------------------------------------
         socket.on('chat:message', async (msg, ack) => {
             try {
                 const { ROOM_ID, CONTENT, NICKNAME } = msg || {};
-                // ���� ����
+                // 간단 검증
                 if (!ROOM_ID || !String(CONTENT || '').trim()) {
                     if (typeof ack === 'function') ack({ ok: false, error: 'Invalid payload' });
                     else socket.emit('chat:error', { message: 'Invalid message data' });
@@ -99,10 +99,10 @@ export default function initSocket(io) {
                     CONTENT: String(CONTENT),
                 });
 
-                // �濡 ��ε�ĳ��Ʈ (�ڱ� �ڽ� ����)
+                // 방에 브로드캐스트 (자기 자신 포함)
                 io.to(String(saved.ROOM_ID)).emit('chat:message', {
                     ...saved,
-                    NICKNAME: NICKNAME, // �ʿ� �� ���񽺿��� �г��� ������ �͵� ��
+                    NICKNAME: NICKNAME, // 필요 시 서비스에서 닉네임 조인해 와도 됨
                 });
 
                 if (typeof ack === 'function') ack({ ok: true, id: saved.MSG_ID, sentAt: saved.SENT_AT });
@@ -114,7 +114,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [disconnect] ����
+        // [disconnect] 정리
         // ----------------------------------------------------
         socket.on('disconnect', (reason) => {
             removeSocket(userId);
