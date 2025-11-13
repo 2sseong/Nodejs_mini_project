@@ -29,7 +29,11 @@ export default defineConfig({
             '/users': {
             target: 'http://localhost:1337',
             changeOrigin: true,
-        },
+            },
+            '/uploads': {
+                target: 'http://localhost:1337',
+                changeOrigin: true, //출처 변경
+            },
         }
     }
 })

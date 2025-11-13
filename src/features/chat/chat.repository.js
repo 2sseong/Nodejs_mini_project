@@ -101,14 +101,14 @@ export async function getHistory({ roomId, limit = 50 }) {
 }
 
 /**
- * ÀÏ¹İ ¸Ş½ÃÁö ¶Ç´Â ÆÄÀÏ ¸Ş½ÃÁö¸¦ T_MESSAGE Å×ÀÌºí¿¡ ÀúÀåÇÕ´Ï´Ù.
+ * ì¼ë°˜ ë©”ì‹œì§€ ë˜ëŠ” íŒŒì¼ ë©”ì‹œì§€ë¥¼ T_MESSAGE í…Œì´ë¸”ì— ì €ì¥í•©ë‹ˆë‹¤.
  * @param {object} params
  * @param {string} params.roomId
  * @param {string} params.senderId
- * @param {string} params.content - ÅØ½ºÆ® ¸Ş½ÃÁöÀÇ º»¹® (CLOB)
- * @param {string} [params.messageType='TEXT'] - 'TEXT' ¶Ç´Â 'FILE'
- * @param {string} [params.fileUrl=null] - ÆÄÀÏ ¸Ş½ÃÁöÀÇ URL
- * @param {string} [params.fileName=null] - ÆÄÀÏ ¸Ş½ÃÁöÀÇ ¿øº» ÀÌ¸§
+ * @param {string} params.content - í…ìŠ¤íŠ¸ ë©”ì‹œì§€ì˜ ë³¸ë¬¸ (CLOB)
+ * @param {string} [params.messageType='TEXT'] - 'TEXT' ë˜ëŠ” 'FILE'
+ * @param {string} [params.fileUrl=null] - íŒŒì¼ ë©”ì‹œì§€ì˜ URL
+ * @param {string} [params.fileName=null] - íŒŒì¼ ë©”ì‹œì§€ì˜ ì›ë³¸ ì´ë¦„
  */
 export async function saveMessageTx(params) {
     const {
@@ -126,13 +126,13 @@ export async function saveMessageTx(params) {
     RETURNING MSG_ID, SENT_AT INTO :outId, :outSentAt
   `;
 
-    // CLOBÀº ÆÄÀÏ ¸Ş½ÃÁöÀÏ °æ¿ì NULLÀÌ µÇ¾î¾ß ÇÏ¹Ç·Î, Á¶°ÇºÎ·Î ¹ÙÀÎµùÇÕ´Ï´Ù.
+    // CLOBì€ íŒŒì¼ ë©”ì‹œì§€ì¼ ê²½ìš° NULLì´ ë˜ì–´ì•¼ í•˜ë¯€ë¡œ, ì¡°ê±´ë¶€ë¡œ ë°”ì¸ë”©í•©ë‹ˆë‹¤.
     const contentVal = (messageType === 'FILE') ? null : content;
 
     const binds = {
         roomId: Number(roomId),
         senderId,
-        content: contentVal ? { val: contentVal, type: oracledb.CLOB } : null, // FILE Å¸ÀÔÀÏ ¶§ NULL ¹ÙÀÎµù
+        content: contentVal ? { val: contentVal, type: oracledb.CLOB } : null, // FILE íƒ€ì…ì¼ ë•Œ NULL ë°”ì¸ë”©
         messageType,
         fileUrl: fileUrl,
         fileName: fileName,
@@ -140,14 +140,14 @@ export async function saveMessageTx(params) {
         outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
     };
 
-    // NOTE: executeTransactionÀÌ autoCommit: false¸¦ °¡Á¤ÇÏ°í Æ®·£Àè¼ÇÀ» ½ÇÇàÇÑ´Ù°í °¡Á¤ÇÕ´Ï´Ù.
+    // NOTE: executeTransactionì´ autoCommit: falseë¥¼ ê°€ì •í•˜ê³  íŠ¸ëœì­ì…˜ì„ ì‹¤í–‰í•œë‹¤ê³  ê°€ì •í•©ë‹ˆë‹¤.
     const res = await executeTransaction(sql, binds, { autoCommit: false });
 
     const msgId = res.outBinds.outId[0];
-    // Oracle DATE °´Ã¼¸¦ JavaScript timestamp (ms)·Î º¯È¯
+    // Oracle DATE ê°ì²´ë¥¼ JavaScript timestamp (ms)ë¡œ ë³€í™˜
     const sentAt = res.outBinds.outSentAt[0]?.getTime?.() ?? Date.now();
 
-    // ÀúÀåµÈ ¸ğµç Á¤º¸¸¦ ¹İÈ¯ÇÏ¿© Service Layer¿¡¼­ ºê·ÎµåÄ³½ºÆ®¿¡ »ç¿ë
+    // ì €ì¥ëœ ëª¨ë“  ì •ë³´ë¥¼ ë°˜í™˜í•˜ì—¬ Service Layerì—ì„œ ë¸Œë¡œë“œìºìŠ¤íŠ¸ì— ì‚¬ìš©
     return {
         msgId,
         sentAt,
@@ -199,4 +199,5 @@ export async function deleteMember({ roomId, userId }) {
             try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); }
         }
     }
+    
 }

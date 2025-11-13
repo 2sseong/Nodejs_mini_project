@@ -1,8 +1,17 @@
 import chatService from './chat.service.js';
-import { writeFile } from 'fs/promises'; // fs ¸ğµâÀÇ promises API »ç¿ë
+import { writeFile } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+
+// ES ëª¨ë“ˆì—ì„œëŠ” __dirnameì´ ì—†ìœ¼ë¯€ë¡œ, fileURLToPathë¥¼ ì‚¬ìš©í•´ í˜„ì¬ ë””ë ‰í„°ë¦¬ ê³„ì‚°
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// [ì¤‘ìš”] ì—…ë¡œë“œ ë””ë ‰í„°ë¦¬ ì„¤ì • (ì˜ˆ: /src/public/uploads)
+// ì´ ê²½ë¡œëŠ” 4ë‹¨ê³„ì˜ express.staticê³¼ ì¼ì¹˜í•´ì•¼ í•©ë‹ˆë‹¤.
+const UPLOAD_DIR = path.join(__dirname, '..','..','..','public','uploads');
+// (ì°¸ê³ : í”„ë¡œë•ì…˜ì—ì„œëŠ” fs.mkdirë¡œ ë””ë ‰í„°ë¦¬ ì¡´ì¬ ì—¬ë¶€ í™•ì¸ ë° ìƒì„±ì´ í•„ìš”)
 
 export default function chatSocket(io, socket) {
     const userId = socket.data.userId;
@@ -38,7 +47,9 @@ export default function chatSocket(io, socket) {
 
     socket.on('chat:message', async (msg) => {
         try {
+            // [DB ì €ì¥] 'TEXT' íƒ€ì… ë©”ì‹œì§€ ì €ì¥
             const saved = await chatService.saveMessage({ userId, ...msg });
+            // [ë¸Œë¡œë“œìºìŠ¤íŠ¸]
             io.to(String(saved.ROOM_ID)).emit('chat:message', { ...saved, NICKNAME: msg.NICKNAME });
         } catch (e) {
             console.error('[socket] chat:message error', e);
@@ -46,56 +57,58 @@ export default function chatSocket(io, socket) {
         }
     });
 
-    // ÆÄÀÏÀúÀå
-    export function registerChatSocketHandlers(io, socket) {
-        // ... (±âÁ¸ JOIN_ROOM, SEND_MESSAGE µî)
+    // [ì¶”ê°€] íŒŒì¼ ì „ì†¡ ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬
+    // (ì œê³µëœ ì½”ë“œì˜ export function... ë¶€ë¶„ì„ ì´ê³³ìœ¼ë¡œ ì´ë™/í†µí•©)
+    socket.on('SEND_FILE', async (data, callback) => {
+        // [ë””ë²„ê¹… 1] ì„œë²„ê°€ ì´ë²¤íŠ¸ë¥¼ ë°›ì•˜ëŠ”ì§€ í™•ì¸
+        console.log('[SERVER] SEND_FILE event received. FileName:', data.fileName);
 
-        // [Ãß°¡] ÆÄÀÏ Àü¼Û ÀÌº¥Æ® ÇÚµé·¯
-        socket.on('SEND_FILE', async (data, callback) => {
-            const { roomId, fileName, mimeType, fileData, userNickname } = data;
+        const { roomId, fileName, mimeType, fileData, userNickname } = data;
+        const socketUserId = socket.data.userId;
 
-            // 1. µ¥ÀÌÅÍ À¯È¿¼º °Ë»ç
-            if (!roomId || !fileName || !fileData) {
-                callback({ ok: false, error: 'À¯È¿ÇÏÁö ¾ÊÀº ÆÄÀÏ µ¥ÀÌÅÍ' });
-                return;
-            }
+        if (!roomId || !fileName || !fileData || !socketUserId) {
+            console.error('[SERVER] Invalid file data received.'); // [ë””ë²„ê¹… 2]
+            return callback({ ok: false, error: 'ìœ íš¨í•˜ì§€ ì•Šì€ íŒŒì¼ ë°ì´í„°' });
+        }
 
-            try {
-                // 2. ÆÄÀÏ Á¤º¸ ¼³Á¤
-                const extension = path.extname(fileName);
-                // °íÀ¯ÇÑ ÆÄÀÏ¸í »ı¼º (npm install uuid ÇÊ¿ä)
-                const uniqueFileName = uuidv4() + extension;
-                const filePath = path.join(UPLOAD_DIR, uniqueFileName);
+        try {
+            // ... (íŒŒì¼ ì •ë³´ ì„¤ì •) ...
+            const uniqueFileName = uuidv4() + path.extname(fileName);
+            const filePath = path.join(UPLOAD_DIR, uniqueFileName);
 
-                // 3. Base64 µğÄÚµù
-                // Base64 Á¢µÎ»ç Á¦°Å (Å¬¶óÀÌ¾ğÆ®¿¡¼­ 'data:...'¸¦ ºÙ¿© º¸³Â´Ù¸é)
-                const base64Data = fileData.replace(/^data:.+;base64,/, '');
-                const binaryData = Buffer.from(base64Data, 'base64');
+            console.log('[SERVER] Writing file to:', filePath); // [ë””ë²„ê¹… 3]
 
-                // 4. ·ÎÄÃ µğ½ºÅ©¿¡ ÆÄÀÏ ÀúÀå
-                await writeFile(filePath, binaryData); // fs/promises API »ç¿ë
+            // ... (Base64 ë””ì½”ë”©) ...
+            const binaryData = Buffer.from(data.fileData.replace(/^data:.+;base64,/, ''), 'base64');
 
-                // 5. Å¬¶óÀÌ¾ğÆ® Á¢±Ù URL »ı¼º
-                const fileURL = `http://localhost:1337/uploads/${uniqueFileName}`;
+            // 4. ë¡œì»¬ ë””ìŠ¤í¬ì— íŒŒì¼ ì €ì¥
+            await writeFile(filePath, binaryData);
 
-                // 6. DB¿¡ ¸Ş½ÃÁö ¹× ÆÄÀÏ ¸ŞÅ¸µ¥ÀÌÅÍ ÀúÀå
-                // ChatService¸¦ »ç¿ëÇÏ¿© DB¿¡ ÀúÀåÇÏ°í, ÀúÀåµÈ ¸Ş½ÃÁö °´Ã¼¸¦ ¹İÈ¯
-                const savedMessage = await chatService.saveFileMessage({
-                    roomId,
-                    userId: socket.userId, // ÀÎÁõµÈ »ç¿ëÀÚ ID
-                    userNickname,
-                    fileName,
-                    fileURL,
-                    mimeType
-                });
+            console.log('[SERVER] File written successfully.'); // [ë””ë²„ê¹… 4]
 
-                // 7. ¼º°ø ÀÀ´ä ¹× ºê·ÎµåÄ³½ºÆ®
-                callback({ ok: true, message: savedMessage });
-                io.to(roomId).emit('BROADCAST_MESSAGE', savedMessage);
+            const fileURL = `/uploads/${uniqueFileName}`;
 
-            } catch (error) {
-                console.error('[SEND_FILE] ÆÄÀÏ Ã³¸® ¿À·ù:', error);
-                callback({ ok: false, error: 'ÆÄÀÏ ¾÷·Îµå ½ÇÆĞ' });
-            }
-        });
+            // 6. DBì— ë©”ì‹œì§€ ë° íŒŒì¼ ë©”íƒ€ë°ì´í„° ì €ì¥
+            const savedMessage = await chatService.saveFileMessage({
+                roomId,
+                userId: socketUserId,
+                fileName,
+                fileURL,
+                mimeType
+            });
+
+            console.log('[SERVER] File metadata saved to DB.'); // [ë””ë²„ê¹… 5]
+
+            // ... (Broadcast data preparation) ...
+            const broadcastData = { ...savedMessage, NICKNAME: userNickname };
+
+            callback({ ok: true, message: broadcastData });
+            io.to(String(roomId)).emit('chat:message', broadcastData);
+
+        } catch (error) {
+            // ì—¬ê¸°ì„œ ì˜¤ë¥˜ê°€ ë°œìƒí•˜ë©´ í´ë¼ì´ì–¸íŠ¸ëŠ” ì•„ë¬´ê²ƒë„ ëª¨ë¦…ë‹ˆë‹¤.
+            console.error('[SERVER] SEND_FILE Critical Error:', error); 
+            callback({ ok: false, error: 'ì„œë²„ íŒŒì¼ ì²˜ë¦¬ ì¤‘ ì˜¤ë¥˜ ë°œìƒ' });
+        }
+    });
 }

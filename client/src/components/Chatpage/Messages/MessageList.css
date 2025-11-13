@@ -1,49 +1,110 @@
+/* --- 1. 메시지 목록 영역 --- */
 .message-area {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    /* [개선] 메시지 간 간격을 더 여유롭게 */
+    gap: 16px; 
+    /* [필수] 배경색을 명시 (어두운 배경 비침 방지) */
+    background-color: #ffffff; 
 }
 
-/* 버블 */
-.message-bubble {
+/* --- 2. [핵심] 개별 메시지 컨테이너 (말풍선 + 닉네임 + 시간) --- */
+.message-item {
     display: flex;
     flex-direction: column;
-    max-width: 60%;
-    padding: 10px 15px;
-    border-radius: 18px;
-    word-break: break-word;
+    width: 100%;
 }
 
-.mine {
-    align-self: flex-end;
-    background-color: #d1e7ff; /* 파란계열 */
-    border-bottom-right-radius: 4px;
+/* --- 3. 닉네임 (남의 메시지) --- */
+.sender-nickname {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+    margin-left: 5px; /* .theirs 버블과 정렬 */
 }
 
-.theirs {
-    align-self: flex-start;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-bottom-left-radius: 4px;
+/* --- 4. 말풍선 (공통) --- */
+.message-bubble {
+    /* [개선] flex -> inline-block으로 변경하여 내용물만큼만 너비 차지 */
+    display: inline-block; 
+    max-width: 65%; /* 최대 너비 살짝 증가 */
+    padding: 12px 18px;
+    border-radius: 20px; /* 좀 더 둥글게 */
+    word-break: break-word; /* 긴 텍스트 줄바꿈 */
+    /* [개선] 은은한 그림자 추가 */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); 
+    font-size: 14px;
+    line-height: 1.45;
 }
 
-.message-info {
-    display: flex;
-    justify-content: space-between;
+/* --- 5. 내 말풍선 (.mine) --- */
+.message-item.mine {
+    /* [핵심] .message-item *자체*를 오른쪽 정렬 */
+    align-items: flex-end; 
+}
+
+.message-bubble.mine {
+    /* [개선] 좀 더 산뜻한 파란색 */
+    background-color: #007bff; 
+    color: white;
+    /* 꼬리표 느낌 */
+    border-bottom-right-radius: 5px; 
+}
+
+/* --- 6. 상대 말풍선 (.theirs) --- */
+.message-item.theirs {
+    /* [핵심] .message-item *자체*를 왼쪽 정렬 */
+    align-items: flex-start; 
+}
+
+.message-bubble.theirs {
+    /* [개선] 흰색보다 부드러운 회색 */
+    background-color: #f1f3f5; 
+    color: #212529;
+    border: none; /* 테두리 제거 */
+    border-bottom-left-radius: 5px;
+}
+
+/* --- 7. 시간 --- */
+.timestamp {
     font-size: 11px;
-    opacity: 0.7;
-    margin-bottom: 3px;
+    color: #868e96;
+    margin-top: 6px;
 }
 
-.mine .message-info {
-    justify-content: flex-end;
-    gap: 10px;
+/* 시간 위치 정렬 (말풍선 기준) */
+.message-item.mine .timestamp {
+    align-self: flex-end;
+    margin-right: 5px;
+}
+.message-item.theirs .timestamp {
+    align-self: flex-start;
+    margin-left: 5px;
+}
+
+/* --- 8. 파일 메시지 스타일 --- */
+/* 말풍선 안의 파일 링크 */
+.file-message a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    /*  버블 색상에 맞춰 링크 색상 자동 조정 */
+    color: inherit; 
+    opacity: 0.9;
+}
+
+.file-message a:hover {
+    text-decoration: underline;
+    opacity: 1;
 }
 
 .message-content {
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.45;
 }
