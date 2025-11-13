@@ -1,20 +1,20 @@
 import express from 'express';
 const router = express.Router();
 
-// Controller °èÃşÀ» °¡Á®¿È
-// Controller ÆÄÀÏÀÇ ÀÌ¸§ÀÌ friendController.js ÀÌ¸ç ESMÀ¸·Î export ÇßÀ¸¹Ç·Î import * as ·Î °¡Á®¿È
+// Controller ê³„ì¸µì„ ê°€ì ¸ì˜´
+// Controller íŒŒì¼ì˜ ì´ë¦„ì´ friendController.js ì´ë©° ESMìœ¼ë¡œ export í–ˆìœ¼ë¯€ë¡œ import * as ë¡œ ê°€ì ¸ì˜´
 import * as friendController from './friendController.js';
 
-// GET /friends °æ·Î¿¡ getFriendList ÇÔ¼ö¸¦ ¿¬°á
-// (server.js¿¡¼­ /api/friends·Î ¸¶¿îÆ®ÇÒ ¿¹Á¤ÀÌ¹Ç·Î, ÃÖÁ¾ °æ·Î´Â /api/friends/friends°¡ µÊ)
+// GET /friends ê²½ë¡œì— getFriendList í•¨ìˆ˜ë¥¼ ì—°ê²°
+// (server.jsì—ì„œ /api/friendsë¡œ ë§ˆìš´íŠ¸í•  ì˜ˆì •ì´ë¯€ë¡œ, ìµœì¢… ê²½ë¡œëŠ” /api/friends/friendsê°€ ë¨)
 router.get('/friends', friendController.getFriendList);
 
-// POST /request (Ä£±¸ Ãß°¡ ¿äÃ»)
-// ÃÖÁ¾ °æ·Î´Â server.js¿¡¼­ ¸¶¿îÆ®µÈ /api/friends/request°¡ µÊ
+// POST /request (ì¹œêµ¬ ì¶”ê°€ ìš”ì²­)
+// ìµœì¢… ê²½ë¡œëŠ” server.jsì—ì„œ ë§ˆìš´íŠ¸ëœ /api/friends/requestê°€ ë¨
 router.post('/request', friendController.requestFriendship);
 
-// »ç¿ëÀÚ°Ë»ö
+// ì‚¬ìš©ìê²€ìƒ‰
 router.get('/search', friendController.searchUsers);
 
-// src/server.js¿¡¼­ importÇÒ ¼ö ÀÖ°Ô
+// src/server.jsì—ì„œ importí•  ìˆ˜ ìˆê²Œ
 export default router;

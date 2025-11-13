@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as ctrl from './chat.controller.js';
 
-// (¼±ÅÃ) Zod/Joi validate ¹Ìµé¿ş¾î ºÙÀÌ¸é ´õ ¾ÈÀü
+// (ì„ íƒ) Zod/Joi validate ë¯¸ë“¤ì›¨ì–´ ë¶™ì´ë©´ ë” ì•ˆì „
 const r = Router();
 r.post('/create', ctrl.createRoom);
 r.post('/invite', ctrl.invite);

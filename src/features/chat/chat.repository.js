@@ -1,14 +1,14 @@
 import db, { oracledb, executeQuery, executeTransaction, getConnection } from '../../../db/oracle.js';
 
 /**
- * ¹æ »ı¼º + »ı¼ºÀÚ ¸â¹ö Ãß°¡¸¦ ÇÏ³ªÀÇ Æ®·£Àè¼ÇÀ¸·Î Ã³¸®ÇÏ±â À§ÇØ
- * ¼öµ¿ Ä¿³Ø¼ÇÀ» »ç¿ëÇÕ´Ï´Ù.
+ * ë°© ìƒì„± + ìƒì„±ì ë©¤ë²„ ì¶”ê°€ë¥¼ í•˜ë‚˜ì˜ íŠ¸ëœì­ì…˜ìœ¼ë¡œ ì²˜ë¦¬í•˜ê¸° ìœ„í•´
+ * ìˆ˜ë™ ì»¤ë„¥ì…˜ì„ ì‚¬ìš©í•©ë‹ˆë‹¤.
  */
 export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     let conn;
     try {
-        conn = await getConnection(); // autoCommit: false »ç¿ë ÇÊ¿ä
-        // 1) ¹æ »ı¼º
+        conn = await getConnection(); // autoCommit: false ì‚¬ìš© í•„ìš”
+        // 1) ë°© ìƒì„±
         const roomSql = `
       INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
       VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
@@ -21,14 +21,14 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
         const roomRes = await conn.execute(roomSql, roomBinds, { autoCommit: false });
         const roomId = roomRes.outBinds.roomId[0];
 
-        // 2) »ı¼ºÀÚ ¸â¹ö Ãß°¡
+        // 2) ìƒì„±ì ë©¤ë²„ ì¶”ê°€
         const memberSql = `
       INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
       VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
     `;
         await conn.execute(memberSql, { roomId, userId: creatorId }, { autoCommit: false });
 
-        // 3) Ä¿¹Ô
+        // 3) ì»¤ë°‹
         await conn.commit();
 
         return { roomId, roomName, roomType: 'GROUP', creatorId };
@@ -64,7 +64,7 @@ export async function isMember({ roomId, userId }) {
     return res.rows?.length > 0;
 }
 
-// addMemberTx ¼öÁ¤¾È (named bind)
+// addMemberTx ìˆ˜ì •ì•ˆ (named bind)
 export async function addMemberTx({ roomId, userId }) {
     const sql = `
     INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
@@ -75,7 +75,7 @@ export async function addMemberTx({ roomId, userId }) {
     return true;
 }
 
-// getHistory ¼öÁ¤¾È
+// getHistory ìˆ˜ì •ì•ˆ
 export async function getHistory({ roomId, limit = 50 }) {
     const sql = `
     SELECT * FROM (
@@ -117,11 +117,11 @@ export async function saveMessageTx({ roomId, senderId, content }) {
 }
 
 
-// --- ¸â¹ö »èÁ¦ ¸®Æ÷ÁöÅä¸® ÇÔ¼ö ---
+// --- ë©¤ë²„ ì‚­ì œ ë¦¬í¬ì§€í† ë¦¬ í•¨ìˆ˜ ---
 export async function deleteMember({ roomId, userId }) {
-    let conn; // 1. conn º¯¼ö ¼±¾ğ (ReferenceError ÇØ°á)
+    let conn; // 1. conn ë³€ìˆ˜ ì„ ì–¸ (ReferenceError í•´ê²°)
     try {
-        conn = await getConnection(); // 2. Ä¿³Ø¼Ç È¹µæ
+        conn = await getConnection(); // 2. ì»¤ë„¥ì…˜ íšë“
 
         const sql = `
             DELETE FROM T_ROOM_MEMBER
@@ -132,10 +132,10 @@ export async function deleteMember({ roomId, userId }) {
             userId: userId
         };
 
-        // 3. Äõ¸® ½ÇÇà (autoCommit: false)
+        // 3. ì¿¼ë¦¬ ì‹¤í–‰ (autoCommit: false)
         const result = await conn.execute(sql, binds, { autoCommit: false });
 
-        await conn.commit(); // 4. ¸í½ÃÀû Ä¿¹Ô ½ÇÇà (¿©±â¼­ ¿¡·¯ ¹ß»ı ÁöÁ¡)
+        await conn.commit(); // 4. ëª…ì‹œì  ì»¤ë°‹ ì‹¤í–‰ (ì—¬ê¸°ì„œ ì—ëŸ¬ ë°œìƒ ì§€ì )
 
         const rowsAffected = result.rowsAffected;
         console.log(`[DB DELETE RESULT] rowsAffected: ${rowsAffected}`);
@@ -143,14 +143,14 @@ export async function deleteMember({ roomId, userId }) {
         return rowsAffected;
 
     } catch (e) {
-        // 5. ¿¡·¯ ½Ã ·Ñ¹é
+        // 5. ì—ëŸ¬ ì‹œ ë¡¤ë°±
         if (conn) {
             console.error("Delete transaction failed, rolling back.");
             try { await conn.rollback(); } catch (rbkErr) { console.error("Rollback error:", rbkErr); }
         }
-        throw e; // ¼­ºñ½º ·¹ÀÌ¾î·Î ¿¡·¯ ´øÁö±â
+        throw e; // ì„œë¹„ìŠ¤ ë ˆì´ì–´ë¡œ ì—ëŸ¬ ë˜ì§€ê¸°
     } finally {
-        // 6. Ä¿³Ø¼Ç ´İ±â
+        // 6. ì»¤ë„¥ì…˜ ë‹«ê¸°
         if (conn) {
             try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); }
         }

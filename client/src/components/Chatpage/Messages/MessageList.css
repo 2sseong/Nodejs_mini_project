@@ -7,7 +7,7 @@
     gap: 10px;
 }
 
-/* ¹öºí */
+/* ë²„ë¸” */
 .message-bubble {
     display: flex;
     flex-direction: column;
@@ -19,7 +19,7 @@
 
 .mine {
     align-self: flex-end;
-    background-color: #d1e7ff; /* ÆÄ¶õ°è¿­ */
+    background-color: #d1e7ff; /* íŒŒëž€ê³„ì—´ */
     border-bottom-right-radius: 4px;
 }
 

@@ -2,14 +2,14 @@ import { getIoInstance } from './socketStore.js';
 
 function _io() { return getIoInstance(); }
 
-// ¹æ »ı¼º ¾Ë¸²(»ı¼ºÀÚ¿¡°Ô¸¸)
+// ë°© ìƒì„± ì•Œë¦¼(ìƒì„±ìì—ê²Œë§Œ)
 function notifyRoomCreatedToUser(userId, payload) {
     const io = _io();
     if (!io) return;
     io.to(`user:${userId}`).emit('room:new_created', payload);
 }
 
-// ÃÊ´ëµÈ »ç¿ëÀÚ¿¡°Ô ¹æ ¸ñ·Ï °»½Å ¿äÃ»
+// ì´ˆëŒ€ëœ ì‚¬ìš©ìì—ê²Œ ë°© ëª©ë¡ ê°±ì‹  ìš”ì²­
 function requestRoomsRefresh(userId) {
     const io = _io();
     if (!io) return;

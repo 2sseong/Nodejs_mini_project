@@ -1,7 +1,7 @@
 import * as repo from './chat.repository.js';
 
 export async function createRoom({ roomName, creatorId }) {
-    // Æ®·£Àè¼Ç: ¹æ »ı¼º + »ı¼ºÀÚ ¸â¹ö Ãß°¡
+    // íŠ¸ëœì­ì…˜: ë°© ìƒì„± + ìƒì„±ì ë©¤ë²„ ì¶”ê°€
     return await repo.createRoomWithCreatorTx({ roomName, creatorId });
 }
 
@@ -28,23 +28,23 @@ export async function saveMessage({ userId, ROOM_ID, CONTENT }) {
 
 export async function inviteUserToRoom({ roomId, inviterId, inviteeId }) {
     const exists = await repo.ensureUserExists(inviteeId);
-    if (!exists) throw { status: 404, message: 'ÃÊ´ëÇÒ »ç¿ëÀÚÀÇ ID°¡ À¯È¿ÇÏÁö ¾Ê½À´Ï´Ù.' };
+    if (!exists) throw { status: 404, message: 'ì´ˆëŒ€í•  ì‚¬ìš©ìì˜ IDê°€ ìœ íš¨í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.' };
 
     const joined = await repo.isMember({ roomId, userId: inviteeId });
-    if (joined) throw { status: 400, message: 'ÀÌ¹Ì Ã¤ÆÃ¹æ¿¡ Âü¿© ÁßÀÎ »ç¿ëÀÚÀÔ´Ï´Ù.' };
+    if (joined) throw { status: 400, message: 'ì´ë¯¸ ì±„íŒ…ë°©ì— ì°¸ì—¬ ì¤‘ì¸ ì‚¬ìš©ìì…ë‹ˆë‹¤.' };
 
     await repo.addMemberTx({ roomId, userId: inviteeId });
     return { roomId, inviteeId };
 }
 
-// ---  ¹æ ³ª°¡±â ÇÔ¼ö Ãß°¡ ---
+// ---  ë°© ë‚˜ê°€ê¸° í•¨ìˆ˜ ì¶”ê°€ ---
 
 export async function leaveRoom({ roomId, userId }) {
-    // Repository ·¹ÀÌ¾îÀÇ ¸â¹ö »èÁ¦ ÇÔ¼ö¸¦ È£Ãâ
+    // Repository ë ˆì´ì–´ì˜ ë©¤ë²„ ì‚­ì œ í•¨ìˆ˜ë¥¼ í˜¸ì¶œ
     const rowsAffected = await repo.deleteMember({ roomId, userId });
 
     if (rowsAffected === 0) {
-        throw { status: 404, message: 'Ã¤ÆÃ¹æ ¸â¹ö·Î µî·ÏµÇ¾î ÀÖÁö ¾Ê½À´Ï´Ù.' };
+        throw { status: 404, message: 'ì±„íŒ…ë°© ë©¤ë²„ë¡œ ë“±ë¡ë˜ì–´ ìˆì§€ ì•ŠìŠµë‹ˆë‹¤.' };
     }
 
     return rowsAffected;

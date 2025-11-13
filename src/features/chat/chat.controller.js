@@ -18,38 +18,38 @@ export async function invite(req, res, next) {
     try {
         const { roomId, inviterId, inviteeId } = req.body;
         await chatService.inviteUserToRoom({ roomId, inviterId, inviteeId });
-        res.json({ success: true, message: '»ç¿ëÀÚ¸¦ ¼º°øÀûÀ¸·Î ÃÊ´ëÇß½À´Ï´Ù.' });
+        res.json({ success: true, message: 'ì‚¬ìš©ìë¥¼ ì„±ê³µì ìœ¼ë¡œ ì´ˆëŒ€í–ˆìŠµë‹ˆë‹¤.' });
 
         socketGateway.requestRoomsRefresh(inviteeId);
     } catch (e) { next(e); }
 }
 
 /**
- * [DELETE] ¹æ ³ª°¡±â ÇÔ¼ö (leaveRoom)
+ * [DELETE] ë°© ë‚˜ê°€ê¸° í•¨ìˆ˜ (leaveRoom)
  * @param {any} req
  * @param {any} res
- * @param {function} next - ´ÙÀ½ ¹Ìµé¿ş¾î·Î ¿¡·¯¸¦ Àü´ŞÇÏ±â À§ÇÔ
+ * @param {function} next - ë‹¤ìŒ ë¯¸ë“¤ì›¨ì–´ë¡œ ì—ëŸ¬ë¥¼ ì „ë‹¬í•˜ê¸° ìœ„í•¨
  */
 export async function leaveRoom(req, res, next) {
     const { roomId, userId } = req.params;
 
     if (!roomId || !userId) {
-        // [400] Á÷Á¢ ÀÀ´ä
+        // [400] ì§ì ‘ ì‘ë‹µ
         return res.status(400).json({
             success: false,
-            message: `Ã¤ÆÃ¹æ ID¿Í »ç¿ëÀÚ ID´Â ÇÊ¼öÀÔ´Ï´Ù.${roomId}${userId}`
+            message: `ì±„íŒ…ë°© IDì™€ ì‚¬ìš©ì IDëŠ” í•„ìˆ˜ì…ë‹ˆë‹¤.${roomId}${userId}`
         });
     }
 
     try {
         const rowsAffected = await chatService.leaveRoom({ roomId, userId });
 
-        // ¼º°ø ÀÀ´ä Àü ¼ÒÄÏ ÀÌº¥Æ® Æ®¸®°Å
+        // ì„±ê³µ ì‘ë‹µ ì „ ì†Œì¼“ ì´ë²¤íŠ¸ íŠ¸ë¦¬ê±°
         socketGateway.requestRoomsRefresh(userId);
 
         return res.status(200).json({
             success: true,
-            message: "¼º°øÀûÀ¸·Î ¹æÀ» ³ª°¬½À´Ï´Ù.",
+            message: "ì„±ê³µì ìœ¼ë¡œ ë°©ì„ ë‚˜ê°”ìŠµë‹ˆë‹¤.",
             rowsAffected
         });
 
