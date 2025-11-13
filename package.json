@@ -1,26 +1,27 @@
 {
-  "name": "electron-app",
+  "name": "node-vs2019-app",
   "version": "1.0.0",
-  "description": "Integrated Electron, React, and Node.js Server Application",
-  "main": "electron/main.mjs",
+  "main": "main.cjs",
+  "private": true,
   "type": "module",
   "scripts": {
-    "start": "npm run dev",
-    "dev": "concurrently --kill-others-on-fail \"npm run start:server\" \"npm run start:electron\"",
-    "start:server": "npm start --prefix NodejsWebApp1",
-    "start:electron": "npm run build:react && electron .",
-    "build:react": "npm run build --prefix client",
-    "pack": "npm run build:react && electron-builder --dir",
-    "build:installer": "npm run build:react && electron-builder",
-    "rebuild": "electron-rebuild -f -w oracledb",
-    "postinstall": "npm run rebuild"
+    "start": "node src/server.js",
+    "start-electron": "electron .",
+    "dev": "node --watch src/server.js"
   },
   "dependencies": {
-    "electron": "^28.0.0"
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "oracledb": "^6.10.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^13.0.0",
+    "websocket": "^1.0.35"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "electron-builder": "^24.0.0",
-    "electron-rebuild": "^3.2.9"
+    "electron": "^39.1.2"
   }
 }
