@@ -13,15 +13,16 @@
     gap: 8px;
 }
 
-/* 검색 폼 */
-.user-search-container form {
+/* 검색 폼 (input과 button을 감싼 div) */
+/* 버튼과 입력창 한 줄로 배치하고 간격 설정 */
+.user-search-container .search-form-flex {
     display: flex;
     gap: 12px;
     margin-bottom: 20px;
 }
 
 .user-search-container input[type="text"] {
-    flex: 1;
+    flex: 1; /* 남은 공간을 입력창이 모두 차지 */
     padding: 14px 20px;
     border: 2px solid #bbdefb;
     border-radius: 12px;
@@ -53,6 +54,7 @@
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+    flex-shrink: 0; /* 버튼의 크기가 고정되도록 */
 }
 
 .btn-search:hover {
@@ -165,7 +167,8 @@
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
-    .user-search-container form {
+    /* .search-form-flex를 타겟팅하여 반응형 레이아웃을 수정 */
+    .user-search-container .search-form-flex { 
         flex-direction: column;
     }
 

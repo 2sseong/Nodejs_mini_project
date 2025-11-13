@@ -1,0 +1,71 @@
+/* src/components/Friend/FriendList.css */
+
+/* 1. 리스트 컨테이너 (<ul>) 스타일: 점 제거 및 왼쪽 정렬의 핵심 */
+.user-list {
+    list-style: none; /* 리스트 점(블렛) 제거 */
+    padding-left: 0;  /* 브라우저 기본 좌측 패딩 제거 (왼쪽정렬) */
+    margin: 0;
+    width: 100%;
+}
+
+/* 2. 각 리스트 아이템 (<li>) 스타일 */
+.user-list-item {
+    display: flex; /* 항목 내부 요소들을 수평으로 정렬 */
+    justify-content: space-between; /* 정보는 왼쪽, 버튼은 오른쪽으로 분리 */
+    align-items: center; /* 세로 중앙 정렬 */
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    margin: 0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.user-list-item:hover {
+    background-color: #f7f7f7;
+}
+
+/* 3. '나' 자신 강조 스타일 (CSS 클래스) */
+/* FriendList.jsx의 인라인 스타일과 함께 작동 */
+.user-list-item.user-me {
+    /* 인라인 스타일로 설정된 border-left와 background-color는 그대로 두고, 다른 스타일 추가 가능 */
+    background-color: #e6f7ff !important;
+}
+
+/* 4. 사용자 정보 컨테이너 */
+.user-info {
+    display: flex;
+    flex-direction: column; 
+    text-align: left; 
+    flex-grow: 1; 
+}
+
+.user-nickname {
+    font-weight: bold;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.user-username {
+    font-size: 0.9em;
+    color: #888;
+    margin-top: 2px;
+}
+
+/* 5. 친구 버튼 스타일 */
+.btn-friend {
+    padding: 5px 10px;
+    background-color: #5cb85c; 
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9em;
+    cursor: default;
+    opacity: 0.8; 
+}
+
+/* 6. 검색 결과 없음 메시지 스타일 */
+.no-results, .empty-list-text {
+    padding: 20px;
+    text-align: center;
+    color: #777;
+}
