@@ -8,6 +8,7 @@ export default function LoginPage() {
     const [showPw, setShowPw] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const url = `http://localhost:1337`
 
     const onChange = (e) => {
         const { name, value } = e.target
@@ -31,7 +32,7 @@ export default function LoginPage() {
         setLoading(true)
         try {
             // 백엔드가 HttpOnly 쿠키를 내려주는 방식이라면 credentials 포함
-            const res = await fetch('/api/login', {
+            const res = await fetch(`${url}/api/login`, {
 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
