@@ -1,14 +1,14 @@
 import db, { oracledb, executeQuery, executeTransaction, getConnection } from '../../../db/oracle.js';
 
 /**
- * ¹æ »ı¼º + »ı¼ºÀÚ ¸â¹ö Ãß°¡¸¦ ÇÏ³ªÀÇ Æ®·£Àè¼ÇÀ¸·Î Ã³¸®ÇÏ±â À§ÇØ
- * ¼öµ¿ Ä¿³Ø¼ÇÀ» »ç¿ëÇÕ´Ï´Ù.
+ * ë°© ìƒì„± + ìƒì„±ì ë©¤ë²„ ì¶”ê°€ë¥¼ í•˜ë‚˜ì˜ íŠ¸ëœì­ì…˜ìœ¼ë¡œ ì²˜ë¦¬í•˜ê¸° ìœ„í•´
+ * ìˆ˜ë™ ì»¤ë„¥ì…˜ì„ ì‚¬ìš©í•©ë‹ˆë‹¤.
  */
 export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     let conn;
     try {
-        conn = await getConnection(); // autoCommit: false »ç¿ë ÇÊ¿ä
-        // 1) ¹æ »ı¼º
+        conn = await getConnection(); // autoCommit: false ì‚¬ìš© í•„ìš”
+        // 1) ë°© ìƒì„±
         const roomSql = `
       INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
       VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
@@ -21,14 +21,14 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
         const roomRes = await conn.execute(roomSql, roomBinds, { autoCommit: false });
         const roomId = roomRes.outBinds.roomId[0];
 
-        // 2) »ı¼ºÀÚ ¸â¹ö Ãß°¡
+        // 2) ìƒì„±ì ë©¤ë²„ ì¶”ê°€
         const memberSql = `
       INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
       VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
     `;
         await conn.execute(memberSql, { roomId, userId: creatorId }, { autoCommit: false });
 
-        // 3) Ä¿¹Ô
+        // 3) ì»¤ë°‹
         await conn.commit();
 
         return { roomId, roomName, roomType: 'GROUP', creatorId };
@@ -64,7 +64,7 @@ export async function isMember({ roomId, userId }) {
     return res.rows?.length > 0;
 }
 
-// addMemberTx ¼öÁ¤¾È (named bind)
+// addMemberTx ìˆ˜ì •ì•ˆ (named bind)
 export async function addMemberTx({ roomId, userId }) {
     const sql = `
     INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
@@ -75,7 +75,7 @@ export async function addMemberTx({ roomId, userId }) {
     return true;
 }
 
-// getHistory ¼öÁ¤¾È
+// getHistory ìˆ˜ì •ì•ˆ
 export async function getHistory({ roomId, limit = 50 }) {
     const sql = `
     SELECT * FROM (
@@ -101,14 +101,14 @@ export async function getHistory({ roomId, limit = 50 }) {
 }
 
 /**
- * ÀÏ¹İ ¸Ş½ÃÁö ¶Ç´Â ÆÄÀÏ ¸Ş½ÃÁö¸¦ T_MESSAGE Å×ÀÌºí¿¡ ÀúÀåÇÕ´Ï´Ù.
+ * ì¼ë°˜ ë©”ì‹œì§€ ë˜ëŠ” íŒŒì¼ ë©”ì‹œì§€ë¥¼ T_MESSAGE í…Œì´ë¸”ì— ì €ì¥í•©ë‹ˆë‹¤.
  * @param {object} params
  * @param {string} params.roomId
  * @param {string} params.senderId
- * @param {string} params.content - ÅØ½ºÆ® ¸Ş½ÃÁöÀÇ º»¹® (CLOB)
- * @param {string} [params.messageType='TEXT'] - 'TEXT' ¶Ç´Â 'FILE'
- * @param {string} [params.fileUrl=null] - ÆÄÀÏ ¸Ş½ÃÁöÀÇ URL
- * @param {string} [params.fileName=null] - ÆÄÀÏ ¸Ş½ÃÁöÀÇ ¿øº» ÀÌ¸§
+ * @param {string} params.content - í…ìŠ¤íŠ¸ ë©”ì‹œì§€ì˜ ë³¸ë¬¸ (CLOB)
+ * @param {string} [params.messageType='TEXT'] - 'TEXT' ë˜ëŠ” 'FILE'
+ * @param {string} [params.fileUrl=null] - íŒŒì¼ ë©”ì‹œì§€ì˜ URL
+ * @param {string} [params.fileName=null] - íŒŒì¼ ë©”ì‹œì§€ì˜ ì›ë³¸ ì´ë¦„
  */
 export async function saveMessageTx(params) {
     const {
@@ -126,13 +126,13 @@ export async function saveMessageTx(params) {
     RETURNING MSG_ID, SENT_AT INTO :outId, :outSentAt
   `;
 
-    // CLOBÀº ÆÄÀÏ ¸Ş½ÃÁöÀÏ °æ¿ì NULLÀÌ µÇ¾î¾ß ÇÏ¹Ç·Î, Á¶°ÇºÎ·Î ¹ÙÀÎµùÇÕ´Ï´Ù.
+    // CLOBì€ íŒŒì¼ ë©”ì‹œì§€ì¼ ê²½ìš° NULLì´ ë˜ì–´ì•¼ í•˜ë¯€ë¡œ, ì¡°ê±´ë¶€ë¡œ ë°”ì¸ë”©í•©ë‹ˆë‹¤.
     const contentVal = (messageType === 'FILE') ? null : content;
 
     const binds = {
         roomId: Number(roomId),
         senderId,
-        content: contentVal ? { val: contentVal, type: oracledb.CLOB } : null, // FILE Å¸ÀÔÀÏ ¶§ NULL ¹ÙÀÎµù
+        content: contentVal ? { val: contentVal, type: oracledb.CLOB } : null, // FILE íƒ€ì…ì¼ ë•Œ NULL ë°”ì¸ë”©
         messageType,
         fileUrl: fileUrl,
         fileName: fileName,
@@ -140,14 +140,14 @@ export async function saveMessageTx(params) {
         outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
     };
 
-    // NOTE: executeTransactionÀÌ autoCommit: false¸¦ °¡Á¤ÇÏ°í Æ®·£Àè¼ÇÀ» ½ÇÇàÇÑ´Ù°í °¡Á¤ÇÕ´Ï´Ù.
+    // NOTE: executeTransactionì´ autoCommit: falseë¥¼ ê°€ì •í•˜ê³  íŠ¸ëœì­ì…˜ì„ ì‹¤í–‰í•œë‹¤ê³  ê°€ì •í•©ë‹ˆë‹¤.
     const res = await executeTransaction(sql, binds, { autoCommit: false });
 
     const msgId = res.outBinds.outId[0];
-    // Oracle DATE °´Ã¼¸¦ JavaScript timestamp (ms)·Î º¯È¯
+    // Oracle DATE ê°ì²´ë¥¼ JavaScript timestamp (ms)ë¡œ ë³€í™˜
     const sentAt = res.outBinds.outSentAt[0]?.getTime?.() ?? Date.now();
 
-    // ÀúÀåµÈ ¸ğµç Á¤º¸¸¦ ¹İÈ¯ÇÏ¿© Service Layer¿¡¼­ ºê·ÎµåÄ³½ºÆ®¿¡ »ç¿ë
+    // ì €ì¥ëœ ëª¨ë“  ì •ë³´ë¥¼ ë°˜í™˜í•˜ì—¬ Service Layerì—ì„œ ë¸Œë¡œë“œìºìŠ¤íŠ¸ì— ì‚¬ìš©
     return {
         msgId,
         sentAt,
@@ -161,11 +161,11 @@ export async function saveMessageTx(params) {
 }
 
 
-// --- ¸â¹ö »èÁ¦ ¸®Æ÷ÁöÅä¸® ÇÔ¼ö ---
+// --- ë©¤ë²„ ì‚­ì œ ë¦¬í¬ì§€í† ë¦¬ í•¨ìˆ˜ ---
 export async function deleteMember({ roomId, userId }) {
-    let conn; // 1. conn º¯¼ö ¼±¾ğ (ReferenceError ÇØ°á)
+    let conn; // 1. conn ë³€ìˆ˜ ì„ ì–¸ (ReferenceError í•´ê²°)
     try {
-        conn = await getConnection(); // 2. Ä¿³Ø¼Ç È¹µæ
+        conn = await getConnection(); // 2. ì»¤ë„¥ì…˜ íšë“
 
         const sql = `
             DELETE FROM T_ROOM_MEMBER
@@ -176,10 +176,10 @@ export async function deleteMember({ roomId, userId }) {
             userId: userId
         };
 
-        // 3. Äõ¸® ½ÇÇà (autoCommit: false)
+        // 3. ì¿¼ë¦¬ ì‹¤í–‰ (autoCommit: false)
         const result = await conn.execute(sql, binds, { autoCommit: false });
 
-        await conn.commit(); // 4. ¸í½ÃÀû Ä¿¹Ô ½ÇÇà (¿©±â¼­ ¿¡·¯ ¹ß»ı ÁöÁ¡)
+        await conn.commit(); // 4. ëª…ì‹œì  ì»¤ë°‹ ì‹¤í–‰ (ì—¬ê¸°ì„œ ì—ëŸ¬ ë°œìƒ ì§€ì )
 
         const rowsAffected = result.rowsAffected;
         console.log(`[DB DELETE RESULT] rowsAffected: ${rowsAffected}`);
@@ -187,16 +187,17 @@ export async function deleteMember({ roomId, userId }) {
         return rowsAffected;
 
     } catch (e) {
-        // 5. ¿¡·¯ ½Ã ·Ñ¹é
+        // 5. ì—ëŸ¬ ì‹œ ë¡¤ë°±
         if (conn) {
             console.error("Delete transaction failed, rolling back.");
             try { await conn.rollback(); } catch (rbkErr) { console.error("Rollback error:", rbkErr); }
         }
-        throw e; // ¼­ºñ½º ·¹ÀÌ¾î·Î ¿¡·¯ ´øÁö±â
+        throw e; // ì„œë¹„ìŠ¤ ë ˆì´ì–´ë¡œ ì—ëŸ¬ ë˜ì§€ê¸°
     } finally {
-        // 6. Ä¿³Ø¼Ç ´İ±â
+        // 6. ì»¤ë„¥ì…˜ ë‹«ê¸°
         if (conn) {
             try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); }
         }
     }
+    
 }

@@ -1,7 +1,7 @@
 import * as repo from './chat.repository.js';
 
 export async function createRoom({ roomName, creatorId }) {
-    // Æ®·£Àè¼Ç: ¹æ »ı¼º + »ı¼ºÀÚ ¸â¹ö Ãß°¡
+    // Æ®ï¿½ï¿½ï¿½ï¿½ï¿½: ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ß°ï¿½
     return await repo.createRoomWithCreatorTx({ roomName, creatorId });
 }
 
@@ -28,47 +28,40 @@ export async function saveMessage({ userId, ROOM_ID, CONTENT }) {
 
 export async function inviteUserToRoom({ roomId, inviterId, inviteeId }) {
     const exists = await repo.ensureUserExists(inviteeId);
-    if (!exists) throw { status: 404, message: 'ÃÊ´ëÇÒ »ç¿ëÀÚÀÇ ID°¡ À¯È¿ÇÏÁö ¾Ê½À´Ï´Ù.' };
+    if (!exists) throw { status: 404, message: 'ï¿½Ê´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ IDï¿½ï¿½ ï¿½ï¿½È¿ï¿½ï¿½ï¿½ï¿½ ï¿½Ê½ï¿½ï¿½Ï´ï¿½.' };
 
     const joined = await repo.isMember({ roomId, userId: inviteeId });
-    if (joined) throw { status: 400, message: 'ÀÌ¹Ì Ã¤ÆÃ¹æ¿¡ Âü¿© ÁßÀÎ »ç¿ëÀÚÀÔ´Ï´Ù.' };
+    if (joined) throw { status: 400, message: 'ï¿½Ì¹ï¿½ Ã¤ï¿½Ã¹æ¿¡ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Ï´ï¿½.' };
 
     await repo.addMemberTx({ roomId, userId: inviteeId });
     return { roomId, inviteeId };
 }
 
-// ---  ¹æ ³ª°¡±â ÇÔ¼ö Ãß°¡ ---
+// ---  ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½ ï¿½ß°ï¿½ ---
 
 export async function leaveRoom({ roomId, userId }) {
-    // Repository ·¹ÀÌ¾îÀÇ ¸â¹ö »èÁ¦ ÇÔ¼ö¸¦ È£Ãâ
+    // Repository ï¿½ï¿½ï¿½Ì¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ È£ï¿½ï¿½
     const rowsAffected = await repo.deleteMember({ roomId, userId });
 
     if (rowsAffected === 0) {
-        throw { status: 404, message: 'Ã¤ÆÃ¹æ ¸â¹ö·Î µî·ÏµÇ¾î ÀÖÁö ¾Ê½À´Ï´Ù.' };
+        throw { status: 404, message: 'Ã¤ï¿½Ã¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ÏµÇ¾ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê½ï¿½ï¿½Ï´ï¿½.' };
     }
 
     return rowsAffected;
 }
 
-// [Ãß°¡] ÆÄÀÏ ¸Ş½ÃÁö ÀúÀå
-async function saveFileMessage({ roomId, userId, userNickname, fileName, fileURL, mimeType }) {
-    // ÆÄÀÏ ¸Ş½ÃÁö¿¡ ÇÊ¿äÇÑ µ¥ÀÌÅÍ ±¸Á¶
-    const messageData = {
-        ROOM_ID: roomId,
-        USER_ID: userId,
-        NICKNAME: userNickname,
-        TEXT: fileName, // ÆÄÀÏ ¸Ş½ÃÁö¿¡¼­´Â TEXT ÇÊµå¿¡ ÆÄÀÏ ÀÌ¸§À» ÀúÀå
-        MESSAGE_TYPE: 'FILE', // »õ·Î¿î Å¸ÀÔ Ãß°¡
-        FILE_URL: fileURL,
-        MIME_TYPE: mimeType,
-        // ... ÇÊ¿äÇÑ ´Ù¸¥ ÇÊµå
-    };
-
-    // Chat Repository¸¦ È£ÃâÇÏ¿© Oracle¿¡ ÀúÀå
-    const savedMsg = await chatRepository.insertMessage(messageData);
-
-    return savedMsg; // ÀúÀåµÈ ¸Ş½ÃÁö °´Ã¼ ¹İÈ¯
-}
+async function saveFileMessage({ roomId, userId, fileName, fileURL }) {
+        // DB ìŠ¤í‚¤ë§ˆì— ë”°ë¼ T_MESSAGEì— INSERT
+        // (MESSAGE_TYPE='FILE', FILE_URL, FILE_NAME)
+        const savedRow = await chatRepository.createFileMessage({
+            roomId,
+            senderId: userId,
+            messageType: 'FILE',
+            fileUrl: fileURL,
+            fileName: fileName
+        });
+        return savedRow;
+    }
 // ------------------------------
 export default {
     createRoom,

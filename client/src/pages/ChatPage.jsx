@@ -21,6 +21,8 @@ export default function ChatPage() {
         rooms,
         messages,
         currentRoomId,
+        socket,
+        nickname,
         selectRoom,
         sendMessage,
         refreshRooms,
@@ -50,7 +52,7 @@ export default function ChatPage() {
             selectRoom(null);
 
             // 방 새로고침
-            await refreshRooms();
+            refreshRooms();
 
             // 메시지 초기화
             clearMessages();
@@ -64,6 +66,33 @@ export default function ChatPage() {
             console.error('방 나가기 실패:', error.response?.data || error.message);
             alert(error.response?.data?.message || '서버 오류로 인해 방 나가기에 실패했습니다.');
         }
+    };
+    
+
+    // 2. 파일 메시지 전송 핸들러 (새로 추가)
+    const handleSendFile = ({ fileName, mimeType, fileData }) => {
+        if (!socket) return alert('소켓이 연결되지 않았습니다.');
+
+        console.log('Sending file:', fileName);
+
+        // [중요] chat.socket.js에 정의된 'SEND_FILE' 이벤트를 사용합니다.
+        // chat.socket.js는 userNickname을 요구합니다.
+        socket.emit('SEND_FILE', {
+            roomId: currentRoom.id,
+            fileName,
+            mimeType,
+            fileData, // Base64 데이터
+            userNickname: nickname 
+        }, (response) => {
+            // 3. 서버로부터의 콜백 처리
+            if (!response.ok) {
+                console.error('File upload failed:', response.error);
+                alert(`파일 업로드 실패: ${response.error}`);
+            } else {
+                console.log('File upload successful');
+                // 성공 시 별도 처리는 필요 없음 (BROADCAST_MESSAGE로 어차피 받음)
+            }
+        });
     };
 
     if (!authLoaded) return <div>로딩 중... (인증 확인)</div>;
@@ -94,6 +123,7 @@ export default function ChatPage() {
 
                         <MessageInput
                             onSend={(text) => sendMessage({ text })}
+                            onSendFile={handleSendFile}
                             disabled={!connected}
                         />
                     </>
