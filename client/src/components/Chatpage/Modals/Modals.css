@@ -1,7 +1,7 @@
-/* °øÅë ¸ğ´Ş ·¹ÀÌ¾Æ¿ô */
+/* ê³µí†µ ëª¨ë‹¬ ë ˆì´ì•„ì›ƒ */
 .modal-backdrop {
     position: fixed;
-    inset: 0; /* top/left/width/height ´ëÃ¼ */
+    inset: 0; /* top/left/width/height ëŒ€ì²´ */
     background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
@@ -71,7 +71,7 @@
             cursor: not-allowed;
         }
 
-/* ÃÊ´ë ¸ğ´Ş ³» °Ë»ö °ü·Ã */
+/* ì´ˆëŒ€ ëª¨ë‹¬ ë‚´ ê²€ìƒ‰ ê´€ë ¨ */
 .search-results-wrap {
     margin-top: 8px;
     min-height: 40px;

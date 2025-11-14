@@ -85,6 +85,9 @@ export async function getHistory({ roomId, limit = 50 }) {
         T1.SENDER_ID,
         T1.CONTENT,
         T1.SENT_AT,
+        T1.MESSAGE_TYPE,  
+        T1.FILE_URL,     
+        T1.FILE_NAME,     
         T2.NICKNAME
       FROM T_MESSAGE T1
       JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
@@ -97,23 +100,64 @@ export async function getHistory({ roomId, limit = 50 }) {
     return res.rows || [];
 }
 
-export async function saveMessageTx({ roomId, senderId, content }) {
+/**
+ * 일반 메시지 또는 파일 메시지를 T_MESSAGE 테이블에 저장합니다.
+ * @param {object} params
+ * @param {string} params.roomId
+ * @param {string} params.senderId
+ * @param {string} params.content - 텍스트 메시지의 본문 (CLOB)
+ * @param {string} [params.messageType='TEXT'] - 'TEXT' 또는 'FILE'
+ * @param {string} [params.fileUrl=null] - 파일 메시지의 URL
+ * @param {string} [params.fileName=null] - 파일 메시지의 원본 이름
+ */
+export async function saveMessageTx(params) {
+    const {
+        roomId,
+        senderId,
+        content,
+        messageType = 'TEXT',
+        fileUrl = null,
+        fileName = null
+    } = params;
+
     const sql = `
-    INSERT INTO T_MESSAGE (ROOM_ID, SENDER_ID, CONTENT, SENT_AT)
-    VALUES (:roomId, :senderId, :content, CURRENT_TIMESTAMP)
+    INSERT INTO T_MESSAGE (ROOM_ID, SENDER_ID, CONTENT, SENT_AT, MESSAGE_TYPE, FILE_URL, FILE_NAME)
+    VALUES (:roomId, :senderId, :content, CURRENT_TIMESTAMP, :messageType, :fileUrl, :fileName)
     RETURNING MSG_ID, SENT_AT INTO :outId, :outSentAt
   `;
+
+    // CLOB은 파일 메시지일 경우 NULL이 되어야 하므로, 조건부로 바인딩합니다.
+    const contentVal = (messageType === 'FILE') ? null : content;
+
     const binds = {
         roomId: Number(roomId),
         senderId,
-        content: { val: content, type: oracledb.CLOB },
+        content: contentVal ? { val: contentVal, type: oracledb.CLOB } : null, // FILE 타입일 때 NULL 바인딩
+        messageType,
+        fileUrl: fileUrl,
+        fileName: fileName,
         outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
         outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
     };
+
+    // NOTE: executeTransaction이 autoCommit: false를 가정하고 트랜잭션을 실행한다고 가정합니다.
     const res = await executeTransaction(sql, binds, { autoCommit: false });
+
     const msgId = res.outBinds.outId[0];
-    const sentAt = res.outBinds.outSentAt[0]?.getTime?.();
-    return { msgId, sentAt };
+    // Oracle DATE 객체를 JavaScript timestamp (ms)로 변환
+    const sentAt = res.outBinds.outSentAt[0]?.getTime?.() ?? Date.now();
+
+    // 저장된 모든 정보를 반환하여 Service Layer에서 브로드캐스트에 사용
+    return {
+        msgId,
+        sentAt,
+        roomId: Number(roomId),
+        senderId,
+        content: contentVal,
+        messageType,
+        fileUrl,
+        fileName,
+    };
 }
 
 

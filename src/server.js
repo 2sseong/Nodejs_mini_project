@@ -1,4 +1,4 @@
-﻿// src/server.js
+// src/server.js
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
@@ -6,6 +6,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import http from 'http'
 import { Server } from 'socket.io'
+
 
 // 그대로 사용: 네 oracle.js
 import { initialize as initOracleDB } from '../db/oracle.js'
@@ -22,16 +23,17 @@ import { setIoInstance } from './sockets/socketStore.js'
 
 const app = express()
 const PORT = process.env.PORT || 1337
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:8081'
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
 // __dirname (ESM)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
 // 미들웨어
 app.use(cors({ origin: CLIENT_URL, credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // API 라우터 
 app.use('/api', authRouter)

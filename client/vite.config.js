@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
     plugins: [react()],
+    base: './',
+    build: {
+        // 빌드 결과 폴더가 'dist'가 아니라면 여기서 'outDir'을 수정해야 합니다.
+        outDir: 'dist', 
+    },
     server: {
         proxy: {
             // 1. 일반 HTTP/API 요청 프록시

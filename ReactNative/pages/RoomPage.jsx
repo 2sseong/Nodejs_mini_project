@@ -1,882 +1,806 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { 
-    View, 
-    Text, 
-    TouchableOpacity, 
-    FlatList, 
-    TextInput, 
-    StyleSheet, 
-    Modal, 
-    ActivityIndicator,
-    Alert,
+// pages/RoomPage.jsx
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ActivityIndicator,
+  Dimensions, // [추가] Dimensions
 } from 'react-native';
+import io from 'socket.io-client';
+import { CHAT_CONTRACT as C } from '../constants/chatContract';
+import * as DocumentPicker from '@react-native-documents/picker';
+// import RNFS from 'react-native-fs'; // 파일 데이터를 읽기 위해 필요(windows에서는 제공안해줌)
 
-// --- 전역 설정 및 상수 ---
-const WEBSOCKET_URL = 'ws://localhost:1337/ws/chat';
-const MOCK_USER_ID = 'mock-user-ws-123456'; 
+// [추가] 네이티브 모듈 없이 로컬 파일을 Base64로 읽는 함수 (Windows 환경 대응)
+const readFileAsBase64 = async (uri) => {
+    // 1. fetch API를 사용하여 로컬 파일 URI를 Blob 형태로 가져옵니다.
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    
+    // 2. Blob을 ArrayBuffer로 변환합니다.
+    const arrayBuffer = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsArrayBuffer(blob);
+    });
 
-/**
- * @typedef {object} ChatRoom
- * @property {string} ROOM_ID
- * @property {string} ROOM_NAME
- * @property {'GROUP' | 'PRIVATE'} ROOM_TYPE
- */
-
-/**
- * @typedef {object} ChatMessage
- * @property {string} id
- * @property {string} USER_ID
- * @property {string} TEXT
- * @property {Date} TIMESTAMP
- */
-
-
-// --- MOCK 데이터: 웹소켓 연결이 없는 경우를 위한 초기 데이터 ---
-const INITIAL_ROOMS = [
-    { ROOM_ID: 'room-1', ROOM_NAME: '웹소켓 테스트방', ROOM_TYPE: 'GROUP' },
-    { ROOM_ID: 'room-2', ROOM_NAME: 'React Native 피드백', ROOM_TYPE: 'GROUP' },
-    { ROOM_ID: 'room-3', ROOM_NAME: '개인 메시지', ROOM_TYPE: 'PRIVATE' },
-];
-
-const INITIAL_MESSAGES = {
-    'room-1': [
-        { id: 'm1', USER_ID: MOCK_USER_ID, TEXT: '웹소켓 채팅 앱 시작!', TIMESTAMP: new Date(Date.now() - 60000) },
-        { id: 'm2', USER_ID: 'server', TEXT: '서버에서 수신 확인되었습니다.', TIMESTAMP: new Date() },
-    ],
-    'room-2': [],
-    'room-3': [],
+    // 3. ArrayBuffer를 Base64 문자열로 변환합니다.
+    // React Native 환경에서는 Buffer나 atob/btoa가 완벽하게 지원되지 않을 수 있으므로,
+    // ArrayBuffer를 8비트 정수 배열로 변환 후 Base64 인코딩을 수행합니다.
+    // 하지만 대부분의 최신 RN 환경에서는 FileReader + btoa/Buffer가 작동합니다.
+    
+    // 이 예시에서는 FileReader와 React Native 환경의 BtoA 지원을 가정합니다.
+    // 만약 Base64 변환 오류가 발생하면, 'Base64 Polyfill'을 추가해야 합니다.
+    const base64String = Buffer.from(arrayBuffer).toString('base64');
+    return base64String;
 };
 
-// --- 1. 컴포넌트: RoomListItem ---
-const RoomListItem = React.memo(({ room, active, onClick }) => {
+
+// [추가] 반응형 및 최소 크기 상수
+const NARROW_BREAKPOINT = 768; // 이 너비 미만은 '좁은 화면'으로 간주
+const MIN_WINDOW_WIDTH = 640;  // 앱의 최소 너비
+const MIN_WINDOW_HEIGHT = 480; // 앱의 최소 높이
+
+/** ────────────── 토스트 (변경 없음) ────────────── */
+const Toast = React.memo(({ msg, type }) => {
+  if (!msg) return null;
+  return (
+    <View pointerEvents="none" style={[styles.toast, type === 'error' ? styles.toastErr : styles.toastOk]}>
+      <Text style={styles.toastTxt}>{msg}</Text>
+    </View>
+  );
+});
+
+/** ────────────── 말풍선 (수정됨) ────────────── */
+const Bubble = React.memo(function Bubble({ m, userId, compact }) {
+  const mine = m.USER_ID === userId;
+  const isFile = m.MESSAGE_TYPE === 'FILE'; // [추가] 파일 메시지 여부
+  const isSystem = m.MESSAGE_TYPE === 'SYSTEM'; // 시스템 메시지 (선택 사항)
+
+  // 파일 다운로드 핸들러
+  const handleDownload = useCallback(() => {
+    if (!m.FILE_URL || m.FILE_URL === 'PENDING') {
+      alert('파일 다운로드 준비 중이거나 URL이 유효하지 않습니다.');
+      return;
+    }
+    // 실제 다운로드 로직 구현 필요
+    // React Native for Windows (RNFS)를 사용한 다운로드 로직을 여기에 구현합니다.
+    // 예시: RNFS.downloadFile({ fromUrl: m.FILE_URL, toFile: RNFS.DocumentDirectoryPath + '/' + m.FILE_NAME }).promise...
+    alert(`[다운로드 시작] 파일: ${m.FILE_NAME}\nURL: ${m.FILE_URL}`);
+  }, [m.FILE_URL, m.FILE_NAME]);
+
+  // 시스템 메시지 렌더링
+  if (isSystem) {
     return (
-        <TouchableOpacity
-            style={[styles.roomItem, active ? styles.roomItemActive : styles.roomItemInactive]}
-            onPress={() => onClick(room.ROOM_ID)}
-        >
-            <Text style={[styles.roomItemText, active ? styles.textWhite : styles.textGray]}>
-                {room.ROOM_NAME || `방 이름: ${room.ROOM_ID}`}
+      <View style={wS.systemRow}>
+        <Text style={wS.systemTxt}>{m.CONTENT || m.TEXT}</Text>
+      </View>
+    );
+  }
+
+  const ts =
+    m.SENT_AT instanceof Date
+      ? m.SENT_AT.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      : '';
+  
+  // 파일 메시지 스타일 조정
+  const bubbleStyle = [
+    mine ? wS.my : wS.other,
+    compact && (mine ? wS.myCompact : wS.otherCompact),
+    isFile && wS.fileBubble, // [추가] 파일 메시지 스타일
+  ];
+
+  return (
+    <View style={mine ? wS.myRow : wS.otherRow}>
+      <View style={[wS.wrap, { flexDirection: mine ? 'row-reverse' : 'row' }]}>
+        <View>
+          {!mine && !compact && (
+            <Text style={wS.nick}>{m.NICKNAME || m.USER_ID?.slice(0, 8)}</Text>
+          )}
+          <View style={bubbleStyle}>
+            {isFile ? (
+              // [추가] 파일 메시지 컨텐츠
+              <View>
+                <Text style={wS.fileIcon}>📄</Text>
+                <Text style={wS.fileNameTxt} numberOfLines={2}>
+                  {m.FILE_NAME}
+                </Text>
+                <TouchableOpacity onPress={handleDownload} style={wS.downloadBtn}>
+                  <Text style={wS.downloadTxt}>다운로드</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              // 기존 텍스트 메시지 컨텐츠
+              <Text style={[mine ? wS.myTxt : wS.otherTxt, compact && wS.msgTxtCompact]}>
+                {m.CONTENT || m.TEXT} {/* CONTENT 필드 사용 (DB 필드에 맞춤) */}
+              </Text>
+            )}
+          </View>
+        </View>
+        {!compact && (
+          <View style={wS.time}>
+            <Text style={mine ? wS.myTime : wS.otherTime}>{ts}</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+});
+
+/** ─────────────────────────────────────────────────────────
+ * ChatRoomScreen (수정됨)
+ * - 'isNarrow' prop을 받아 좁은 화면/넓은 화면용 닫기 버튼을 구분
+ * ───────────────────────────────────────────────────────── */
+const ChatRoomScreen = React.memo(function ChatRoomScreen({
+  roomId, roomName, userId, messages, connected, onSend, socket,
+  onClose,
+  onPressPlus,
+  isNarrow, // [추가] 반응형 레이아웃 여부
+}) {
+  const [text, setText] = useState('');
+  const listRef = useRef(null);
+  const [layout, setLayout] = useState({ w: 0, h: 0 });
+  const compact = layout.w < 420 || layout.h < 420;
+
+  // join + history (변경 없음)
+  useEffect(() => {
+    if (!socket || !roomId) return;
+    socket.emit(C.events.joinRoom, { roomId });
+    socket.emit(C.events.requestHistory, { roomId, limit: 50 });
+    return () => socket.emit(C.events.leaveRoom, { roomId });
+  }, [socket, roomId]);
+
+  // 자동 스크롤 (변경 없음)
+  useEffect(() => {
+    if (!listRef.current) return;
+    const t = setTimeout(() => { try { listRef.current.scrollToEnd({ animated: true }); } catch {} }, 0);
+    return () => clearTimeout(t);
+  }, [messages?.length]);
+
+  // 메시지 전송 (변경 없음)
+  const handleSend = useCallback(() => {
+    const v = text.trim();
+    if (!v || !roomId || !connected) return;
+    onSend(roomId, v);
+    setText('');
+  }, [text, onSend, roomId, connected]);
+
+  return (
+    <View
+      style={[
+        wS.window,
+        { flex: 1 }, // 부모(SafeAreaView 또는 styles.right)를 꽉 채움
+        // [수정] 넓은 화면(isNarrow: false)일 때만 오른쪽 경계선 표시
+        !isNarrow && styles.chatRoomBorder,
+      ]}
+      onLayout={(e) => setLayout({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+    >
+      {/* 헤더 */}
+      <View style={[wS.header, compact && wS.headerCompact]}>
+        <View style={[wS.headerLeft, compact && wS.headerLeftCompact]}>
+          <Text style={[wS.title, compact && wS.titleCompact]} numberOfLines={1}>
+            {roomName || `방 ${roomId}`}
+          </Text>
+        </View>
+
+        {/* [수정] 닫기/뒤로가기 버튼 (반응형) */}
+        <View style={wS.headerRight}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={[wS.close, compact && wS.headerBtnCompact]}
+            accessibilityLabel={isNarrow ? "목록으로 돌아가기" : "채팅창 닫기"}
+          >
+            {/* 좁으면 'ᐸ'(뒤로가기), 넓으면 '×'(닫기) */}
+            <Text style={[wS.closeTxt, compact && wS.headerBtnTxtCompact]}>
+              {isNarrow ? 'ᐸ' : '×'}
             </Text>
-            <View style={[styles.roomTypeBadge, active ? styles.badgeActive : styles.badgeInactive]}>
-                <Text style={[styles.roomTypeText, active ? styles.textWhite : styles.textGray]}>
-                    {room.ROOM_TYPE === 'GROUP' ? '👨‍👦‍👦' : '👤'}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    );
-});
+          </TouchableOpacity>
+        </View>
+      </View>
 
-
-// --- 2. 컴포넌트: ChatSidebar ---
-const ChatSidebar = React.memo(({
-    userNickname,
-    connected,
-    rooms,
-    currentRoomId,
-    onSelectRoom,
-    onOpenCreateModal,
-}) => {
-    const renderRoom = ({ item }) => (
-        <RoomListItem
-            room={item}
-            active={String(item.ROOM_ID) === String(currentRoomId)}
-            onClick={onSelectRoom}
+      {/* 메시지 (변경 없음) */}
+      <View style={[wS.body, compact && wS.bodyCompact]}>
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={(it) => String(it.id ?? `${it.ROOM_ID}-${it.TIMESTAMP?.valueOf?.() ?? Math.random()}`)}
+          renderItem={({ item }) => <Bubble m={item} userId={userId} compact={compact} />}
+          contentContainerStyle={[wS.listContent, compact && wS.listContentCompact]}
+          removeClippedSubviews
+          initialNumToRender={20}
+          windowSize={7}
         />
-    );
+      </View>
 
-    return (
-        <View style={styles.sidebar}>
-            <View style={styles.sidebarHeader}>
-                <Text style={styles.headerTitle}>참여중인 채팅방</Text>
-                <TouchableOpacity
-                    style={styles.createRoomBtn}
-                    onPress={onOpenCreateModal}
-                >
-                    <Text style={styles.createRoomBtnText}>+ 방 만들기</Text>
-                </TouchableOpacity>
-            </View>
+      {/* 입력 (변경 없음) */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+        <View style={[wS.inputRow, compact && wS.inputRowCompact]}>
+            {/* [추가] 파일 선택 버튼 */}
+            <TouchableOpacity
+                onPress={onPressPlus} // 2. 새로운 prop 추가
+                style={[wS.plusBtn, compact && wS.headerBtnCompact]}
+                accessibilityLabel="파일 전송"
+            >
+                <Text style={wS.plusBtnTxt}>+</Text>
+            </TouchableOpacity>
+          <TextInput
+            style={[wS.input, compact && wS.inputCompact]}
+            value={text}
+            onChangeText={setText}
+            placeholder={connected ? '메시지 입력…' : '연결 대기 중…'}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+            blurOnSubmit={false}
+            editable={connected}
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!connected || !text.trim()}
+            style={[wS.send, (!connected || !text.trim()) && wS.sendDis, compact && wS.sendCompact]}
+          >
+            <Text style={[wS.sendTxt, compact && wS.sendTxtCompact]}>전송</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+});
 
-            <View style={styles.connectionStatusContainer}>
-                <Text style={styles.statusText}>
-                    현재 사용자: 
-                    <Text style={styles.nicknameText}>{userNickname}</Text>
+/** ─────────────────────────────────────────────────────────
+ * [신규] ChatListComponent (모듈화)
+ * - 기존 RoomPage에 있던 사이드바 로직을 분리
+ * ───────────────────────────────────────────────────────── */
+const ChatListComponent = React.memo(({
+  rooms,
+  connected,
+  userNickname,
+  onOpenRoom,
+  activeRoomId, // [추가] 넓은 화면에서 활성 채팅방 강조용
+  isNarrow,     // [추가] 좁은 화면인지 여부
+}) => {
+  return (
+    <View style={[styles.sidebar, isNarrow && { width: '100%', borderRightWidth: 0 }]}>
+      <View style={styles.sbHeader}>
+        <Text style={styles.sbTitle}>참여중인 채팅방</Text>
+        <View style={styles.connRow}>
+          <Text style={styles.connTxt}>연결:</Text>
+          <Text style={[styles.connState, connected ? styles.on : styles.off]}>{connected ? 'ON' : 'OFF'}</Text>
+          <View style={[styles.dot, connected ? styles.dotOn : styles.dotOff]} />
+        </View>
+        <Text style={styles.meTxt}>
+          사용자: <Text style={{ fontWeight: '800' }}>{userNickname}</Text>
+        </Text>
+      </View>
+
+      <FlatList
+        data={rooms}
+        keyExtractor={(it) => String(it.ROOM_ID)}
+        renderItem={({ item }) => {
+          const isActive = !isNarrow && String(item.ROOM_ID) === activeRoomId;
+          return (
+            <TouchableOpacity
+              style={[
+                styles.roomItem,
+                // [수정] 활성화된 아이템 강조 (넓은 화면에서만)
+                isActive ? styles.roomActive : styles.roomInactive,
+              ]}
+              onPress={() => onOpenRoom(String(item.ROOM_ID))}
+            >
+              <Text numberOfLines={1} style={[styles.roomTxt, isActive ? styles.white : styles.gray]}>
+                {item.ROOM_NAME || `방 ${item.ROOM_ID}`}
+              </Text>
+              <View style={[styles.badge, isActive ? styles.badgeActive : styles.badgeIn]}>
+                <Text style={[styles.badgeTxt, isActive ? styles.white : styles.gray]}>
+                  {item.ROOM_TYPE === '1_TO_1' ? '1:1' : '그룹'}
                 </Text>
-                <View style={styles.statusRow}>
-                    <Text style={styles.statusText}>
-                        연결 상태:{' '}
-                    </Text>
-                    <Text style={[styles.statusIndicatorText, connected ? styles.connectedText : styles.disconnectedText]}>
-                        {connected ? 'ON' : 'OFF'}
-                    </Text>
-                    <View style={[styles.indicatorDot, connected ? styles.connectedDot : styles.disconnectedDot]} />
-                </View>
-            </View>
-
-            <FlatList
-                data={rooms}
-                renderItem={renderRoom}
-                keyExtractor={item => item.ROOM_ID}
-                style={styles.roomList}
-                ListEmptyComponent={() => (
-                    <View style={styles.emptyList}>
-                        <Text style={styles.emptyListText}>채팅방이 없습니다.</Text>
-                    </View>
-                )}
-            />
-        </View>
-    );
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyTxt}>참여중인 방이 없습니다.</Text>
+          </View>
+        }
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 12 }}
+      />
+    </View>
+  );
 });
 
 
-// --- 3. 컴포넌트: ChatWindow (메시지 표시 및 전송) ---
-const ChatWindow = React.memo(({ roomId, roomName, userId, messages, sendMessage }) => {
-    const [messageText, setMessageText] = useState('');
-    const flatListRef = useRef(null);
+/** ─────────────────────────────────────────────────────────
+ * RoomPage (수정됨)
+ * - 반응형 레이아웃 로직 추가
+ * ───────────────────────────────────────────────────────── */
+export default function RoomPage() {
+  const auth = global?.tempAuth;
+  const userId = auth?.userId;
+  const userNickname = auth?.userNickname;
 
-    // 메시지 목록이 업데이트 될 때마다 가장 아래로 스크롤
-    useEffect(() => {
-        if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-        }
-    }, [messages]);
+  const [socket, setSocket] = useState(null);
+  const [connected, setConnected] = useState(false);
 
-    // 메시지 전송 핸들러
-    const handleSendMessage = useCallback(() => {
-        if (messageText.trim() === '' || !roomId) return;
+  const [rooms, setRooms] = useState([]);
+  const [messagesByRoom, setMessagesByRoom] = useState({});
+  const [status, setStatus] = useState({ msg: '', type: '' });
 
-        // 부모 컴포넌트에서 받은 sendMessage 함수를 사용하여 웹소켓으로 메시지 전송
-        sendMessage(roomId, messageText.trim());
-        setMessageText(''); 
-    }, [messageText, roomId, sendMessage]);
+  const [activeRoomId, setActiveRoomId] = useState(null);
 
-    // 메시지 버블 컴포넌트
-    const MessageBubble = ({ message }) => {
-        const isMine = message.USER_ID === userId;
-        const timeString = message.TIMESTAMP instanceof Date 
-            ? message.TIMESTAMP.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-            : '전송 중...';
+  /** ────────────── 파일 메시지 전송 함수 (수정됨) ────────────── */
+const sendFileMessage = useCallback((roomId, fileName, mimeType, fileData) => {
+    if (!socket?.connected) {
+        setStatus({ msg: '연결되지 않았습니다.', type: 'error' });
+        return;
+    }
+    const tempId = 'temp-' + Date.now(); // 임시 ID 생성 (응답 후 교체될 예정)
 
-        const bubbleStyle = isMine ? styles.myBubble : styles.otherBubble;
-        const textStyle = isMine ? styles.myText : styles.otherText;
-        const timeStyle = isMine ? styles.myTime : styles.otherTime;
-        const containerStyle = isMine ? styles.myMessageContainer : styles.otherMessageContainer;
+    // 로컬에 임시 메시지 추가 (UX를 위해)
+    const temp = { 
+        id: tempId, // 임시 ID 사용
+        ROOM_ID: String(roomId),
+        USER_ID: String(userId),
+        NICKNAME: userNickname,
+        CONTENT: `[전송 중...] ${fileName}`, // 임시 텍스트
+        MESSAGE_TYPE: 'FILE', // 파일 타입 명시
+        SENT_AT: new Date(),
+        // 임시 파일 메타데이터
+        FILE_NAME: fileName,
+        FILE_URL: 'PENDING', // 전송 중 상태 표시
+    };
+    setMessagesByRoom((prev) => ({ ...prev, [roomId]: [...(prev[roomId] || []), temp] }));
 
-        return (
-            <View style={containerStyle}>
-                <View style={[styles.bubbleContainer, { flexDirection: isMine ? 'row-reverse' : 'row' }]}>
-                    <View style={bubbleStyle}>
-                        {!isMine && (
-                            <Text style={styles.otherUsername}>
-                                {message.USER_ID.substring(0, 8)}...
-                            </Text>
-                        )}
-                        <Text style={textStyle}>{message.TEXT}</Text>
-                        <Text style={timeStyle}>{timeString}</Text>
-                    </View>
-                </View>
-            </View>
-        );
+    // 서버로 전송할 페이로드 (Base64 인코딩된 데이터 포함)
+    const payload = {
+        [C.fields.message.roomId]: roomId,
+        [C.fields.message.type]: 'FILE', // 서버에서 MESSAGE_TYPE으로 사용됨
+        [C.fields.message.content]: fileName, // CONTENT 필드에 파일 이름을 임시로 전달
+        file_name: fileName,
+        mime_type: mimeType,
+        file_data: fileData, // Base64 인코딩된 파일 내용
+        [C.fields.message.nickname]: userNickname,
     };
 
-    if (!roomId) {
-        return (
-            <View style={styles.welcomeContainer}>
-                <Text style={styles.welcomeText}>채팅방을 선택해주세요.</Text>
-            </View>
-        );
-    }
-
-    return (
-        <View style={styles.chatWindow}>
-            {/* Header */}
-            <View style={styles.chatHeader}>
-                <Text style={styles.chatHeaderTitle}>{roomName}</Text>
-                <Text style={styles.chatHeaderSubtitle}>방 ID: {roomId}</Text>
-            </View>
-            
-            {/* Message List */}
-            <FlatList
-                ref={flatListRef}
-                data={messages}
-                renderItem={({ item }) => <MessageBubble message={item} />}
-                keyExtractor={item => item.id}
-                style={styles.messageList}
-            />
-
-            {/* Input Area */}
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.textInput}
-                    value={messageText}
-                    onChangeText={setMessageText}
-                    placeholder="메시지 입력..."
-                    placeholderTextColor="#9CA3AF"
-                    returnKeyType="send"
-                    onSubmitEditing={handleSendMessage}
-                    blurOnSubmit={false}
-                />
-                <TouchableOpacity
-                    style={[styles.sendButton, messageText.trim() === '' && styles.sendButtonDisabled]}
-                    onPress={handleSendMessage}
-                    disabled={messageText.trim() === ''}
-                >
-                    <Text style={styles.sendButtonText}>전송</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-});
-
-
-// --- 4. 컴포넌트: CreateRoomModal (방 생성 모달) ---
-const CreateRoomModal = React.memo(({ isOpen, onClose, onRoomCreated }) => {
-    const [roomName, setRoomName] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
-    const [error, setError] = useState('');
-
-    const handleCreateRoom = async () => {
-        if (roomName.trim() === '') {
-            setError('방 이름을 입력해주세요.');
+    socket.emit(C.events.sendMessage, payload, (ack) => {
+        if (!ack?.ok || !ack.message) {
+            setStatus({ msg: `파일 전송 실패: ${ack?.error || 'ERROR'}`, type: 'error' });
+            // 실패 시 임시 메시지 제거 또는 오류 표시
+            setMessagesByRoom((prev) => ({ 
+                ...prev, 
+                [roomId]: prev[roomId].filter(m => m.id !== tempId) 
+            }));
             return;
         }
 
-        setIsCreating(true);
-        setError('');
+        // 서버 응답이 성공하면, 임시 메시지를 서버 데이터로 대체
+        const serverMsg = C.normalize.message(ack.message, C.fields);
+        setMessagesByRoom((prev) => ({
+            ...prev, 
+            [roomId]: prev[roomId].map(m => m.id === tempId ? serverMsg : m)
+        }));
+    });
 
-        // 웹소켓 서버로 방 생성 요청을 보낸다고 가정
-        try {
-            // 실제 웹소켓 요청 로직 (예: socket.send(JSON.stringify({ type: 'CREATE_ROOM', name: roomName })))
-            await new Promise(resolve => setTimeout(resolve, 500)); // Mock API 지연
+}, [socket, userId, userNickname]); 
 
-            // 서버로부터 새 방 ID를 받았다고 가정
-            const newRoomId = 'new-room-' + Math.random().toString(36).substring(2, 7);
+  // [추가] 창 크기 상태
+  const [windowSize, setWindowSize] = useState({
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  });
 
-            // App 컴포넌트에 새 방 정보를 추가하도록 콜백 호출
-            onRoomCreated(newRoomId, roomName.trim());
-            
-            setRoomName('');
-            onClose(); 
-        } catch (e) {
-            console.error("채팅방 생성 중 오류: ", e);
-            setError('방 생성에 실패했습니다. (웹소켓 연결 확인)');
-        } finally {
-            setIsCreating(false);
-        }
+  // [추가] 좁은 화면 여부
+  const isNarrow = windowSize.width < NARROW_BREAKPOINT;
+
+  // ... (소켓 연결 useEffect - 변경 없음) ...
+  useEffect(() => {
+    if (!userId) return;
+    const s = io(C.url, {
+      query: { userId },
+      transports: ['websocket'],
+      autoConnect: true,
+      forceNew: true,
+    });
+    setSocket(s);
+
+    s.on('connect', () => {
+      setConnected(true);
+      setStatus({ msg: '서버에 연결되었습니다.', type: 'ok' });
+      s.emit(C.events.fetchRooms);
+    });
+
+    s.on(C.events.roomsList, (serverRooms) => {
+      const rs = (serverRooms || []).map((r) => C.normalize.room(r, C.fields)).filter(Boolean);
+      setRooms(rs);
+    });
+
+    s.on(C.events.history, (array) => {
+      const normalized = C.normalize.history(array, C.fields);
+      const rid = String(array?.[0]?.[C.fields.message.roomId] || '');
+      if (!rid) return;
+      setMessagesByRoom((prev) => ({ ...prev, [rid]: normalized }));
+      setStatus({ msg: '채팅 기록을 불러왔습니다.', type: 'ok' });
+    });
+
+    s.on(C.events.broadcastMessage, (raw) => {
+      const msg = C.normalize.message(raw, C.fields);
+      if (!msg) return;
+      setMessagesByRoom((prev) => {
+        const list = prev[msg.ROOM_ID] || [];
+        return { ...prev, [msg.ROOM_ID]: [...list, msg] };
+      });
+    });
+
+    s.on('disconnect', (reason) => {
+      setConnected(false);
+      setStatus({ msg: `연결 종료: ${reason}`, type: 'error' });
+    });
+
+    s.on('connect_error', (err) => {
+      setConnected(false);
+      setStatus({ msg: `연결 오류: ${err.message}`, type: 'error' });
+    });
+
+    return () => {
+      s.removeAllListeners();
+      s.close();
     };
-
-    return (
-        <Modal
-            animationType="fade"
-            transparent={true}
-            visible={isOpen}
-            onRequestClose={onClose}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>새 채팅방 만들기</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text style={styles.modalCloseText}>X</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {error ? (
-                        <View style={styles.modalError}>
-                            <Text style={styles.modalErrorText}>{error}</Text>
-                        </View>
-                    ) : null}
-
-                    <View style={styles.modalBody}>
-                        <Text style={styles.inputLabel}>채팅방 이름</Text>
-                        <TextInput
-                            style={styles.modalTextInput}
-                            value={roomName}
-                            onChangeText={setRoomName}
-                            placeholder="예: 프로젝트 팀 회의"
-                            editable={!isCreating}
-                        />
-                    </View>
-                    
-                    <TouchableOpacity
-                        style={[styles.modalButton, (isCreating || roomName.trim() === '') && styles.modalButtonDisabled]}
-                        onPress={handleCreateRoom}
-                        disabled={isCreating || roomName.trim() === ''}
-                    >
-                        {isCreating ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                            <Text style={styles.modalButtonText}>방 생성하기</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
-    );
-});
+  }, [userId]);
 
 
-// --- 5. 메인 컴포넌트: App (웹소켓 연결 관리 및 상태 중앙 집중화) ---
-export default function App() {
-    // ----------------------------
-    // 5-1. 상태 관리
-    // ----------------------------
-    const [socket, setSocket] = useState(null);
-    const [connected, setConnected] = useState(false);
-    const [userId, setUserId] = useState(MOCK_USER_ID); // Mock User ID 사용
-    const [rooms, setRooms] = useState(INITIAL_ROOMS);
-    const [messagesByRoom, setMessagesByRoom] = useState(INITIAL_MESSAGES);
-    const [currentRoomId, setCurrentRoomId] = useState(INITIAL_ROOMS[0].ROOM_ID);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const latestRoomIdRef = useRef(currentRoomId); // 웹소켓 핸들러에서 최신 RoomId를 참조하기 위한 Ref
-    
-    useEffect(() => {
-        latestRoomIdRef.current = currentRoomId;
-    }, [currentRoomId]);
+  /** 메시지 전송 (변경 없음) */
+  const sendMessage = useCallback(/* ... */ (roomId, text) => {
+      if (!socket?.connected) {
+        setStatus({ msg: '연결되지 않았습니다.', type: 'error' });
+        return;
+      }
+      const temp = {
+        id: 'temp-' + Date.now(),
+        ROOM_ID: String(roomId),
+        USER_ID: String(userId),
+        TEXT: text,
+        TIMESTAMP: new Date(),
+        NICKNAME: userNickname,
+      };
+      setMessagesByRoom((prev) => ({ ...prev, [roomId]: [...(prev[roomId] || []), temp] }));
 
-    const userNickname = useMemo(() => `${userId.substring(0, 8)}...`, [userId]);
-
-    // ----------------------------
-    // 5-2. 웹소켓 연결 및 이벤트 핸들링 (O(1) on event)
-    // ----------------------------
-    useEffect(() => {
-        const ws = new WebSocket(`${WEBSOCKET_URL}?userId=${userId}`);
-        setSocket(ws);
-
-        ws.onopen = () => {
-            console.log('웹소켓 연결 성공');
-            setConnected(true);
-            
-            // 연결 성공 시, 서버에 현재 참여 중인 방 목록 요청을 보낸다고 가정
-            // ws.send(JSON.stringify({ type: 'GET_ROOMS', userId: userId }));
-            // ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomId: latestRoomIdRef.current })); // 현재 방 입장
-        };
-
-        ws.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            console.log('메시지 수신:', data);
-
-            switch (data.type) {
-                case 'ROOM_LIST':
-                    // 서버로부터 방 목록 수신 시 rooms 상태 업데이트
-                    // setRooms(data.rooms);
-                    break;
-                case 'MESSAGE':
-                    // 서버로부터 새로운 메시지 수신 시 처리 (O(1) 덧붙이기)
-                    setMessagesByRoom(prev => {
-                        const newMsg = {
-                            id: data.id,
-                            USER_ID: data.userId,
-                            TEXT: data.text,
-                            TIMESTAMP: new Date(),
-                        };
-                        const newMessages = [...(prev[data.roomId] || []), newMsg];
-                        return { ...prev, [data.roomId]: newMessages };
-                    });
-                    break;
-                // 기타: 'USER_JOINED', 'ERROR' 등
-                default:
-                    console.log(`알 수 없는 메시지 타입: ${data.type}`);
-            }
-        };
-
-        ws.onclose = (e) => {
-            console.log('웹소켓 연결 종료:', e.code, e.reason);
-            setConnected(false);
-        };
-
-        ws.onerror = (e) => {
-            console.error('웹소켓 오류 발생:', e.message);
-            setConnected(false);
-            Alert.alert("연결 오류", "웹소켓 연결 중 오류가 발생했습니다.");
-        };
-
-        // 클린업 함수: 컴포넌트 언마운트 시 웹소켓 연결 해제
-        return () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.close();
-            }
-        };
-    }, [userId]);
-
-
-    // ----------------------------
-    // 5-3. 채팅 메시지 전송 로직
-    // ----------------------------
-    const sendMessage = useCallback((roomId, text) => {
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            Alert.alert("오프라인", "서버에 연결되지 않았습니다.");
-            return;
+      socket.emit(
+        C.events.sendMessage,
+        {
+          [C.fields.message.roomId]: roomId,
+          [C.fields.message.text]: text,
+          [C.fields.message.nickname]: userNickname,
+        },
+        (ack) => {
+          if (!ack?.ok) setStatus({ msg: `전송 실패: ${ack?.error || 'ERROR'}`, type: 'error' });
         }
+      );
+    }, [socket, userId, userNickname]);
 
-        // 웹소켓으로 JSON 형식 메시지 전송
-        const messagePayload = JSON.stringify({
-            type: 'SEND_MESSAGE',
-            roomId: roomId,
-            userId: userId,
-            text: text,
-            timestamp: new Date().toISOString(),
-        });
-        
-        socket.send(messagePayload);
 
-        // **주의**: 실제 앱에서는 서버에서 메시지를 다시 받아야 하지만, UX를 위해
-        // 임시로 로컬 상태에 먼저 추가하는 'Optimistic Update'를 적용할 수 있습니다.
-        const tempMsg = {
-            id: 'temp-' + Date.now(),
-            USER_ID: userId,
-            TEXT: text,
-            TIMESTAMP: new Date(),
-        };
-        setMessagesByRoom(prev => {
-            const newMessages = [...(prev[roomId] || []), tempMsg];
-            return { ...prev, [roomId]: newMessages };
+  /** [추가] 파일 메시지 전송 */
+  const handlePickFile = useCallback(async () => {
+    try {
+        const res = await DocumentPicker.pick({
+            type: [DocumentPicker.types.allFiles],
         });
 
-    }, [socket, userId]);
+        const file = res[0];
 
+        // 1. 파일 데이터 읽기 (Node.js/WebSocket 전송을 위해 Base64 인코딩)
+        const fileData = await readFileAsBase64(file.uri);
 
-    // ----------------------------
-    // 5-4. 핸들러 함수
-    // ----------------------------
-    const handleSelectRoom = useCallback((roomId) => {
-        // 방 변경 시 이전 방 퇴장, 새 방 입장 메시지를 서버로 보낸다고 가정
-        // if (socket && socket.readyState === WebSocket.OPEN && latestRoomIdRef.current) {
-        //     socket.send(JSON.stringify({ type: 'LEAVE_ROOM', roomId: latestRoomIdRef.current }));
-        // }
-        // if (socket && socket.readyState === WebSocket.OPEN) {
-        //     socket.send(JSON.stringify({ type: 'JOIN_ROOM', roomId: roomId }));
-        // }
-        setCurrentRoomId(roomId);
-    }, []);
+        // 2. 서버로 파일 정보 및 데이터 전송
+        // 이 로직은 sendMessage와 유사하게 socket.emit으로 분리되어야 합니다.
+        sendFileMessage(activeRoomId, file.name, file.type, fileData);
 
-    const handleRoomCreated = useCallback((newRoomId, roomName) => {
-        // 로컬 상태에 새 방 추가 및 바로 선택
-        const newRoom = { ROOM_ID: newRoomId, ROOM_NAME: roomName, ROOM_TYPE: 'GROUP' };
-        setRooms(prev => [...prev, newRoom]);
-        setMessagesByRoom(prev => ({ ...prev, [newRoomId]: [] }));
-        setCurrentRoomId(newRoomId);
-    }, []);
-
-    const currentRoom = useMemo(() => {
-        return rooms.find(r => String(r.ROOM_ID) === String(currentRoomId)) || {};
-    }, [rooms, currentRoomId]);
-
-    const currentMessages = useMemo(() => {
-        const msgs = messagesByRoom[currentRoomId] || [];
-        // 메시지를 시간 순으로 정렬하여 반환 (이미 추가 시점에 정렬되지만 안전 장치)
-        return msgs.sort((a, b) => a.TIMESTAMP.getTime() - b.TIMESTAMP.getTime());
-    }, [messagesByRoom, currentRoomId]);
-
-
-    if (!userId) { // 실제 인증 로직이 있다면 여기서 로딩 처리
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#4F46E5" />
-                <Text style={styles.loadingText}>사용자 인증 중...</Text>
-            </View>
-        );
+    } catch (err) {
+        if (DocumentPicker.isCancel(err)) {
+            // 사용자가 취소했을 경우
+        } else {
+            setStatus({ msg: `파일 선택 오류: ${err.message}`, type: 'error' });
+        }
     }
+  }, [activeRoomId, sendFileMessage, setStatus]);
+
+  /** 방 클릭 (변경 없음) */
+  const openRoom = useCallback((rid) => {
+    setActiveRoomId(String(rid));
+  }, []);
+
+  /** [수정] 채팅방 닫기 (넓은/좁은 화면 공용) */
+  const closeActiveRoom = useCallback(() => {
+    setActiveRoomId(null);
+  }, []);
+
+  // [추가] 레이아웃 변경 핸들러
+  const handleRootLayout = useCallback((e) => {
+    const { width, height } = e.nativeEvent.layout;
+    setWindowSize({ width, height });
+  }, []);
+
+  // [추가] O(N) -> O(1) 조회 최적화 (useMemo)
+  const activeRoomData = useMemo(() => {
+    if (!activeRoomId) return null;
+
+    const msgs = (messagesByRoom[activeRoomId] || [])
+      .slice()
+      .sort((a, b) => (a.TIMESTAMP?.valueOf?.() || 0) - (b.TIMESTAMP?.valueOf?.() || 0));
     
-    // ----------------------------
-    // 5-5. 렌더링
-    // ----------------------------
+    // O(N) (N=rooms.length) 이지만, activeRoomId가 바뀔 때만 실행됨
+    const roomName = rooms.find((r) => String(r.ROOM_ID) === String(activeRoomId))?.ROOM_NAME;
+
+    return { msgs, roomName };
+  }, [activeRoomId, messagesByRoom, rooms]);
+
+
+  // 인증/로딩 가드 (변경 없음)
+  if (!userId) {
     return (
-        <View style={styles.container}>
-            {/* Sidebar */}
-            <ChatSidebar
-                userNickname={userNickname}
-                connected={connected}
-                rooms={rooms}
-                currentRoomId={currentRoomId}
-                onSelectRoom={handleSelectRoom}
-                onOpenCreateModal={() => setIsModalOpen(true)}
-            />
-
-            {/* Main Chat Window */}
-            <ChatWindow
-                roomId={currentRoomId}
-                roomName={currentRoom.ROOM_NAME || "채팅방을 선택하세요"}
-                userId={userId}
-                messages={currentMessages}
-                sendMessage={sendMessage}
-            />
-
-            {/* Create Room Modal */}
-            <CreateRoomModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onRoomCreated={handleRoomCreated}
-            />
-        </View>
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text style={{ marginTop: 8 }}>로그인 정보가 없습니다. 로그인 페이지로 돌아가 주세요.</Text>
+      </View>
     );
+  }
+  
+  /** ──────────────────
+   * [수정] 반응형 렌더링
+   * ────────────────── */
+  const renderContent = () => {
+    // 1. 좁은 화면 (모바일/태블릿 세로)
+    if (isNarrow) {
+      if (activeRoomId && activeRoomData) {
+        // 1-1. 좁은 화면 + 채팅방 선택됨
+        return (
+          <ChatRoomScreen
+            key={activeRoomId}
+            roomId={activeRoomId}
+            onPressPlus={handlePickFile}
+            roomName={activeRoomData.roomName}
+            userId={userId}
+            messages={activeRoomData.msgs}
+            connected={connected}
+            onSend={sendMessage}
+            socket={socket}
+            onClose={closeActiveRoom}
+            isNarrow={true}
+          />
+        );
+      }
+      // 1-2. 좁은 화면 + 채팅방 미선택 (목록)
+      return (
+        <ChatListComponent
+          rooms={rooms}
+          connected={connected}
+          userNickname={userNickname}
+          onOpenRoom={openRoom}
+          activeRoomId={activeRoomId}
+          isNarrow={true}
+        />
+      );
+    }
+
+    // 2. 넓은 화면 (PC)
+    return (
+      <View style={styles.wrap}>
+        {/* 2-1. 좌측 사이드바 (고정) */}
+        <ChatListComponent
+          rooms={rooms}
+          connected={connected}
+          userNickname={userNickname}
+          onOpenRoom={openRoom}
+          activeRoomId={activeRoomId}
+          isNarrow={false}
+        />
+
+        {/* 2-2. 우측 컨텐츠 영역 (선택에 따라 변경) */}
+        <View style={styles.right}>
+          {activeRoomId && activeRoomData ? (
+            // 채팅방 선택됨
+            <ChatRoomScreen
+              key={activeRoomId}
+              roomId={activeRoomId}
+              roomName={activeRoomData.roomName}
+              onPressPlus={handlePickFile}
+              userId={userId}
+              messages={activeRoomData.msgs}
+              connected={connected}
+              onSend={sendMessage}
+              socket={socket}
+              onClose={closeActiveRoom}
+              isNarrow={false}
+            />
+          ) : (
+            // 채팅방 미선택 (빈 화면)
+            <View style={[styles.center, { backgroundColor: '#F9FAFB' }]}>
+              <Text style={styles.emptyTxt}>채팅방을 선택하세요.</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView
+      style={styles.safe}
+      onLayout={handleRootLayout} // [추가] 레이아웃 변경 감지
+    >
+      {renderContent()}
+      <Toast msg={status.msg} type={status.type} />
+    </SafeAreaView>
+  );
 }
 
-// --- 6. 스타일 시트 (이전 버전과 동일) ---
+/* ────────────── styles (수정됨) ────────────── */
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        flexDirection: 'row', // 사이드바와 채팅창을 가로로 배치
-        backgroundColor: '#F3F4F6',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-    },
-    loadingText: {
-        marginTop: 10,
-        fontSize: 16,
-        color: '#4B5563',
-    },
-    // --- Sidebar Styles ---
-    sidebar: {
-        width: 280, 
-        backgroundColor: '#FFFFFF',
-        borderRightWidth: 1,
-        borderRightColor: '#E5E7EB',
-        padding: 15,
-    },
-    sidebarHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1F2937',
-    },
-    createRoomBtn: {
-        backgroundColor: '#4F46E5',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    createRoomBtnText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    connectionStatusContainer: {
-        marginBottom: 15,
-    },
-    statusText: {
-        fontSize: 12,
-        color: '#4B5563',
-        marginBottom: 3,
-    },
-    nicknameText: {
-        fontWeight: '700',
-        color: '#4F46E5',
-    },
-    statusRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    statusIndicatorText: {
-        fontWeight: '700',
-        marginLeft: 4,
-    },
-    connectedText: {
-        color: '#10B981',
-    },
-    disconnectedText: {
-        color: '#F87171',
-    },
-    indicatorDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginLeft: 5,
-    },
-    connectedDot: {
-        backgroundColor: '#10B981',
-    },
-    disconnectedDot: {
-        backgroundColor: '#F87171',
-    },
-    roomList: {
-        flex: 1,
-    },
-    emptyList: {
-        padding: 10,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderStyle: 'dashed',
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    emptyListText: {
-        color: '#9CA3AF',
-        fontSize: 13,
-        textAlign: 'center',
-    },
-    // --- RoomListItem Styles ---
-    roomItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 12,
-        marginBottom: 6,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    roomItemActive: {
-        backgroundColor: '#4F46E5',
-    },
-    roomItemInactive: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    roomItemText: {
-        fontSize: 14,
-        fontWeight: '600',
-        flexShrink: 1,
-        marginRight: 10,
-    },
-    textWhite: {
-        color: '#FFFFFF',
-    },
-    textGray: {
-        color: '#374151',
-    },
-    roomTypeBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 15,
-    },
-    badgeActive: {
-        backgroundColor: '#3730A3', // Indigo-700
-    },
-    badgeInactive: {
-        backgroundColor: '#E5E7EB', // Gray-200
-    },
-    roomTypeText: {
-        fontSize: 10,
-    },
-    // --- ChatWindow Styles ---
-    chatWindow: {
-        flex: 1,
-        backgroundColor: '#F3F4F6',
-    },
-    welcomeContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    welcomeText: {
-        fontSize: 18,
-        color: '#9CA3AF',
-        fontWeight: '500',
-    },
-    chatHeader: {
-        padding: 15,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    chatHeaderTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1F2937',
-    },
-    chatHeaderSubtitle: {
-        fontSize: 11,
-        color: '#6B7280',
-        marginTop: 2,
-    },
-    messageList: {
-        flex: 1,
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-    },
-    // Message Bubble Styles
-    myMessageContainer: {
-        alignItems: 'flex-end',
-        marginBottom: 10,
-    },
-    otherMessageContainer: {
-        alignItems: 'flex-start',
-        marginBottom: 10,
-    },
-    bubbleContainer: {
-        maxWidth: '70%',
-    },
-    myBubble: {
-        backgroundColor: '#4F46E5', // Indigo-600
-        padding: 10,
-        borderRadius: 15,
-        borderTopRightRadius: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    otherBubble: {
-        backgroundColor: '#FFFFFF',
-        padding: 10,
-        borderRadius: 15,
-        borderTopLeftRadius: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    myText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        marginBottom: 2,
-    },
-    otherText: {
-        color: '#1F2937',
-        fontSize: 14,
-        marginBottom: 2,
-    },
-    otherUsername: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#6B7280',
-        marginBottom: 2,
-    },
-    myTime: {
-        color: '#A5B4FC', // Indigo-300
-        fontSize: 10,
-        textAlign: 'right',
-    },
-    otherTime: {
-        color: '#9CA3AF', // Gray-400
-        fontSize: 10,
-        textAlign: 'right',
-    },
-    // Input Area Styles
-    inputContainer: {
-        flexDirection: 'row',
-        padding: 15,
-        backgroundColor: '#FFFFFF',
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    textInput: {
-        flex: 1,
-        height: 40,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 20,
-        paddingHorizontal: 15,
-        marginRight: 10,
-        fontSize: 16,
-        color: '#1F2937',
-    },
-    sendButton: {
-        width: 60,
-        height: 40,
-        backgroundColor: '#4F46E5',
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sendButtonDisabled: {
-        backgroundColor: '#A5B4FC',
-    },
-    sendButtonText: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-    },
-    // --- Modal Styles ---
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '80%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 10,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        marginBottom: 15,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#4F46E5',
-    },
-    modalCloseText: {
-        fontSize: 18,
-        color: '#9CA3AF',
-    },
-    modalError: {
-        backgroundColor: '#FEE2E2',
-        borderWidth: 1,
-        borderColor: '#F87171',
-        padding: 10,
-        borderRadius: 8,
-        marginBottom: 15,
-    },
-    modalErrorText: {
-        color: '#B91C1C',
-        fontSize: 13,
-    },
-    modalBody: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#374151',
-        marginBottom: 5,
-    },
-    modalTextInput: {
-        height: 45,
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        fontSize: 16,
-    },
-    modalButton: {
-        backgroundColor: '#4F46E5',
-        padding: 12,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalButtonDisabled: {
-        backgroundColor: '#A5B4FC',
-    },
-    modalButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
+  // [수정] 최소 너비/높이 적용
+  safe: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
+  },
+  systemRow: { 
+    alignItems: 'center', 
+    marginVertical: 10 
+},
+  systemTxt: { 
+    fontSize: 12, 
+    color: '#9CA3AF', 
+    backgroundColor: '#E5E7EB', 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 12 
+},
+
+  // [추가] 파일 메시지 스타일
+  fileBubble: { 
+    padding: 12, 
+    minWidth: 160, 
+    borderWidth: 1, 
+    borderColor: '#D1D5DB' 
+},
+  fileIcon: { 
+    fontSize: 24, 
+    marginBottom: 4 
+},
+  fileNameTxt: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#1F2937', 
+    marginBottom: 6 
+},
+  downloadBtn: { 
+    backgroundColor: '#4F46E5', 
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    borderRadius: 8, 
+    marginTop: 4 
+},
+  downloadTxt: { 
+    color: '#FFFFFF', 
+    fontSize: 12, 
+    fontWeight: '700', 
+    textAlign: 'center' 
+},
+  wrap: { flex: 1, flexDirection: 'row', maxWidth: 1200, alignSelf: 'center', width: '100%', backgroundColor: '#F3F4F6', overflow: 'hidden' /* [수정] */ },
+
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  sidebar: { width: 300, backgroundColor: '#fff', borderRightWidth: 1, borderColor: '#E5E7EB', padding: 14 },
+  sbHeader: { marginBottom: 12, borderBottomWidth: 1, borderColor: '#F3F4F6', paddingBottom: 10 }, // [수정] 구분선
+  sbTitle: { fontSize: 18, fontWeight: '800', color: '#1F2937', marginBottom: 6 },
+  connRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  connTxt: { fontSize: 12, color: '#6B7280' },
+  connState: { fontSize: 12, fontWeight: '800', marginLeft: 4 },
+  on: { color: '#10B981' },
+  off: { color: '#EF4444' },
+  dot: { width: 8, height: 8, borderRadius: 4, marginLeft: 6 },
+  dotOn: { backgroundColor: '#10B981' },
+  dotOff: { backgroundColor: '#EF4444' },
+  meTxt: { fontSize: 12, color: '#4B5563', marginTop: 2 },
+
+  // [제거] arrBtn* (정렬 버튼 제거됨)
+
+  roomItem: { padding: 12, borderRadius: 10, marginBottom: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  roomInactive: { backgroundColor: '#F9FAFB' /* [수정] 비활성 색 */ },
+  // [추가] 활성 채팅방 스타일
+  roomActive: { backgroundColor: '#4F46E5' },
+  roomTxt: { fontSize: 14, fontWeight: '700', flexShrink: 1, marginRight: 8 },
+  gray: { color: '#374151' },
+  white: { color: '#FFFFFF' }, // [추가]
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  badgeIn: { backgroundColor: '#E5E7EB' },
+  badgeActive: { backgroundColor: '#4338CA' }, // [추가]
+  badgeTxt: { fontSize: 10 },
+
+  right: { flex: 1, overflow: 'hidden' }, // [수정]
+  // [추가] 채팅방 컨테이너 경계선
+  chatRoomBorder: {
+    borderLeftWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+
+  toast: { position: 'absolute', top: 0, left: 0, right: 0, padding: 10, alignItems: 'center', zIndex: 9999 },
+  toastOk: { backgroundColor: '#10B981' },
+  toastErr: { backgroundColor: '#EF4444' },
+  toastTxt: { color: '#fff', fontWeight: '700' },
+
+  empty: { paddingVertical: 20, alignItems: 'center' },
+  emptyTxt: { color: '#6B7280' },
+
+  // [제거] dock 스타일
+});
+
+/* 오버레이 창 스타일 (wS) (수정됨) */
+const wS = StyleSheet.create({
+  window: {
+    // [제거] position: 'absolute' 및 그림자/borderRadius
+    backgroundColor: '#FFFFFF',
+  },
+  plusBtn: { width: 32, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  plusBtnTxt: { fontSize: 24, color: '#4F46E5', fontWeight: 'bold' },
+  header: {
+    height: 44,
+    paddingHorizontal: 12,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1, // [추가] 구분선
+    borderColor: '#E5E7EB',
+  },
+  headerCompact: { height: 40, paddingHorizontal: 10 },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 8},
+  headerLeftCompact: { paddingRight: 6 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', columnGap: 6 },
+
+  title: { fontSize: 14, fontWeight: '800', color: '#111827', maxWidth: 360 },
+  titleCompact: { fontSize: 13, maxWidth: 260 },
+  
+  // [제거] headerBtn* (최소화 버튼 제거됨)
+
+  close: { width: 32, height: 28, borderRadius: 6, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  closeTxt: { fontSize: 18, color: '#111827', fontWeight: 'bold' }, // [수정] '×'와 'ᐸ' 둘 다 잘 보이도록
+
+  body: { flex: 1, paddingHorizontal: 12, paddingTop: 8 },
+  bodyCompact: { paddingHorizontal: 8, paddingTop: 6 },
+  listContent: { paddingBottom: 8 },
+
+  // ... (말풍선 스타일 - myRow ~ otherTime - 변경 없음) ...
+  myRow: { alignItems: 'flex-end', marginBottom: 10 },
+  otherRow: { alignItems: 'flex-start', marginBottom: 10 },
+  wrap: { maxWidth: '80%', flexDirection: 'row', alignItems: 'flex-end' },
+  time: { marginHorizontal: 5, marginBottom: 5, justifyContent: 'flex-end' },
+  my: { backgroundColor: '#4F46E5', padding: 10, borderRadius: 15, borderTopRightRadius: 3 },
+  other: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#EEE', padding: 10, borderRadius: 15, borderTopLeftRadius: 3 },
+  myCompact: { padding: 8, borderRadius: 12 },
+  otherCompact: { padding: 8, borderRadius: 12 },
+  myTxt: { color: '#fff', fontSize: 14 },
+  otherTxt: { color: '#111827', fontSize: 14 },
+  nick: { fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 2, marginLeft: 10 },
+  msgTxtCompact: { fontSize: 13 },
+  myTime: { color: '#A5B4FC', fontSize: 10 },
+  otherTime: { color: '#9CA3AF', fontSize: 10 },
+
+  // [수정] 하단 Radius 제거
+  inputRow: { flexDirection: 'row', padding: 12, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: '#FFF' },
+  inputRowCompact: { padding: 8 },
+  input: { flex: 1, height: 40, backgroundColor: '#F3F4F6', borderRadius: 20, paddingHorizontal: 14, marginRight: 8, fontSize: 16 },
+  inputCompact: { height: 36, borderRadius: 18, fontSize: 15, paddingHorizontal: 12, marginRight: 6 },
+  send: { width: 64, height: 40, borderRadius: 20, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center' },
+  sendDis: { backgroundColor: '#A5B4FC' },
+  sendTxt: { color: '#fff', fontWeight: '700' },
+  sendCompact: { width: 56, height: 36, borderRadius: 18 },
+  sendTxtCompact: { fontSize: 13 },
 });

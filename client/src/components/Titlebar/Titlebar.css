@@ -1,0 +1,78 @@
+/* 1. 타이틀바 전체 컨테이너 */
+.titlebar {
+  display: flex;
+  justify-content: space-between; /* 양쪽 끝으로 요소 배치 */
+  align-items: center; /* 수직 중앙 정렬 */
+  
+  height: 40px; /* 💡 타이틀바 높이 (필수) */
+  flex-shrink: 0; /* 💡 1. 창 크기가 줄어도 높이 유지 (필수) */
+  
+  background-color: #f8f9fa; /* 세련된 배경색 */
+  border-bottom: 1px solid #e9ecef; /* 구분선 */
+  color: #212529;
+  user-select: none; /* 텍스트 선택 방지 */
+  
+  position: relative; /* 💡 2. 'fixed'가 아님! (필수) */
+  
+  /* 둥근 모서리 적용 */
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+/* 2. 창 드래그 영역 */
+.titlebar-drag-region {
+  flex-grow: 1; /* 남은 공간 모두 차지 */
+  height: 100%;
+  -webkit-app-region: drag; /* 💡 핵심: 드래그 영역 */
+  display: flex;
+  align-items: center;
+}
+
+/* 3. 앱 제목 */
+.titlebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  padding-left: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* 4. 창 제어 버튼 (최소/최대/닫기) 컨테이너 */
+.titlebar-controls {
+  display: flex;
+  height: 100%;
+}
+
+/* 5. 개별 제어 버튼 */
+.titlebar-button {
+  -webkit-app-region: no-drag; /* 💡 핵심: 버튼은 드래그 제외 */
+  
+  width: 46px;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.titlebar-button:hover {
+  background-color: #e9ecef;
+}
+
+/* 닫기 버튼 둥근 모서리 및 호버 */
+#close-btn {
+  border-top-right-radius: 12px;
+}
+#close-btn:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+/* 버튼 내부 아이콘 SVG 스타일 */
+.titlebar-button svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+}

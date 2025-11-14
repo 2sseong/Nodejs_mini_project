@@ -1,12 +1,12 @@
 // src/socket.js
-// ¸ñÀû: DB Á¢±Ù Á¦°Å(·¹Æ÷/¼­ºñ½º·Î ÀÌ°ü), ¼ÒÄÏ ÀÌº¥Æ®¸¸ ´ã´ç
+// ëª©ì : DB ì ‘ê·¼ ì œê±°(ë ˆí¬/ì„œë¹„ìŠ¤ë¡œ ì´ê´€), ì†Œì¼“ ì´ë²¤íŠ¸ë§Œ ë‹´ë‹¹
 
 import { addSocket, removeSocket } from './sockets/socketStore.js';
 import chatService from './features/chat/chat.service.js';
 
 export default function initSocket(io) {
     io.on('connection', (socket) => {
-        // 1) Á¢¼Ó »ç¿ëÀÚ ½Äº°
+        // 1) ì ‘ì† ì‚¬ìš©ìž ì‹ë³„
         const rawUserId = socket.handshake?.query?.userId;
         const userId = rawUserId ? String(rawUserId).trim() : '';
 
@@ -16,19 +16,19 @@ export default function initSocket(io) {
             return;
         }
 
-        // 2) ¼ÒÄÏ ÀúÀå + °³ÀÎ Ã¤³Î join
+        // 2) ì†Œì¼“ ì €ìž¥ + ê°œì¸ ì±„ë„ join
         addSocket(userId, socket);
         socket.data.userId = userId;
         socket.join(`user:${userId}`);
         console.log(`[socket] user connected: ${userId}`);
 
         // ----------------------------------------------------
-        // [rooms:fetch] »ç¿ëÀÚ ¹æ ¸ñ·Ï Á¶È¸ & ¹æ Á¶ÀÎ
+        // [rooms:fetch] ì‚¬ìš©ìž ë°© ëª©ë¡ ì¡°íšŒ & ë°© ì¡°ì¸
         // ----------------------------------------------------
         socket.on('rooms:fetch', async () => {
             try {
                 const rooms = await chatService.listRoomsForUser({ userId });
-                // ¹æ Á¶ÀÎ(ÀÌ¹Ì Á¶ÀÎµÈ ¹æÀº °Ç³Ê¶Ü)
+                // ë°© ì¡°ì¸(ì´ë¯¸ ì¡°ì¸ëœ ë°©ì€ ê±´ë„ˆëœ€)
                 rooms.forEach((r) => {
                     const rid = String(r.ROOM_ID);
                     if (!socket.rooms.has(rid)) socket.join(rid);
@@ -41,7 +41,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [room:join] ¸í½ÃÀû ¹æ ÁøÀÔ (ÆäÀÌÁö ÀüÈ¯ µî)
+        // [room:join] ëª…ì‹œì  ë°© ì§„ìž… (íŽ˜ì´ì§€ ì „í™˜ ë“±)
         // ----------------------------------------------------
         socket.on('room:join', ({ roomId }) => {
             const rid = String(roomId || '').trim();
@@ -51,7 +51,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [room:leave] ¸í½ÃÀû ¹æ ÀÌÅ»
+        // [room:leave] ëª…ì‹œì  ë°© ì´íƒˆ
         // ----------------------------------------------------
         socket.on('room:leave', ({ roomId }) => {
             const rid = String(roomId || '').trim();
@@ -61,7 +61,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [chat:get_history] ¸Þ½ÃÁö È÷½ºÅä¸® ºÒ·¯¿À±â
+        // [chat:get_history] ë©”ì‹œì§€ ížˆìŠ¤í† ë¦¬ ë¶ˆëŸ¬ì˜¤ê¸°
         // ----------------------------------------------------
         socket.on('chat:get_history', async ({ roomId, limit }) => {
             const rid = String(roomId || '').trim();
@@ -79,14 +79,14 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [chat:message] ¸Þ½ÃÁö ÀúÀå & ºê·ÎµåÄ³½ºÆ®
-        //  - ¼­ºñ½º°¡ DB Æ®·£Àè¼Ç Ä¸½¶È­
-        //  - ack ÄÝ¹é(¼±ÅÃ): Å¬¶óÀÌ¾ðÆ®¿¡¼­ Àü¼Û È®ÀÎ¿¡ »ç¿ë °¡´É
+        // [chat:message] ë©”ì‹œì§€ ì €ìž¥ & ë¸Œë¡œë“œìºìŠ¤íŠ¸
+        //  - ì„œë¹„ìŠ¤ê°€ DB íŠ¸ëžœìž­ì…˜ ìº¡ìŠí™”
+        //  - ack ì½œë°±(ì„ íƒ): í´ë¼ì´ì–¸íŠ¸ì—ì„œ ì „ì†¡ í™•ì¸ì— ì‚¬ìš© ê°€ëŠ¥
         // ----------------------------------------------------
         socket.on('chat:message', async (msg, ack) => {
             try {
                 const { ROOM_ID, CONTENT, NICKNAME } = msg || {};
-                // °£´Ü °ËÁõ
+                // ê°„ë‹¨ ê²€ì¦
                 if (!ROOM_ID || !String(CONTENT || '').trim()) {
                     if (typeof ack === 'function') ack({ ok: false, error: 'Invalid payload' });
                     else socket.emit('chat:error', { message: 'Invalid message data' });
@@ -99,10 +99,10 @@ export default function initSocket(io) {
                     CONTENT: String(CONTENT),
                 });
 
-                // ¹æ¿¡ ºê·ÎµåÄ³½ºÆ® (ÀÚ±â ÀÚ½Å Æ÷ÇÔ)
+                // ë°©ì— ë¸Œë¡œë“œìºìŠ¤íŠ¸ (ìžê¸° ìžì‹  í¬í•¨)
                 io.to(String(saved.ROOM_ID)).emit('chat:message', {
                     ...saved,
-                    NICKNAME: NICKNAME, // ÇÊ¿ä ½Ã ¼­ºñ½º¿¡¼­ ´Ð³×ÀÓ Á¶ÀÎÇØ ¿Íµµ µÊ
+                    NICKNAME: NICKNAME, // í•„ìš” ì‹œ ì„œë¹„ìŠ¤ì—ì„œ ë‹‰ë„¤ìž„ ì¡°ì¸í•´ ì™€ë„ ë¨
                 });
 
                 if (typeof ack === 'function') ack({ ok: true, id: saved.MSG_ID, sentAt: saved.SENT_AT });
@@ -114,7 +114,7 @@ export default function initSocket(io) {
         });
 
         // ----------------------------------------------------
-        // [disconnect] Á¤¸®
+        // [disconnect] ì •ë¦¬
         // ----------------------------------------------------
         socket.on('disconnect', (reason) => {
             removeSocket(userId);

@@ -49,6 +49,26 @@ export async function leaveRoom({ roomId, userId }) {
 
     return rowsAffected;
 }
+
+// [추가] 파일 메시지 저장
+async function saveFileMessage({ roomId, userId, userNickname, fileName, fileURL, mimeType }) {
+    // 파일 메시지에 필요한 데이터 구조
+    const messageData = {
+        ROOM_ID: roomId,
+        USER_ID: userId,
+        NICKNAME: userNickname,
+        TEXT: fileName, // 파일 메시지에서는 TEXT 필드에 파일 이름을 저장
+        MESSAGE_TYPE: 'FILE', // 새로운 타입 추가
+        FILE_URL: fileURL,
+        MIME_TYPE: mimeType,
+        // ... 필요한 다른 필드
+    };
+
+    // Chat Repository를 호출하여 Oracle에 저장
+    const savedMsg = await chatRepository.insertMessage(messageData);
+
+    return savedMsg; // 저장된 메시지 객체 반환
+}
 // ------------------------------
 export default {
     createRoom,
@@ -57,4 +77,5 @@ export default {
     saveMessage,
     inviteUserToRoom,
     leaveRoom,
+    saveFileMessage,
 };

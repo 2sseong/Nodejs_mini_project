@@ -14,7 +14,7 @@ import Roompage from './RoomPage.jsx'
 import Feather from 'react-native-vector-icons/Feather'; 
 // 이 환경에서 테스트를 위해 Feather 컴포넌트가 없다고 가정하고, 
 // 경고 메시지 없이 실행되도록 아래와 같이 대체 아이콘 정의를 사용합니다.
-const Icon = (props) => {
+/*const Icon = (props) => {
     // 개발 환경에 따라 아이콘이 표시되지 않을 경우를 대비한 텍스트 대체
     try {
         if (!Feather) throw new Error("Feather not available");
@@ -22,7 +22,8 @@ const Icon = (props) => {
     } catch (e) {
         return <Text style={{ color: props.color, fontSize: props.size, padding: 5 }}>[{props.name}]</Text>;
     }
-}
+}*/
+const Icon = Feather;
 
 
 // --- 1. 서브 페이지: UserPage (Placeholder) ---
