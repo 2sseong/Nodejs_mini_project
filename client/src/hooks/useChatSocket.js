@@ -118,6 +118,8 @@ export function useChatSocket({ userId, userNickname }) {
 
         };
 
+        
+
 
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);

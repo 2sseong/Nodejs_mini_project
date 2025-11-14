@@ -13,11 +13,16 @@ export default function MessageList({ messages, userId }) {
         <div className="message-area">
             {messages.map((m, i) => (
                 <MessageItem
-                    key={i}
+                    key={m.MSG_ID || i} // 1. Key를 고유 ID로 변경
                     mine={m.SENDER_ID === userId}
                     nickname={m.SENDER_ID === userId ? m.NICKNAME : (m.NICKNAME || m.SENDER_ID)}
                     sentAt={m.SENT_AT}
-                    content={m.CONTENT || m.text}
+                    content={m.CONTENT} // 2. '|| m.text' 제거 (파일일 때 CONTENT가 null임)
+
+                    // 3. [핵심] 파일 정보 전달 추가
+                    messageType={m.MESSAGE_TYPE}
+                    fileUrl={m.FILE_URL}
+                    fileName={m.FILE_NAME}
                 />
             ))}
             <div ref={bottomRef} />
