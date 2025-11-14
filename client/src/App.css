@@ -1,10 +1,60 @@
+/* 1. 💡 전역 및 루트 스타일 (투명 창을 위해 필수) */
+/* 기존 #root 스타일을 대체/수정합니다. */
+html,
+body,
 #root {
+  /* 💡 핵심: 웹페이지 자체의 배경을 투명하게 */
+  background: transparent; 
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* 2. 💡 앱 쉘 (가짜 창) 스타일 (신규 추가) */
+/* App.jsx의 최상위 <div className="App">에 적용됩니다. */
+.App {
+  width: 100%;
+  height: 100%;
+  
+  /* '가짜 창' 스타일링 */
+  background-color: #ffffff; /* 1. 앱의 실제 배경색 (불투명해야 함) */
+  
+  /* 💡 2. 학생분이 요청한 '둥근 모서리' */
+  border-radius: 12px; 
+  
+  /* 💡 3. '이쁘게': PC 앱처럼 입체감을 주는 그림자 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 10px 30px rgba(0, 0, 0, 0.05);
+
+  /* 💡 4. 내부 콘텐츠가 모서리를 삐져나가지 않도록 */
+  overflow: hidden; 
+  
+  /* 레이아웃 설정 (Titlebar + Content) */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 3. 💡 콘텐츠 영역 스타일 (신규 추가) */
+/* Titlebar를 제외한 실제 콘텐츠 영역입니다. */
+.content-area {
+  flex-grow: 1; /* Titlebar를 제외한 모든 공간을 차지 */
+  overflow-y: auto; /* 💡 콘텐츠가 영역을 넘치면 자동으로 스크롤바 생성 */
+  
+  /* * ▼ 학생분이 제공한 기존 #root 스타일을 이곳으로 이동 ▼ 
+   * (콘텐츠가 중앙에 오도록 함)
+   */
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  
+  /* 시스템 폰트 적용 (선택 사항) */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+
+/* === 4. 학생분이 제공한 기존 App.css 콘텐츠 (변경 없음) === */
+/* (이제 이 스타일들은 .content-area 내부에서 작동합니다) */
 .logo {
   height: 6em;
   padding: 1.5em;

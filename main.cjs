@@ -47,10 +47,14 @@ function createWindow () {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
+    frame: false,
+    transparent: true, // 💡 1. 창을 투명하게 만듭니다.
+    hasShadow: false,  // 💡 2. 투명 창의 기본 그림자를 제거합니다. (CSS로 직접 만듭니다)
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true, 
-      // preload: path.join(__dirname, 'preload.js') // IPC 통신이 필요하면 추가
+      // preload 스크립트 경로를 지정합니다.
+      preload: path.join(__dirname, 'preload.js')
     }
   });
   
@@ -80,4 +84,26 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// === 💡 IPC 핸들러 추가 ===
+const { ipcMain } = require('electron');
+
+// 최소화 요청 처리
+ipcMain.on('window-minimize', () => {
+  mainWindow.minimize();
+});
+
+// 최대화/복원 요청 처리
+ipcMain.on('window-maximize', () => {
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow.maximize();
+  }
+});
+
+// 닫기 요청 처리
+ipcMain.on('window-close', () => {
+  mainWindow.close();
 });
