@@ -27,10 +27,12 @@ function startBackendServer() {
     // 서버가 완전히 준비된 후 창을 띄우기 위해, 실제 서버 로그 메시지를 감지하는 것이 좋음
     // ex)서버가 'Listening on port 8080' 이라는 로그를 출력하면 그 때 createWindow()를 호출
     
-    // 3초 대기
-    if (!mainWindow) {
-        setTimeout(createWindow, 3000); 
-    }
+    setTimeout(() => {
+        // 💡 타이머가 실행되는 시점에 다시 한번 mainWindow가 없는지 확인
+        if (!mainWindow) {
+    createWindow();
+        }
+    }, 3000);
   });
 
   backendProcess.stderr.on('data', (data) => {
@@ -50,6 +52,7 @@ function createWindow () {
     frame: false,
     transparent: true, // 💡 1. 창을 투명하게 만듭니다.
     hasShadow: false,  // 💡 2. 투명 창의 기본 그림자를 제거합니다. (CSS로 직접 만듭니다)
+    resizable: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true, 

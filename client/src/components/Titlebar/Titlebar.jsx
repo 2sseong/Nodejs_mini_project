@@ -31,7 +31,7 @@ function Titlebar() {
     <div className="titlebar">
       {/* 이 부분이 창을 드래그할 수 있는 영역이 됩니다. */}
       <div className="titlebar-drag-region">
-        <div className="titlebar-title">My Electron App</div>
+        <div className="titlebar-title">test</div>
       </div>
 
       {/* 창 제어 버튼 */}
