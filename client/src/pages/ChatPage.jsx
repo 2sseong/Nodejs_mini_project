@@ -79,7 +79,7 @@ const handleSendFile = ({ fileName, mimeType, fileData }) => {
         return;
     }
 
-    console.log('Sending file:', fileName);
+    console.log(`Sending file: ${fileName}, mimeType: ${mimeType}, fileData: ${fileData}`);
 
     socket.emit('SEND_FILE', {
         roomId: currentRoomId,

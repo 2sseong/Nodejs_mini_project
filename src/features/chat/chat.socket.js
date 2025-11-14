@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 // [중요] 업로드 디렉터리 설정 (예: /src/public/uploads)
 // 이 경로는 4단계의 express.static과 일치해야 합니다.
-const UPLOAD_DIR = path.join(__dirname, '../../../client/public/uploads');
+const UPLOAD_DIR = path.join(__dirname, '..','..','..','public','uploads');
 // (참고: 프로덕션에서는 fs.mkdir로 디렉터리 존재 여부 확인 및 생성이 필요)
 
 export default function chatSocket(io, socket) {
