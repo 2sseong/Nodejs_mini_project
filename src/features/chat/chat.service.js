@@ -1,74 +1,77 @@
-import * as repo from './chat.repository.js';
+import * as repo from './chat.repository.js'; // [중요] 'repo'로 import
 
 export async function createRoom({ roomName, creatorId }) {
-    // Ʈ�����: �� ���� + ������ ��� �߰�
-    return await repo.createRoomWithCreatorTx({ roomName, creatorId });
+    // (한글 깨짐 원본 유지)
+    return await repo.createRoomWithCreatorTx({ roomName, creatorId });
 }
 
 export async function listRoomsForUser({ userId }) {
-    return await repo.listRoomsByUser({ userId });
+    return await repo.listRoomsByUser({ userId });
 }
 
 export async function getHistory({ roomId }) {
-    return await repo.getHistory({ roomId });
+    return await repo.getHistory({ roomId });
 }
 
+// [수정] 텍스트 메시지 저장
 export async function saveMessage({ userId, ROOM_ID, CONTENT }) {
-    const { msgId, sentAt } = await repo.saveMessageTx({
-        roomId: ROOM_ID, senderId: userId, content: CONTENT,
-    });
-    return {
-        MSG_ID: msgId,
-        ROOM_ID: Number(ROOM_ID),
-        SENDER_ID: userId,
-        CONTENT,
-        SENT_AT: sentAt,
-    };
+    // repo.saveMessageTx를 호출하며 'TEXT' 타입을 명시
+    const savedRow = await repo.saveMessageTx({
+        roomId: ROOM_ID, 
+        senderId: userId, 
+        content: CONTENT,
+        messageType: 'TEXT', // 텍스트임을 명시
+        fileUrl: null,
+        fileName: null,
+    });
+
+    // repo.saveMessageTx가 반환하는 객체를 그대로 반환
+    return savedRow;
+}
+
+// [핵심 수정] 파일 메시지 저장 함수
+export async function saveFileMessage({ roomId, userId, fileName, fileURL, mimeType }) {
+    console.log('chat.service: Saving file message:', { roomId, userId, fileName, fileURL, mimeType });
+
+    const savedRow = await repo.saveMessageTx({
+        roomId: roomId,
+        senderId: userId,
+        content: null, // 파일 메시지는 CONTENT가 NULL
+        messageType: 'FILE', // [중요]
+        fileUrl: fileURL,
+        fileName: fileName
+    });
+
+    return savedRow;
 }
 
 export async function inviteUserToRoom({ roomId, inviterId, inviteeId }) {
-    const exists = await repo.ensureUserExists(inviteeId);
-    if (!exists) throw { status: 404, message: '�ʴ��� ������� ID�� ��ȿ���� �ʽ��ϴ�.' };
+    const exists = await repo.ensureUserExists(inviteeId);
+    if (!exists) throw { status: 404, message: '404 error' };
 
-    const joined = await repo.isMember({ roomId, userId: inviteeId });
-    if (joined) throw { status: 400, message: '�̹� ä�ù濡 ���� ���� ������Դϴ�.' };
+    const joined = await repo.isMember({ roomId, userId: inviteeId });
+    if (joined) throw { status: 400, message: '400 error' };
 
-    await repo.addMemberTx({ roomId, userId: inviteeId });
-    return { roomId, inviteeId };
+    await repo.addMemberTx({ roomId, userId: inviteeId });
+    return { roomId, inviteeId };
 }
-
-// ---  �� ������ �Լ� �߰� ---
 
 export async function leaveRoom({ roomId, userId }) {
-    // Repository ���̾��� ��� ���� �Լ��� ȣ��
-    const rowsAffected = await repo.deleteMember({ roomId, userId });
-
-    if (rowsAffected === 0) {
-        throw { status: 404, message: 'ä�ù� ����� ��ϵǾ� ���� �ʽ��ϴ�.' };
-    }
-
-    return rowsAffected;
+    const rowsAffected = await repo.deleteMember({ roomId, userId });
+    if (rowsAffected === 0) {
+        throw { status: 404, message: '404 error' };
+    }
+    return rowsAffected;
 }
 
-async function saveFileMessage({ roomId, userId, fileName, fileURL }) {
-        // DB 스키마에 따라 T_MESSAGE에 INSERT
-        // (MESSAGE_TYPE='FILE', FILE_URL, FILE_NAME)
-        const savedRow = await chatRepository.createFileMessage({
-            roomId,
-            senderId: userId,
-            messageType: 'FILE',
-            fileUrl: fileURL,
-            fileName: fileName
-        });
-        return savedRow;
-    }
 // ------------------------------
+// chat.socket.js가 'chatService'로 임포트할 수 있도록 default export
 export default {
-    createRoom,
-    listRoomsForUser,
-    getHistory,
-    saveMessage,
-    inviteUserToRoom,
-    leaveRoom,
-    saveFileMessage,
+    createRoom,
+    listRoomsForUser,
+    getHistory,
+    saveMessage,
+    saveFileMessage, // [수정] 수정된 함수 포함
+    inviteUserToRoom,
+    leaveRoom,
 };

@@ -22,7 +22,6 @@ export default function ChatPage() {
         messages,
         currentRoomId,
         socket,
-        nickname,
         selectRoom,
         sendMessage,
         refreshRooms,
@@ -69,31 +68,38 @@ export default function ChatPage() {
     };
     
 
-    // 2. 파일 메시지 전송 핸들러 (새로 추가)
-    const handleSendFile = ({ fileName, mimeType, fileData }) => {
-        if (!socket) return alert('소켓이 연결되지 않았습니다.');
+   // [수정] 파일 메시지 전송 핸들러
+const handleSendFile = ({ fileName, mimeType, fileData }) => {
+    if (!socket) return alert('소켓이 연결되지 않았습니다.');
 
-        console.log('Sending file:', fileName);
+    // [검증] 현재 방 ID와 닉네임이 유효한지 확인
+    if (!currentRoomId || !userNickname) {
+        console.error('Room ID or User Nickname is missing');
+        alert('파일을 전송할 수 없습니다. (정보 부족)');
+        return;
+    }
 
-        // [중요] chat.socket.js에 정의된 'SEND_FILE' 이벤트를 사용합니다.
-        // chat.socket.js는 userNickname을 요구합니다.
-        socket.emit('SEND_FILE', {
-            roomId: currentRoom.id,
-            fileName,
-            mimeType,
-            fileData, // Base64 데이터
-            userNickname: nickname 
-        }, (response) => {
-            // 3. 서버로부터의 콜백 처리
-            if (!response.ok) {
-                console.error('File upload failed:', response.error);
-                alert(`파일 업로드 실패: ${response.error}`);
-            } else {
-                console.log('File upload successful');
-                // 성공 시 별도 처리는 필요 없음 (BROADCAST_MESSAGE로 어차피 받음)
-            }
-        });
-    };
+    console.log('Sending file:', fileName);
+
+    socket.emit('SEND_FILE', {
+        roomId: currentRoomId,
+        fileName,
+        mimeType,
+        fileData, // Base64 데이터
+        userNickname: userNickname
+    }, (response) => {
+        // 3. 서버로부터의 콜백 처리
+        if (!response.ok) {
+            console.error('File upload failed:', response.error);
+            alert(`파일 업로드 실패: ${response.error}`);
+        } else {
+            console.log('File upload successful');
+        }
+    });
+
+    console.log('파일전송 소켓종료');
+};
+
 
     if (!authLoaded) return <div>로딩 중... (인증 확인)</div>;
     if (!userId || !userNickname) return <div>로그인 페이지로 이동 중...</div>;

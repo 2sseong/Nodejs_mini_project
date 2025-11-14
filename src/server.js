@@ -28,7 +28,7 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 // __dirname (ESM)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const PUBLIC_UPLOADS_DIR = path.join(__dirname, '..', 'public', 'uploads');
+const PUBLIC_UPLOADS_DIR = path.join(__dirname, '../client/public/uploads');
 // 미들웨어
 app.use(cors({ origin: CLIENT_URL, credentials: true }))
 app.use(express.json())
