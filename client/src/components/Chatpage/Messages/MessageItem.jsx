@@ -1,7 +1,7 @@
 // src/components/Chatpage/Messages/MessageItem.jsx
 
 // (서버 URL. .env 파일 등에서 관리하는 것이 좋음)
-const SERVER_BASE_URL = 'http://localhost:1337'; 
+// const SERVER_BASE_URL = 'http://localhost:1337'; 
 
 export default function MessageItem(props) {
 
@@ -20,7 +20,7 @@ export default function MessageItem(props) {
     const renderMessageContent = () => {
         if (messageType === 'FILE') {
             // 4단계에서 설정한 정적 경로(/uploads)와 조합
-            const downloadUrl = `${SERVER_BASE_URL}${fileUrl}`;
+            const downloadUrl = fileUrl;
 
             return (
                 <div className="file-message">
