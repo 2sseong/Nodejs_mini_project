@@ -4,6 +4,7 @@ import express from 'express';
 // ?? getConnection 대신 executeQuery와 executeTransaction만 가져옵니다.
 import { executeQuery, executeTransaction } from '../db/oracle.js';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 const router = express.Router();
 
@@ -32,8 +33,8 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: '사용자 ID가 존재하지 않습니다.' });
         }
 
-        // 2. 비밀번호 직접 비교 (O(L) 또는 O(1))
-        const isMatch = (password === user.PASSWORD_HASH);
+        // 2. 비밀번호 비교
+        const isMatch = await bcrypt.compare(password, user.PASSWORD_HASH);
 
         if (!isMatch) {
             return res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
@@ -67,6 +68,42 @@ router.post('/login', async (req, res) => {
     } catch (err) {
         console.error('Login Error:', err);
         // DB 로직이 분리되었으므로 여기서는 별도의 롤백/클로즈 처리가 필요 없습니다. (공간 복잡도 감소)
+        res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+// routes/auth.js (router.post('/register', ...) 내부)
+
+router.post('/signup', async (req, res) => {
+    const { email, password, nickname } = req.body; 
+
+    try {
+        // 1. 데이터 유효성 검사 (아직 구현 안 함, 다음 단계에서 추가)
+        if (!email || !password || !nickname) {
+            return res.status(400).json({ message: '모든 필수 정보를 입력해야 합니다.' });
+        }
+
+        // 2. 이메일 중복 확인 (DB SELECT)
+        const checkSql = `
+            SELECT 1 
+            FROM T_USER
+            WHERE USERNAME = :email
+        `;
+        // executeQuery를 사용하여 중복 여부를 확인합니다.
+        const result = await executeQuery(checkSql, { email });
+
+        if (result.rows.length > 0) {
+            // 중복된 경우 HTTP 409 Conflict 반환
+            return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+        }
+        
+        // --- 3. 비밀번호 해싱 (다음 단계) ---
+        // --- 4. 사용자 정보 DB 저장 (그 다음 단계) ---
+        
+        // (임시) 중복이 없으면 다음 단계로 진행할 수 있음을 알림
+        res.status(200).json({ message: '중복 확인 완료. 다음 단계로 진행됩니다.' });
+    } catch (err) {
+        console.error('Registration Error:', err);
         res.status(500).json({ message: '서버 오류가 발생했습니다.' });
     }
 });

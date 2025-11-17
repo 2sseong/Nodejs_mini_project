@@ -4,8 +4,6 @@ import UserSearch from '../components/Friend/UserSearch.jsx';
 import FriendList from '../components/Friend/FriendList.jsx';
 import '../styles/FriendPage.css';
 
-// const MY_USER_ID = localStorage.getItem('userId'); // 상수로 존재 코드수정 완료 후 삭제
-
 export default function FriendPage() {
     // 1. 유저 목록 상태 관리
     const [userList, setUserList] = useState([]);
