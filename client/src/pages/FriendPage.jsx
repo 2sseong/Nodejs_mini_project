@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import FriendRequestList from '../components/Friend/FriendRequestList';
 import UserSearch from '../components/Friend/UserSearch.jsx';
 import FriendList from '../components/Friend/FriendList.jsx';
@@ -67,22 +67,17 @@ export default function FriendPage() {
                 // 서버 응답 형태가 {success: true, users: [...]}라고 쳤을때
                 const usersFromServer = data.users || data;
 
-                // 이름순 정렬 (localeCompare 한글 정렬 지원)
-                const sortedUsers = [...usersFromServer].sort((a, b) => 
-                    a.userNickname.localeCompare(b.userNickname)
-                );
+                const sortedUsers = [...usersFromServer].sort((a, b) => {
 
-                // 필터링: 사용자 ID가 검색어에 포함되는지 확인 (대소문자 무시)
-                const filteredUsers = sortedUsers.filter(user => {
-                    const searchLower = searchQuery.toLowerCase();
-                    const nameLower = (user.name || user.username).toLowerCase();
-                    const idLower = user.id.toLowerCase();
+                    // 비교 값 설정
+                    const nicknameA = a.NICKNAME;
+                    const nicknameB = b.NICKNAME;
+
+                    const comparisonResult = String(nicknameA || '').localeCompare(String(nicknameB || ''), 'ko', { sensitivity: 'base' });
                     
-                    // 이름 또는 ID에 검색어가 포함되는지 확인
-                    return nameLower.includes(searchLower) || idLower.includes(searchLower);
+                    return comparisonResult;
                 });
-            
-            setUserList(filteredUsers);
+            setUserList(sortedUsers);        
                 
             } catch (err) {
                 setError(err.message);
@@ -90,7 +85,6 @@ export default function FriendPage() {
                 setIsLoading(false);
             }
         };
-
         fetchUserList();
     }, [myUserId, searchQuery]); // myUserId나 검색어(searchQuery)가 바뀔 때마다 이펙트가 재실행
 
