@@ -1,3 +1,4 @@
+//chat.controller.js
 import chatService from './chat.service.js';
 import socketGateway from '../../sockets/socket.gateway.js';
 

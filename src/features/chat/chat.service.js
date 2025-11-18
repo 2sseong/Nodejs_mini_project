@@ -9,11 +9,11 @@ export async function listRoomsForUser({ userId }) {
     return await repo.listRoomsByUser({ userId });
 }
 
-export async function getHistory({ roomId }) {
-    return await repo.getHistory({ roomId });
+export async function getHistory({ roomId, limit, beforeMsgId }) {
+    return await repo.getHistory({ roomId, limit, beforeMsgId });
 }
 
-// [수정] 텍스트 메시지 저장
+// 텍스트 메시지 저장
 export async function saveMessage({ userId, ROOM_ID, CONTENT }) {
     // repo.saveMessageTx를 호출하며 'TEXT' 타입을 명시
     const savedRow = await repo.saveMessageTx({
@@ -29,7 +29,7 @@ export async function saveMessage({ userId, ROOM_ID, CONTENT }) {
     return savedRow;
 }
 
-// [핵심 수정] 파일 메시지 저장 함수
+// 파일 메시지 저장 함수
 export async function saveFileMessage({ roomId, userId, fileName, fileURL, mimeType }) {
     console.log('chat.service: Saving file message:', { roomId, userId, fileName, fileURL, mimeType });
 
