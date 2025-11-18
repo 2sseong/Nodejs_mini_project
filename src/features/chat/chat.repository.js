@@ -10,10 +10,10 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
         conn = await getConnection(); // autoCommit: false 사용 필요
         // 1) 방 생성
         const roomSql = `
-      INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
-      VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
-      RETURNING ROOM_ID INTO :roomId
-    `;
+INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
+VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
+RETURNING ROOM_ID INTO :roomId
+`;
         const roomBinds = {
             roomName,
             roomId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
@@ -23,9 +23,9 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
 
         // 2) 생성자 멤버 추가
         const memberSql = `
-      INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
-      VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
-    `;
+INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
+VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
+`;
         await conn.execute(memberSql, { roomId, userId: creatorId }, { autoCommit: false });
 
         // 3) 커밋
@@ -40,14 +40,16 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     }
 }
 
+// [!!!] listRoomsByUser 함수 수정 (특수 공백 문자 모두 제거) [!!!]
 export async function listRoomsByUser({ userId }) {
+    // [!!!] 수정: 'SELECT' 앞/뒤의 모든 특수 공백(혻) 제거 [!!!]
     const sql = `
-    SELECT T2.ROOM_ID, T2.ROOM_NAME, T2.ROOM_TYPE
-    FROM T_ROOM_MEMBER T1
-    JOIN T_CHAT_ROOM T2 ON T1.ROOM_ID = T2.ROOM_ID
-    WHERE T1.USER_ID = :userId
-    ORDER BY T2.CREATED_AT DESC
-  `;
+SELECT T2.ROOM_ID, T2.ROOM_NAME, T2.ROOM_TYPE
+FROM T_ROOM_MEMBER T1
+JOIN T_CHAT_ROOM T2 ON T1.ROOM_ID = T2.ROOM_ID
+WHERE T1.USER_ID = :userId
+ORDER BY T2.CREATED_AT DESC
+`;
     const res = await executeQuery(sql, { userId });
     return res.rows || [];
 }
@@ -67,97 +69,122 @@ export async function isMember({ roomId, userId }) {
 // addMemberTx 수정안 (named bind)
 export async function addMemberTx({ roomId, userId }) {
     const sql = `
-    INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
-    VALUES (:roomId, :userId, :joinedAt)
-  `;
+INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
+VALUES (:roomId, :userId, :joinedAt)
+`;
     const now = new Date();
     await executeTransaction(sql, { roomId, userId, joinedAt: now }, { autoCommit: false });
     return true;
 }
 
-// getHistory 수정안
-export async function getHistory({ roomId, limit = 50 }) {
+// getHistory 함수 수정 
+export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
+    const binds = {
+        roomId: Number(roomId),
+        limit: Number(limit)
+    };
+
+    let innerSql = `
+SELECT 
+    T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
+    T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+    T2.NICKNAME
+FROM T_MESSAGE T1
+JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+WHERE T1.ROOM_ID = :roomId
+`;
+
+    if (beforeMsgId) {
+        innerSql += ` AND T1.MSG_ID < :beforeMsgId `;
+        binds.beforeMsgId = Number(beforeMsgId);
+    }
+
+    const midSql = `
+SELECT * FROM (
+    ${innerSql}
+    ORDER BY T1.MSG_ID DESC
+)
+WHERE ROWNUM <= :limit
+`;
+
     const sql = `
-    SELECT * FROM (
-      SELECT 
-        T1.MSG_ID,
-        T1.ROOM_ID,
-        T1.SENDER_ID,
-        T1.CONTENT,
-        T1.SENT_AT,
-        T1.MESSAGE_TYPE,  
-        T1.FILE_URL,     
-        T1.FILE_NAME,     
-        T2.NICKNAME
-      FROM T_MESSAGE T1
-      JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-      WHERE T1.ROOM_ID = :roomId
-      ORDER BY T1.SENT_AT ASC
-    )
-    WHERE ROWNUM <= :limit
-  `;
-    const res = await executeQuery(sql, { roomId: Number(roomId), limit: Number(limit) });
+SELECT * FROM (
+    ${midSql}
+)
+ORDER BY SENT_AT ASC
+`;
+    
+    const res = await executeQuery(sql, binds);
     return res.rows || [];
 }
 
 /**
  * 일반 메시지 또는 파일 메시지를 T_MESSAGE 테이블에 저장합니다.
- * @param {object} params
- * @param {string} params.roomId
- * @param {string} params.senderId
- * @param {string} params.content - 텍스트 메시지의 본문 (CLOB)
- * @param {string} [params.messageType='TEXT'] - 'TEXT' 또는 'FILE'
- * @param {string} [params.fileUrl=null] - 파일 메시지의 URL
- * @param {string} [params.fileName=null] - 파일 메시지의 원본 이름
- */
-export async function saveMessageTx(params) {
-    const {
-        roomId,
-        senderId,
-        content,
-        messageType = 'TEXT',
-        fileUrl = null,
-        fileName = null
-    } = params;
+*/
+export async function saveMessageTx(data) {
 
-    const sql = `
-    INSERT INTO T_MESSAGE (ROOM_ID, SENDER_ID, CONTENT, SENT_AT, MESSAGE_TYPE, FILE_URL, FILE_NAME)
-    VALUES (:roomId, :senderId, :content, CURRENT_TIMESTAMP, :messageType, :fileUrl, :fileName)
-    RETURNING MSG_ID, SENT_AT INTO :outId, :outSentAt
-  `;
+    const { roomId, senderId, content, messageType, fileUrl, fileName } = data; 
+    const now = new Date();
 
-    // CLOB은 파일 메시지일 경우 NULL이 되어야 하므로, 조건부로 바인딩합니다.
-    const contentVal = (messageType === 'FILE') ? null : content;
+    let connection;
+    try {
+        connection = await db.getConnection(); 
 
-    const binds = {
-        roomId: Number(roomId),
-        senderId,
-        content: contentVal ? { val: contentVal, type: oracledb.CLOB } : null, // FILE 타입일 때 NULL 바인딩
-        messageType,
-        fileUrl: fileUrl,
-        fileName: fileName,
-        outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-        outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
-    };
+        const sql = `
+INSERT INTO T_MESSAGE(
+    ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
+) VALUES (
+    :roomId, :senderId, :content, :messageType, :fileUrl, :fileName, :sentAt)
+RETURNING
+    MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
+INTO
+    :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName, :outSentAt
+`
 
-    // NOTE: executeTransaction이 autoCommit: false를 가정하고 트랜잭션을 실행한다고 가정합니다.
-    const res = await executeTransaction(sql, binds, { autoCommit: false });
+        const binds = {
+            roomId: roomId,
+            senderId: senderId,
+            content: content,
+            messageType: messageType,
+            fileUrl: fileUrl,
+            fileName: fileName,
+            sentAt: now,
+            outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+            outRoomId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+            outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
+        };
 
-    const msgId = res.outBinds.outId[0];
-    // Oracle DATE 객체를 JavaScript timestamp (ms)로 변환
-    const sentAt = res.outBinds.outSentAt[0]?.getTime?.() ?? Date.now();
+        const result = await connection.execute(sql, binds, { autoCommit: true });
 
-    // 저장된 모든 정보를 반환하여 Service Layer에서 브로드캐스트에 사용
-    return {
-        msgId,
-        sentAt,
-        roomId: Number(roomId),
-        senderId,
-        content: contentVal,
-        messageType,
-        fileUrl,
-        fileName,
-    };
+        if (result.rowsAffected === 1 && result.outBinds) {
+            const savedRow = {
+                MSG_ID: result.outBinds.outId[0],
+                ROOM_ID: String(result.outBinds.outRoomId[0]), 
+                SENDER_ID: result.outBinds.outSenderId[0],
+                CONTENT: result.outBinds.outContent[0],
+                MESSAGE_TYPE: result.outBinds.outMsgType[0],
+                FILE_URL: result.outBinds.outFileUrl[0],
+                FILE_NAME: result.outBinds.outFileName[0],
+                SENT_AT: result.outBinds.outSentAt[0],
+            };
+            return savedRow; // [!!!] 완전한 객체를 리턴
+        } else {
+            throw new Error("메시지 저장 실패 (DB)");
+        }
+
+    } catch (err) {
+        console.error("DB 에러 (saveMessageTx):", err);
+        throw err; // 에러를 상위로 전파
+    } finally {
+        if (connection) {
+            await connection.close(); // 또는 connection.release()
+        }
+    }
 }
 
 
@@ -176,7 +203,6 @@ export async function deleteMember({ roomId, userId }) {
             userId: userId
         };
 
-        // 3. 쿼리 실행 (autoCommit: false)
         const result = await conn.execute(sql, binds, { autoCommit: false });
 
         await conn.commit(); // 4. 명시적 커밋 실행 (여기서 에러 발생 지점)

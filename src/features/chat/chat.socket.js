@@ -9,106 +9,115 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // [중요] 업로드 디렉터리 설정 (예: /src/public/uploads)
-// 이 경로는 4단계의 express.static과 일치해야 합니다.
 const UPLOAD_DIR = path.join(__dirname, '..','..','..','public','uploads');
-// (참고: 프로덕션에서는 fs.mkdir로 디렉터리 존재 여부 확인 및 생성이 필요)
 
 export default function chatSocket(io, socket) {
+    //1. 인증 미들웨어에서 가져온 userId 확인
     const userId = socket.data.userId;
 
-    socket.on('rooms:fetch', async () => {
-        try {
-            const rooms = await chatService.listRoomsForUser({ userId });
-            rooms.forEach(r => socket.join(String(r.ROOM_ID)));
-            socket.emit('rooms:list', rooms);
-        } catch (e) {
-            console.error('[socket] rooms:fetch error', e);
-            socket.emit('rooms:list', []);
-        }
-    });
+    // 2. 자기 자신의 ID로 된 방에 접속
+    // (io.to(userId).emit(...)을 통해 이 유저만 타겟팅할 수 있게 됨)
+    if (userId) {
+        socket.join(userId);
+        console.log(`[Socket ${socket.id}] User ${userId} joined their personal room.`);
+    }
 
-    socket.on('room:join', ({ roomId }) => {
-        socket.join(String(roomId));
-    });
+    socket.on('rooms:fetch', async () => {
+        try {
+            const rooms = await chatService.listRoomsForUser({ userId });
+            socket.emit('rooms:list', rooms);
+        } catch (e) {
+            console.error('[socket] rooms:fetch error', e);
+            socket.emit('rooms:list', []);
+        }
+    });
 
-    socket.on('room:leave', ({ roomId }) => {
-        socket.leave(String(roomId));
-    });
+    socket.on('room:join', ({ roomId }) => {
+        console.log(`[Socket ${socket.id}] joining room: ${roomId}`);
+        socket.join(String(roomId));
+    });
 
-    socket.on('chat:get_history', async ({ roomId }) => {
-        try {
-            const history = await chatService.getHistory({ roomId });
-            socket.emit('chat:history', history);
-        } catch (e) {
-            console.error('[socket] chat:get_history error', e);
-            socket.emit('chat:history', []);
-        }
-    });
+    socket.on('room:leave', ({ roomId }) => {
+        console.log(`[Socket ${socket.id}] leaving room: ${roomId}`);
+        socket.leave(String(roomId));
+    });
 
-    socket.on('chat:message', async (msg) => {
-        try {
-            // [DB 저장] 'TEXT' 타입 메시지 저장
-            const saved = await chatService.saveMessage({ userId, ...msg });
-            // [브로드캐스트]
-            io.to(String(saved.ROOM_ID)).emit('chat:message', { ...saved, NICKNAME: msg.NICKNAME });
-        } catch (e) {
-            console.error('[socket] chat:message error', e);
-            socket.emit('chat:error', { message: 'Message failed to send' });
-        }
-    });
+    // [!!!] chat:get_history 핸들러 수정 [!!!]
+    socket.on('chat:get_history', async (payload) => {
+        // { roomId } 대신 'payload' 객체 전체를 받습니다.
+        const { roomId, beforeMsgId = null, limit = 50 } = payload;
+        
+        if (!roomId) { /* ...에러 처리... */ }
 
-    // [추가] 파일 전송 이벤트 핸들러
-    // (제공된 코드의 export function... 부분을 이곳으로 이동/통합)
-    socket.on('SEND_FILE', async (data, callback) => {
-        // [디버깅 1] 서버가 이벤트를 받았는지 확인
-        console.log('[SERVER] SEND_FILE event received. FileName:', data.fileName);
+        try {
+            // 'beforeMsgId'와 'limit'을 서비스로 전달합니다.
+            const history = await chatService.getHistory({ roomId, beforeMsgId, limit });
+            socket.emit('chat:history', history);
+        } catch (e) {
+                console.error('[socket] chat:get_history error', e);
+                socket.emit('chat:history', []);
+            }
+      });
 
-        const { roomId, fileName, mimeType, fileData, userNickname } = data;
-        const socketUserId = socket.data.userId;
+    socket.on('chat:message', async (msg) => {
+        try {
+            console.log('[socket] chat:message received', msg); 
+            // [DB 저장] 'TEXT' 타입 메시지 저장
+            const saved = await chatService.saveMessage({ userId, ...msg });
+          
+            // saved.roomId (undefined) -> saved.ROOM_ID (올바른 값)
+            io.to(String(saved.ROOM_ID)).emit('chat:message', { ...saved, NICKNAME: msg.NICKNAME, TEMP_ID: msg.TEMP_ID });
+            
+            console.log('[LOG ] Broadcast completed.');
+        } catch (e) {
+            console.error('[socket] chat:message error', e);
+            socket.emit('chat:error', { message: 'Message failed to send' });
+        }
+    });
 
-        if (!roomId || !fileName || !fileData || !socketUserId) {
-            console.error('[SERVER] Invalid file data received.'); // [디버깅 2]
-            return callback({ ok: false, error: '유효하지 않은 파일 데이터' });
-        }
+    // [추가] 파일 전송 이벤트 핸들러 (이 핸들러는 원래 정상이었습니다)
+    socket.on('SEND_FILE', async (data, callback) => {
+        console.log('[SERVER] SEND_FILE event received. FileName:', data.fileName);
 
-        try {
-            // ... (파일 정보 설정) ...
-            const uniqueFileName = uuidv4() + path.extname(fileName);
-            const filePath = path.join(UPLOAD_DIR, uniqueFileName);
+        const { roomId, fileName, mimeType, fileData, userNickname } = data;
+        const socketUserId = socket.data.userId;
 
-            console.log('[SERVER] Writing file to:', filePath); // [디버깅 3]
+        if (!roomId || !fileName || !fileData || !socketUserId) {
+            console.error('[SERVER] Invalid file data received.');
+            return callback({ ok: false, error: '유효하지 않은 파일 데이터' });
+        }
 
-            // ... (Base64 디코딩) ...
-            const binaryData = Buffer.from(data.fileData.replace(/^data:.+;base64,/, ''), 'base64');
+        try {
+            const uniqueFileName = uuidv4() + path.extname(fileName);
+            const filePath = path.join(UPLOAD_DIR, uniqueFileName);
 
-            // 4. 로컬 디스크에 파일 저장
-            await writeFile(filePath, binaryData);
+            console.log('[SERVER] Writing file to:', filePath); 
 
-            console.log('[SERVER] File written successfully.'); // [디버깅 4]
+            const binaryData = Buffer.from(data.fileData.replace(/^data:.+;base64,/, ''), 'base64');
+            await writeFile(filePath, binaryData);
+            console.log('[SERVER] File written successfully.'); 
 
-            const fileURL = `/uploads/${uniqueFileName}`;
+            const fileURL = `/uploads/${uniqueFileName}`;
 
-            // 6. DB에 메시지 및 파일 메타데이터 저장
-            const savedMessage = await chatService.saveFileMessage({
-                roomId,
-                userId: socketUserId,
-                fileName,
-                fileURL,
-                mimeType
-            });
+            const savedMessage = await chatService.saveFileMessage({
+                roomId,
+                userId: socketUserId,
+                fileName,
+                fileURL,
+                mimeType
+            });
 
-            console.log('[SERVER] File metadata saved to DB.'); // [디버깅 5]
+            console.log('[SERVER] File metadata saved to DB.'); 
 
-            // ... (Broadcast data preparation) ...
-            const broadcastData = { ...savedMessage, NICKNAME: userNickname };
+            const broadcastData = { ...savedMessage, NICKNAME: userNickname };
 
-            callback({ ok: true, message: broadcastData });
-            io.to(String(roomId)).emit('chat:message', broadcastData);
+            callback({ ok: true, message: broadcastData });
+            // 'roomId'를 data에서 가져오므로 정상이었습니다.
+            io.to(String(roomId)).emit('chat:message', broadcastData);
 
-        } catch (error) {
-            // 여기서 오류가 발생하면 클라이언트는 아무것도 모릅니다.
-            console.error('[SERVER] SEND_FILE Critical Error:', error); 
-            callback({ ok: false, error: '서버 파일 처리 중 오류 발생' });
-        }
-    });
+        } catch (error) {
+            console.error('[SERVER] SEND_FILE Critical Error:', error); 
+            callback({ ok: false, error: '서버 파일 처리 중 오류 발생' });
+        }
+    });
 }

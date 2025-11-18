@@ -110,3 +110,4 @@ ipcMain.on('window-maximize', () => {
 ipcMain.on('window-close', () => {
   mainWindow.close();
 });
+
