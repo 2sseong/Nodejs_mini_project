@@ -1,0 +1,128 @@
+/* src/components/auth/SignupForm.css */
+
+.signup-form {
+    width: 100%;
+}
+
+.signup-form h3 {
+    color: #1565c0;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 28px 0;
+    text-align: center;
+}
+
+/* 폼 그룹 */
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    color: #37474f;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #263238;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1.5px solid rgba(100, 181, 246, 0.3);
+    border-radius: 10px;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #64b5f6;
+    box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
+}
+
+.form-group input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 제출 버튼 */
+.submit-btn {
+    width: 100%;
+    padding: 14px 24px;
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(66, 165, 245, 0.3);
+}
+
+.submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+    box-shadow: 0 4px 12px rgba(66, 165, 245, 0.4);
+    transform: translateY(-1px);
+}
+
+.submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 에러 메시지 */
+.error-message {
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #c62828;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* 성공 메시지 */
+.success-message {
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #2e7d32;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 600px) {
+    .signup-form h3 {
+        font-size: 18px;
+        margin-bottom: 24px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group input {
+        padding: 11px 14px;
+        font-size: 14px;
+    }
+    
+    .submit-btn {
+        padding: 13px 20px;
+        font-size: 15px;
+    }
+}

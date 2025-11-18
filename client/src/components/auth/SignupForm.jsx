@@ -1,0 +1,101 @@
+// 폼 입력 상태 관리, 유효성 검사, 백엔드 API호출
+
+// src/components/auth/SignupForm.jsx
+
+import React, { useState } from 'react';
+// import { useHistory } from 'react-router-dom'; 
+import './SignupForm.css';
+
+function SignupForm() {
+    // 폼 입력 필드 상태 관리 (이전과 동일)
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [nickname, setNickname] = useState('');
+    
+    // UI 피드백을 위한 상태 (이전과 동일)
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [message, setMessage] = useState(null);
+    
+    // const history = useHistory();
+
+    const handleSubmit = async (e) => {
+
+        e.preventDefault(); 
+        setError(null);
+        setMessage(null);
+
+        if (!email || !password || !confirmPassword || !nickname) {
+            setError('모든 필드를 입력해야 합니다.');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError('비밀번호와 비밀번호 확인이 일치하지 않습니다.');
+            return;
+        }
+
+        setLoading(true);
+
+    try {
+                const { ok, data } = await signup({ email, password, nickname }); // <-- 함수 호출
+
+                if (ok) {
+                    setMessage(data.message || '가입 완료');
+                    // 성공 시 상태 초기화 등
+                } else {
+                    // 백엔드에서 받은 오류 메시지를 사용
+                    setError(data.message || '가입 실패'); 
+                }
+            } catch (err) {
+                // 네트워크 오류 등 예외 처리
+                setError('서버 연결 오류');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+    return (
+        <div className="signup-form"> {/* (2) 클래스명을 사용하여 스타일 적용 */}
+            <h3>회원 정보 입력</h3>
+            
+            {error && <p className="error-message">{error}</p>}
+            {message && <p className="success-message">{message}</p>}
+
+
+            <form onSubmit={handleSubmit}>
+                {/* 1. 이메일 입력 필드 */}
+                <div className="form-group">
+                    <label htmlFor="email">이메일</label>
+                    <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading} />
+                </div>
+
+                {/* 2. 닉네임 입력 필드 */}
+                <div className="form-group">
+                    <label htmlFor="nickname">이름</label>
+                    <input type="text" id="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} required disabled={loading} />
+                </div>
+
+                {/* 3. 비밀번호 입력 필드 */}
+                <div className="form-group">
+                    <label htmlFor="password">비밀번호</label>
+                    <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={loading} />
+                </div>
+
+                {/* 4. 비밀번호 확인 입력 필드 */}
+                <div className="form-group">
+                    <label htmlFor="confirmPassword">비밀번호 확인</label>
+                    <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} />
+                </div>
+
+                {/* 제출 버튼 */}
+                <button type="submit" disabled={loading} className="submit-btn">
+                    {loading ? '가입 중...' : '회원가입'}
+                </button>
+            </form>
+        </div>
+    );
+}
+
+export default SignupForm;

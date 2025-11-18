@@ -1,0 +1,127 @@
+/* src/pages/SignupPage.css */
+
+.page-layout {
+    min-height: 100vh;
+    background: #e8f4fd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    position: relative;
+}
+
+/* 배경 장식 요소 */
+.page-layout::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 300px;
+    background: linear-gradient(180deg, rgba(25, 118, 210, 0.05) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 36px;
+    position: relative;
+    z-index: 1;
+}
+
+.page-header h1 {
+    color: #1565c0;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    letter-spacing: -0.5px;
+}
+
+.page-header h1::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 4px;
+    background: #64b5f6;
+    margin: 16px auto 0;
+    border-radius: 2px;
+}
+
+.page-content {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.form-section {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 48px 40px;
+    box-shadow: 
+        0 8px 32px rgba(25, 118, 210, 0.06),
+        0 2px 8px rgba(66, 165, 245, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.login-link {
+    text-align: center;
+    color: #546e7a;
+    font-size: 15px;
+    margin: 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.login-link a {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    padding-bottom: 2px;
+}
+
+.login-link a:hover {
+    color: #1565c0;
+    border-bottom-color: #64b5f6;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 600px) {
+    .page-layout {
+        padding: 30px 16px;
+    }
+    
+    .page-header {
+        margin-bottom: 28px;
+    }
+    
+    .page-header h1 {
+        font-size: 26px;
+    }
+    
+    .form-section {
+        padding: 36px 28px;
+        border-radius: 12px;
+    }
+    
+    .login-link {
+        font-size: 14px;
+        padding: 16px;
+    }
+}
+
+@media (max-width: 400px) {
+    .form-section {
+        padding: 28px 20px;
+    }
+}

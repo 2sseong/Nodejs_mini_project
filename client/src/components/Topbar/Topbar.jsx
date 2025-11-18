@@ -13,6 +13,7 @@ export default function Topbar() {
 
             <nav className="right">
                 <Link className={`btn ${loc.pathname === '/login' ? 'active' : ''}`} to="/login">로그인</Link>
+                <Link className={`btn ${loc.pathname === '/signup' ? 'active' : ''}`} to="/signup">회원가입</Link>
                 <Link className={`btn ${loc.pathname === '/chat' ? 'active' : ''}`} to="/chat">채팅</Link>
                 <Link className={`btn ${loc.pathname === '/friends' ? 'active' : ''}`} to="/friends">친구</Link>
                 <Link className={`btn ${loc.pathname === '/notifications' ? 'active' : ''}`} to="/notifications">알림</Link>

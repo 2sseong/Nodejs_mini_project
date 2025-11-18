@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import ChatPage from './pages/ChatPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
 import FriendPage from './pages/FriendPage.jsx';
+import SignupPage from './pages/SignupPage.jsx';
 import Titlebar from './components/Titlebar/Titlebar.jsx'
 import './App.css';
 
@@ -17,6 +18,7 @@ export default function App() {
                 <Routes>
                     <Route path="/" element={<Navigate to="/chat" replace />} />
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
                     <Route path="/chat" element={<ChatPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/friends" element={<FriendPage />} />

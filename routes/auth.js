@@ -5,6 +5,7 @@ import express from 'express';
 import { executeQuery, executeTransaction } from '../db/oracle.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
@@ -72,7 +73,8 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// routes/auth.js (router.post('/register', ...) 내부)
+
+const saltRounds = 10;
 
 router.post('/signup', async (req, res) => {
     const { email, password, nickname } = req.body; 
@@ -97,11 +99,37 @@ router.post('/signup', async (req, res) => {
             return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
         }
         
-        // --- 3. 비밀번호 해싱 (다음 단계) ---
-        // --- 4. 사용자 정보 DB 저장 (그 다음 단계) ---
+        // --- 3. 비밀번호 해싱 ---
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // 4. 새로운 사용자 ID 생성 (Oracle 시퀀스 사용 시 이 부분은 달라질 수 있습니다.)
+        const newUserId = uuidv4(); 
+
+        // 5. DB 저장 (executeTransaction 사용)
+        const insertSql = `
+            INSERT INTO T_USER 
+                (USER_ID, USERNAME, PASSWORD_HASH, NICKNAME, CREATED_AT)
+            VALUES 
+                (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP)
+        `;
         
-        // (임시) 중복이 없으면 다음 단계로 진행할 수 있음을 알림
+        // 중복이 없으면 다음 단계로 진행할 수 있음을 알림
         res.status(200).json({ message: '중복 확인 완료. 다음 단계로 진행됩니다.' });
+
+        await executeTransaction(insertSql, { 
+            userId: newUserId, 
+            email: email, 
+            hash: hashedPassword, // << 해시 값을 저장!
+            nickname: nickname 
+        });
+
+        // 6. 성공 응답 (HTTP 201 Created)
+        res.status(201).json({ 
+            success: true,
+            message: '회원가입이 성공적으로 완료되었습니다. 이제 로그인할 수 있습니다.',
+            userId: newUserId 
+        });
+        
     } catch (err) {
         console.error('Registration Error:', err);
         res.status(500).json({ message: '서버 오류가 발생했습니다.' });
