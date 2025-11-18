@@ -1,4 +1,4 @@
-﻿import oracledb from 'oracledb';
+import oracledb from 'oracledb';
 import 'dotenv/config'; // .env 파일 로드
 
 // 쿼리 결과를 JavaScript 객체 배열로 자동 변환 (O(1) 설정)

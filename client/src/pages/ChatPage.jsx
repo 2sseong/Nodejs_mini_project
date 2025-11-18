@@ -26,6 +26,10 @@ export default function ChatPage() {
         sendMessage,
         refreshRooms,
         clearMessages,
+        isInitialLoad,
+        isLoadingMore,
+        hasMoreMessages,
+        loadMoreMessages,
     } = useChatSocket({ userId, userNickname });
 
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -79,7 +83,7 @@ const handleSendFile = ({ fileName, mimeType, fileData }) => {
         return;
     }
 
-    console.log(`Sending file: ${fileName}, mimeType: ${mimeType}, fileData: ${fileData}`);
+    console.log(`Sending file: ${fileName}, mimeType: ${mimeType}, fileData:${fileData}`);
 
     socket.emit('SEND_FILE', {
         roomId: currentRoomId,
@@ -125,7 +129,14 @@ const handleSendFile = ({ fileName, mimeType, fileData }) => {
                             onLeaveRoom={handleLeaveRoom}
                         />
 
-                        <MessageList messages={messages} userId={userId} />
+                        <MessageList 
+                            messages={messages} 
+                            userId={userId}
+                            onLoadMore={loadMoreMessages}
+                            isLoadingMore={isLoadingMore}
+                            hasMoreMessages={hasMoreMessages}
+                            isInitialLoad={isInitialLoad}
+                        />
 
                         <MessageInput
                             onSend={(text) => sendMessage({ text })}

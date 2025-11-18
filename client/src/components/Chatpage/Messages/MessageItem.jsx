@@ -1,8 +1,5 @@
 // src/components/Chatpage/Messages/MessageItem.jsx
 
-// (서버 URL. .env 파일 등에서 관리하는 것이 좋음)
-// const SERVER_BASE_URL = 'http://localhost:1337'; 
-
 export default function MessageItem(props) {
 
     // 1. [핵심] props를 개별적으로 받음 (message 객체 X)
