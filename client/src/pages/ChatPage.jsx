@@ -2,7 +2,7 @@
 import React from 'react';
 import '../styles/ChatPage.css';
 
-import { useAuthFromStorage } from '../hooks/useAuthFromStorage';
+import { useAuth } from '../hooks/useAuth';
 import { useChatSocket } from '../hooks/useChatSocket';
 
 import ChatSidebar from '../components/Chatpage/Sidebar/ChatSidebar.jsx';
@@ -15,7 +15,7 @@ import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import { apiLeaveRoom } from '../api/roomApi.jsx';
 
 export default function ChatPage() {
-    const { authLoaded, userId, userNickname } = useAuthFromStorage();
+    const { authLoaded, userId, userNickname } = useAuth();
     const {
         connected,
         rooms,
