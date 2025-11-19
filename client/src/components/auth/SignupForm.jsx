@@ -3,8 +3,9 @@
 // src/components/auth/SignupForm.jsx
 
 import React, { useState } from 'react';
-// import { useHistory } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom'; 
 import './SignupForm.css';
+import { signup } from '../../api/authApi.jsx';
 
 function SignupForm() {
     // 폼 입력 필드 상태 관리 (이전과 동일)
@@ -17,6 +18,7 @@ function SignupForm() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [message, setMessage] = useState(null);
+    const navigate = useNavigate();
     
     // const history = useHistory();
 
@@ -42,13 +44,26 @@ function SignupForm() {
                 const { ok, data } = await signup({ email, password, nickname }); // <-- 함수 호출
 
                 if (ok) {
+                    // 1. 성공 메시지 표시
                     setMessage(data.message || '가입 완료');
-                    // 성공 시 상태 초기화 등
+                    setError(null); // 에러메세지 초기화
+                    
+                    // 2. 입력 필드 초기화 (선택 사항, 깔끔하게 보이기 위해)
+                    setEmail('');
+                    setPassword('');
+                    setConfirmPassword('');
+                    setNickname('');
+
+                    // 3. 로그인 페이지로 이동
+                    setTimeout(() => {
+                        navigate('/login'); // 로그인 페이지로 이동
+                        }, 2000); // 2초 후 이동하여 사용자에게 성공 메시지를 보여줄 시간을 줌
                 } else {
                     // 백엔드에서 받은 오류 메시지를 사용
                     setError(data.message || '가입 실패'); 
                 }
             } catch (err) {
+                console.error('API 호출 중 실제 오류:', err);
                 // 네트워크 오류 등 예외 처리
                 setError('서버 연결 오류');
             } finally {

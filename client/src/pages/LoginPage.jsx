@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../styles/LoginPage.css'
+import { login } from '../api/authApi'
 
 export default function LoginPage() {
     const nav = useNavigate()
@@ -31,45 +32,27 @@ export default function LoginPage() {
         setError('')
         setLoading(true)
         try {
-            // 백엔드가 HttpOnly 쿠키를 내려주는 방식이라면 credentials 포함
-            const res = await fetch(`/api/login`, {
+            // login 함수를 호출하고 응답을 받음
+            const { data } = await login(form) 
+            // 4xx/5xx 에러는 이미 login 함수 내부에서 throw 되었으므로, 
+            // 여기에 도달했다면 성공 응답(ok=true)
 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(form),
-            })
+        if (data.token && data.user) {
+                    localStorage.setItem('authToken', data.token)
+                    localStorage.setItem('userId', data.user.userId)
+                    localStorage.setItem('userNickname', data.user.nickname)
+                } else {
+                    // 서버 응답은 성공했지만, 토큰이 없는 이상한 상황 처리
+                    throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
+                }
 
-            if (!res.ok) {
-                const msg = await safeMessage(res)
-                throw new Error(msg || `로그인 실패 (${res.status})`)
+                nav('/chat', { replace: true })
+            } catch (err) {
+                setError(err.message || '알 수 없는 오류가 발생했습니다.')
+            } finally {
+                setLoading(false)
             }
-
-            // 응답 데이터 파싱 및 JWT 토큰 저장
-            const data = await res.json()
-
-            if (data.token && data.user) {
-                // JWT 토큰 저장
-                localStorage.setItem('authToken', data.token)
-
-                // 사용자 식별 정보 저장
-                localStorage.setItem('userId', data.user.userId)
-                localStorage.setItem('userNickname', data.user.nickname)
-            } else {
-                // 토큰이 없으면 로그인 실패로 간주
-                throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
-            }
-
-            // 토큰을 프론트에 저장하는 방식이라면 여기에 처리 추가.
-            // const data = await res.json()
-
-            nav('/chat', { replace: true })
-        } catch (err) {
-            setError(err.message || '알 수 없는 오류가 발생했습니다.')
-        } finally {
-            setLoading(false)
         }
-    }
 
     return (
         <div className="login-wrap">
@@ -125,13 +108,3 @@ export default function LoginPage() {
     )
 }
 
-async function safeMessage(res) {
-    try {
-        const t = await res.text()
-        if (!t) return ''
-        const json = JSON.parse(t)
-        return json.message || json.error || ''
-    } catch {
-        return ''
-    }
-}

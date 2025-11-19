@@ -12,7 +12,7 @@ import http from 'http'
 import { initialize as initOracleDB } from '../db/oracle.js'
 
 // 기존 라우터 그대로 사용(프론트 경로 안 깨짐)
-import authRouter from '../routes/auth.js'
+import authRouter from './features/auth/authRoutes.js'
 import chatsRouter from './features/chat/chat.routes.js'
 import searchRouter from './features/search/search.routes.js'
 import friendRoutes from './features/friend/friendRoutes.js'
@@ -36,7 +36,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/uploads', express.static(PUBLIC_UPLOADS_DIR));
 
 // API 라우터 
-app.use('/api', authRouter)
+app.use('/api/auth', authRouter)
 app.use('/chats', chatsRouter)
 app.use('/users', searchRouter)
 app.use('/api/friends', friendRoutes)
