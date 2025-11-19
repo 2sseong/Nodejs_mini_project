@@ -15,7 +15,6 @@ export async function signupUser({ email, password, nickname }) {
     // 1. 이메일 중복 확인 (Repository 호출)
     const existingUser = await authRepository.findUserByEmail(email);
 
-    console.log('User found:', user);
     if (existingUser) {
         throw new Error('Email already in use'); 
     }
