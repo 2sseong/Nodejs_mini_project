@@ -17,7 +17,7 @@ export async function signup(req, res) {
 
         res.status(201).json({ 
             success: true,
-            message: '회원가입이 성공적으로 완료되었습니다.',
+            message: '회원가입이 성공적으로 완료되었습니다. \n5초 후 로그인 화면으로 이동합니다.',
             userId: newUser.userId,
             nickname: newUser.nickname,
         });
