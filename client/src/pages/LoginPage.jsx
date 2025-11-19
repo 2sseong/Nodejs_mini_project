@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../styles/LoginPage.css'
 import { login } from '../api/authApi'
+import { useAuth } from '../hooks/useAuth';
 
 export default function LoginPage() {
     const nav = useNavigate()
+    const { login: loginAuth } = useAuth();
+    
+    const [password, setPassword] = useState('');
     const [form, setForm] = useState({ email: '', password: '' })
     const [showPw, setShowPw] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -38,9 +42,16 @@ export default function LoginPage() {
             // 여기에 도달했다면 성공 응답(ok=true)
 
         if (data.token && data.user) {
+                // 1. Local Storage에 인증 정보 저장
                     localStorage.setItem('authToken', data.token)
                     localStorage.setItem('userId', data.user.userId)
                     localStorage.setItem('userNickname', data.user.nickname)
+
+                // 2. 상태 업데이트: useAuth 훅을 통해 전역 인증 상태를 '로그인됨'으로 변경
+                loginAuth(); 
+
+                // 3. 페이지 이동
+                nav('/chat', { replace: true })
                 } else {
                     // 서버 응답은 성공했지만, 토큰이 없는 이상한 상황 처리
                     throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
