@@ -11,6 +11,25 @@
     background-color: #ffffff; 
 }
 
+/* 공통 스타일 */
+.unread-count {
+    color: #ffc107; /* 노란색 */
+    font-size: 0.75rem;
+    font-weight: bold;
+    align-self: flex-end; /* 바닥 정렬 */
+    margin-bottom: 5px;
+}
+
+/* 내가 보낸 메시지: 버블 왼쪽 */
+.unread-count.mine {
+    margin-right: 5px;
+}
+
+/* 상대방 메시지: 버블 오른쪽 */
+.unread-count.theirs {
+    margin-right: 5px;
+}
+
 /* --- 2. [핵심] 개별 메시지 컨테이너 (말풍선 + 닉네임 + 시간) --- */
 .message-item {
     display: flex;
@@ -108,3 +127,8 @@
     font-size: 14px;
     line-height: 1.45;
 }
+
+
+
+
+
