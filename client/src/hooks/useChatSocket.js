@@ -11,47 +11,49 @@ export function useChatSocket({ userId, userNickname }) {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    
+
+    // [수정] 읽음 맵은 렌더링과 무관하므로 Ref로만 관리 (동기화 문제 원천 차단)
+    const readStatusMapRef = useRef({}); 
+    const isReadStatusLoadedRef = useRef(false);
+    // (isReadStatusLoaded state는 MessageList 전달용으로 유지)
+    const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false);
+
     const isPaginatingRef = useRef(false);
     const currentRoomIdRef = useRef(null);
     const prevRoomIdRef = useRef(null);
-    const socket = useMemo(() => createSocket(userId), [userId]);
     
+    const socket = useMemo(() => createSocket(userId), [userId]);
 
-    // 방 목록 갱신 함수 (변경 없음)
+    const messagesRef = useRef(messages);
+    useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+    // 방 목록 갱신
     const refreshRooms = useCallback(() => {
         if (!socket || !userId) return;
         const authToken = localStorage.getItem('authToken');
         socket.emit('rooms:fetch', { userId, authToken });
     }, [socket, userId]);
 
-    //   1. 'rooms:invited' 이벤트를 받았을 때 실행할 핸들러  
-    // (기존 refreshRooms 함수를 재사용합니다)
     const onRoomsRefresh = useCallback(() => {
         console.log('%c[Socket] You were invited to a new room! Refreshing list...', 'color: blue; font-weight: bold;');
         refreshRooms();
-    }, [refreshRooms]); // refreshRooms를 의존성으로 추가
+    }, [refreshRooms]); 
 
-
-    //   1. 'messages' state를 추적할 ref 생성  
-    const messagesRef = useRef(messages);
-
-    //2. 'messages' state가 변경될 때마다 ref를 '항상' 최신으로 업데이트
-    useEffect(() => {
-        messagesRef.current = messages;
-    }, [messages]);
-
-
-    // 메세지 초기화
+    // 상태 초기화
     const clearMessages = useCallback(() => {
         setMessages([]);
         setIsLoadingMore(false);
         setHasMoreMessages(true);
         setIsInitialLoad(true);
         isPaginatingRef.current = false;
+        
+        // 읽음 상태 및 로딩 플래그 초기화
+        readStatusMapRef.current = {};
+        setIsReadStatusLoaded(false);
+        isReadStatusLoadedRef.current = false;
     }, []);
 
-    // --- 방 이동 + 히스토리 --- (변경 없음)
+    // 방 변경 핸들러
     const handleRoomChange = useCallback((newRoomId) => {
         const rid = String(newRoomId || '');
         if (!socket || !userId || !rid) return;
@@ -72,7 +74,6 @@ export function useChatSocket({ userId, userNickname }) {
         prevRoomIdRef.current = rid;
     }, [socket, userId]);
 
-    // 선택 함수 (변경 없음)
     const selectRoom = useCallback((roomId) => {
         const rid = String(roomId || '');
         if (!rid || rid === currentRoomId) return;
@@ -81,51 +82,86 @@ export function useChatSocket({ userId, userNickname }) {
         handleRoomChange(rid);
     }, [currentRoomId, handleRoomChange, clearMessages]);
 
-    //   loadMoreMessages 함수 (대폭 수정)  
+    // 더보기 로드
     const loadMoreMessages = useCallback(() => {
-        // 1. 가드 절 (state 사용)
         if (isLoadingMore || !hasMoreMessages || !currentRoomIdRef.current) return;
-
-        //   3. state(messages) 대신 ref(messagesRef.current)에서 읽기  
         const currentMessages = messagesRef.current;
-
-        console.log('[DEBUG] loadMoreMessages: Current messages state (from ref):', currentMessages.slice(0, 5));
-
-        //   4. ref의 값으로 'oldestMessage' 찾기  
         const oldestMessage = currentMessages.find(m => m.MSG_ID);
 
         if (!oldestMessage) {
             console.error('[DEBUG] loadMoreMessages: No valid message with MSG_ID found. Aborting.');
             return;
         }
-       
-        //   5. oldestMessage에서 ID 추출 (순서 수정)  
+        
         const oldestMessageId = oldestMessage.MSG_ID;
         console.log(`Loading more messages before: ${oldestMessageId}`);
 
-        // (기존의 이 라인은 삭제: const oldestMessageId = messages[0]?.MSG_ID;)
-
-        // 2. 상태 설정 (변경 없음)
         setIsLoadingMore(true);
         setIsInitialLoad(false);
         isPaginatingRef.current = true;
 
-        // 3. 서버에 이전 내역 요청 (변경 없음)
         socket.emit('chat:get_history', {
             roomId: currentRoomIdRef.current,
             beforeMsgId: oldestMessageId,
             limit: CHAT_PAGE_SIZE
         });
-
-        //   6. 의존성 배열에서 'messages' 제거 (Stale Closure 해결)  
     }, [isLoadingMore, hasMoreMessages, socket, setIsLoadingMore, setIsInitialLoad]);
 
 
-    // ---------- 소켓 이벤트 바인딩 ----------
+    // [수정] onReadUpdate (Ref만 사용)
+    const onReadUpdate = useCallback((data) => {
+        if (!isReadStatusLoadedRef.current) return;
+
+        const { userId: readerId, lastReadTimestamp } = data;
+        const strReaderId = String(readerId);
+        
+        let readingTime;
+        if (typeof lastReadTimestamp === 'number') {
+            readingTime = lastReadTimestamp;
+        } else {
+            readingTime = new Date(lastReadTimestamp).getTime();
+        }
+
+        if (isNaN(readingTime)) return;
+
+        // Ref에서 직접 조회 (가장 최신 값 보장됨)
+        const prevReadTime = readStatusMapRef.current[strReaderId] || 0;
+
+        // 과거 이벤트 무시
+        if (readingTime <= prevReadTime) return;
+
+        // Ref 업데이트 (State 업데이트 제거함 - 동기화 문제 방지)
+        readStatusMapRef.current[strReaderId] = readingTime;
+
+        console.log(`[🔥Socket] User ${strReaderId} Update: ${prevReadTime} -> ${readingTime}`);
+
+        setMessages(prevMessages => {
+            return prevMessages.map(msg => {
+                let messageTime;
+                if (typeof msg.SENT_AT === 'number') {
+                    messageTime = msg.SENT_AT;
+                } else {
+                    messageTime = new Date(msg.SENT_AT).getTime();
+                }
+
+                if (
+                    msg.unreadCount > 0 &&
+                    messageTime > prevReadTime && 
+                    messageTime <= readingTime + 1000 && 
+                    String(strReaderId) !== String(msg.SENDER_ID)
+                ) {
+                     return { ...msg, unreadCount: Math.max(0, msg.unreadCount - 1) };
+                }
+                return msg;
+            });
+        });
+    }, []);
+
+
+    // 메인 소켓 이벤트 바인딩
     useEffect(() => {
         if (!socket || !userId) return;
 
-        // onConnect (변경 없음)
         const onConnect = () => {
             setConnected(true);
             const authToken = localStorage.getItem('authToken');
@@ -141,12 +177,12 @@ export function useChatSocket({ userId, userNickname }) {
                 });
             }
         };
-        // onDisconnect (변경 없음)
+
         const onDisconnect = (reason) => {
             setConnected(false);
             console.warn('socket disconnected:', reason);
         };
-        // onRoomsList (변경 없음)
+
         const onRoomsList = (roomList) => {
             const normalized = (roomList || []).map(r => ({ ...r, ROOM_ID: String(r.ROOM_ID) }));
             setRooms(normalized);
@@ -157,51 +193,80 @@ export function useChatSocket({ userId, userNickname }) {
             }
         };
 
-        // onChatHistory (디버깅 로그 포함, 변경 없음)
-        const onChatHistory = (historyMessages) => {
-            const newMessages = historyMessages || [];
-            console.log('[DEBUG] onChatHistory received:', newMessages);
-            if (newMessages.length > 0) {
-                console.log('[DEBUG] First message object keys:', Object.keys(newMessages[0]));
-                console.log('[DEBUG] First message MSG_ID:', newMessages[0].MSG_ID);
-            }
+        const onChatHistory = (data) => {
+            const newMessages = data.messages || []; 
             const count = newMessages.length;
+
+            if (data.memberReadStatus) {
+                const normalizedMap = {};
+                Object.keys(data.memberReadStatus).forEach(key => {
+                    normalizedMap[String(key)] = Number(data.memberReadStatus[key]);
+                });
+                
+                // Ref만 업데이트 (State 제거)
+                readStatusMapRef.current = normalizedMap;
+                
+                setIsReadStatusLoaded(true);
+                isReadStatusLoadedRef.current = true;
+                console.log('[onChatHistory] Map loaded:', normalizedMap);
+            }
+
             if (isPaginatingRef.current) {
                 console.log(`Loaded ${count} older messages.`);
-                setMessages(prev => [...newMessages, ...prev]);
+                setMessages(prev => {
+                    const existingIds = new Set(prev.map(m => m.MSG_ID || m.TEMP_ID));
+                    const uniqueIncoming = newMessages.filter(m => {
+                        const id = m.MSG_ID || m.TEMP_ID;
+                        return !existingIds.has(id);
+                    });
+                    return [...uniqueIncoming, ...prev];
+                });
                 isPaginatingRef.current = false;
             } else {
                 console.log(`Loaded ${count} initial messages.`);
-                setMessages(newMessages);
+                setMessages(newMessages); 
                 setIsInitialLoad(true);
             }
+
             setIsLoadingMore(false);
             if (count < CHAT_PAGE_SIZE) {
-                console.log('Reached end of history.');
                 setHasMoreMessages(false);
             }
         };
 
-        // onChatMessage (변경 없음)
         const onChatMessage = (msg) => {
             if (!msg) return;
             setIsInitialLoad(false);
-            if (msg.SENDER_ID === userId && msg.TEMP_ID) {
+            const senderId = String(msg.SENDER_ID);
+            let messageTime;
+            if (typeof msg.SENT_AT === 'number') {
+                messageTime = msg.SENT_AT;
+            } else {
+                messageTime = new Date(msg.SENT_AT).getTime();
+            }
+
+            // 현재 저장된 시간보다 더 최신일 때만 업데이트
+            const currentSenderTime = readStatusMapRef.current[senderId] || 0;
+            if (messageTime > currentSenderTime) {
+                readStatusMapRef.current[senderId] = messageTime;
+                console.log(`[Socket] Implicit Read Update for Sender ${senderId}: -> ${messageTime}`);
+            }
+
+            // 2. 메시지 목록 추가
+            if (String(msg.SENDER_ID) === String(userId) && msg.TEMP_ID) {
                 setMessages(prev =>
                     prev.map(m => (m.TEMP_ID === msg.TEMP_ID ? msg : m))
                 );
                 return;
             }
-            const incomingRoomId = String(msg.ROOM_ID || msg.roomId);
-            const currentRefId = String(currentRoomIdRef.current);
-            if (incomingRoomId === currentRefId) {
-                setMessages(prev => [...prev, msg]);
-            } else {
-                // (안 읽음 배지 로직)
-            }
-        };
+        
+        const incomingRoomId = String(msg.ROOM_ID || msg.roomId);
+        const currentRefId = String(currentRoomIdRef.current);
+        if (incomingRoomId === currentRefId) {
+            setMessages(prev => [...prev, msg]);
+        }
+    };
 
-        // onNewRoomCreated (변경 없음)
         const onNewRoomCreated = (roomData) => {
             if (!roomData) return;
             refreshRooms();
@@ -227,19 +292,32 @@ export function useChatSocket({ userId, userNickname }) {
             socket.off('room:new_created', onNewRoomCreated);
             socket.off('rooms:refresh', onRoomsRefresh);
         };
-    }, [socket, userId, handleRoomChange, refreshRooms, onRoomsRefresh]);
+    }, [socket, userId, handleRoomChange, refreshRooms, onRoomsRefresh]); 
 
-    // 언마운트 시 소켓 닫기 (변경 없음)
+    // [독립] 읽음 업데이트 전용 리스너
+    useEffect(() => {
+        if (!socket) return;
+        const handleReadUpdate = (data) => {
+            onReadUpdate(data);
+        };
+        socket.off('chat:read_update');
+        socket.on('chat:read_update', handleReadUpdate);
+        return () => {
+            socket.off('chat:read_update', handleReadUpdate);
+        };
+    }, [socket, onReadUpdate]);
+    
+    // 언마운트 시 소켓 닫기
     useEffect(() => {
         return () => { socket?.close(); };
     }, [socket]);
 
-    // ref 동기화 (변경 없음)
+    // Ref 동기화
     useEffect(() => {
         currentRoomIdRef.current = currentRoomId;
     }, [currentRoomId]);
 
-    // 전송 (변경 없음)
+    // 메시지 전송 함수
     const sendMessage = useCallback(({ text }) => {
         const trimmed = text.trim();
         if (!trimmed || !currentRoomId || !socket || !userId) return;
@@ -255,14 +333,29 @@ export function useChatSocket({ userId, userNickname }) {
             NICKNAME: userNickname,
             CONTENT: trimmed,
             SENT_AT: Date.now(),
-            TEMP_ID: `temp_${Date.now()}` 
+            TEMP_ID: `temp_${Date.now()}`
         };
         setIsInitialLoad(false);
         setMessages(prev => [...prev, msg]);
         socket.emit('chat:message', msg);
     }, [currentRoomId, socket, userId, userNickname]);
 
-    // 반환 객체 (변경 없음)
+    // 읽음 처리 함수 (안전장치 포함)
+    const markAsRead = useCallback(() => {
+        const latestMessage = messagesRef.current[messagesRef.current.length - 1];
+        
+        // 로딩 전이거나 데이터 없으면 중단
+        if (!socket || !currentRoomIdRef.current || !latestMessage || !latestMessage.SENT_AT) {
+            return;
+        }
+        
+        socket.emit('chat:mark_as_read', {
+            roomId: currentRoomIdRef.current,
+            lastReadTimestamp: latestMessage.SENT_AT
+        });
+        
+    }, [socket]);
+
     return {
         socket,
         connected,
@@ -277,5 +370,7 @@ export function useChatSocket({ userId, userNickname }) {
         hasMoreMessages,
         isInitialLoad,
         loadMoreMessages,
+        markAsRead,
+        isReadStatusLoaded // Prop으로 전달하기 위해 반환
     };
 }

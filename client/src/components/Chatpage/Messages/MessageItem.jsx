@@ -10,11 +10,13 @@ export default function MessageItem(props) {
         content,
         messageType,
         fileUrl,
-        fileName
+        fileName,
+        unreadCount
     } = props;
 
     // 2. [핵심] 메시지 타입에 따라 내용 렌더링
     const renderMessageContent = () => {
+
         if (messageType === 'FILE') {
             // 4단계에서 설정한 정적 경로(/uploads)와 조합
             const downloadUrl = fileUrl;
@@ -34,19 +36,25 @@ export default function MessageItem(props) {
         return <div className="message-content">{content}</div>;
     };
 
-    // 3. (사용자)의 CSS 구조에 맞춘 JSX 반환
+        // 0보다 크면 숫자, 0 이하면 빈 문자열
+        const displayCount = unreadCount > 0 ? unreadCount : null;
     return (
         // (CSS에 .theirs 대신 .other를 사용했다면 .theirs -> .other로 수정)
         <div className={`message-item ${mine ? 'mine' : 'theirs'}`}>
-
-            {/* CSS 구조(.message-info)를 사용한다면 여기에 닉네임/시간 배치.
-              지금은 제공된 CSS 중 .message-bubble 구조만 사용합니다.
-            */}
             {!mine && <div className="sender-nickname">{nickname}</div>}
 
             <div className={`message-bubble ${mine ? 'mine' : 'theirs'}`}>
                 {renderMessageContent()}
             </div>
+
+            {/* * 내가 보낸 메시지(mine)이고, 
+              * 표시할 숫자(displayCount)가 있을 때만 <span.unread-count>를 표시
+            */}
+            {displayCount && (
+                <span className="unread-count">
+                    {displayCount}
+                </span>
+            )}
 
             <span className="timestamp">
                 {sentAt ? new Date(sentAt).toLocaleTimeString() : ''}

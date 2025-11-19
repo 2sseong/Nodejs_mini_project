@@ -10,10 +10,10 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
         conn = await getConnection(); // autoCommit: false 사용 필요
         // 1) 방 생성
         const roomSql = `
-INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
-VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
-RETURNING ROOM_ID INTO :roomId
-`;
+                        INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
+                        VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
+                        RETURNING ROOM_ID INTO :roomId
+                        `;
         const roomBinds = {
             roomName,
             roomId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
@@ -23,9 +23,9 @@ RETURNING ROOM_ID INTO :roomId
 
         // 2) 생성자 멤버 추가
         const memberSql = `
-INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
-VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
-`;
+                        INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
+                        VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
+                        `;
         await conn.execute(memberSql, { roomId, userId: creatorId }, { autoCommit: false });
 
         // 3) 커밋
@@ -44,12 +44,12 @@ VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
 export async function listRoomsByUser({ userId }) {
     // [!!!] 수정: 'SELECT' 앞/뒤의 모든 특수 공백(혻) 제거 [!!!]
     const sql = `
-SELECT T2.ROOM_ID, T2.ROOM_NAME, T2.ROOM_TYPE
-FROM T_ROOM_MEMBER T1
-JOIN T_CHAT_ROOM T2 ON T1.ROOM_ID = T2.ROOM_ID
-WHERE T1.USER_ID = :userId
-ORDER BY T2.CREATED_AT DESC
-`;
+                SELECT T2.ROOM_ID, T2.ROOM_NAME, T2.ROOM_TYPE
+                FROM T_ROOM_MEMBER T1
+                JOIN T_CHAT_ROOM T2 ON T1.ROOM_ID = T2.ROOM_ID
+                WHERE T1.USER_ID = :userId
+                ORDER BY T2.CREATED_AT DESC
+                `;
     const res = await executeQuery(sql, { userId });
     return res.rows || [];
 }
@@ -69,9 +69,9 @@ export async function isMember({ roomId, userId }) {
 // addMemberTx 수정안 (named bind)
 export async function addMemberTx({ roomId, userId }) {
     const sql = `
-INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
-VALUES (:roomId, :userId, :joinedAt)
-`;
+                INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
+                VALUES (:roomId, :userId, :joinedAt)
+                `;
     const now = new Date();
     await executeTransaction(sql, { roomId, userId, joinedAt: now }, { autoCommit: false });
     return true;
@@ -80,19 +80,19 @@ VALUES (:roomId, :userId, :joinedAt)
 // getHistory 함수 수정 
 export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
     const binds = {
-        roomId: Number(roomId),
+        roomId: roomId,
         limit: Number(limit)
     };
 
     let innerSql = `
-SELECT 
-    T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-    T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-    T2.NICKNAME
-FROM T_MESSAGE T1
-JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-WHERE T1.ROOM_ID = :roomId
-`;
+                    SELECT 
+                        T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
+                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                        T2.NICKNAME
+                    FROM T_MESSAGE T1
+                    JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                    WHERE T1.ROOM_ID = :roomId
+                    `;
 
     if (beforeMsgId) {
         innerSql += ` AND T1.MSG_ID < :beforeMsgId `;
@@ -100,19 +100,19 @@ WHERE T1.ROOM_ID = :roomId
     }
 
     const midSql = `
-SELECT * FROM (
-    ${innerSql}
-    ORDER BY T1.MSG_ID DESC
-)
-WHERE ROWNUM <= :limit
-`;
+                SELECT * FROM (
+                    ${innerSql}
+                    ORDER BY T1.MSG_ID DESC
+                )
+                WHERE ROWNUM <= :limit
+                `;
 
     const sql = `
-SELECT * FROM (
-    ${midSql}
-)
-ORDER BY SENT_AT ASC
-`;
+                SELECT * FROM (
+                    ${midSql}
+                )
+                ORDER BY SENT_AT ASC
+                `;
     
     const res = await executeQuery(sql, binds);
     return res.rows || [];
@@ -131,15 +131,15 @@ export async function saveMessageTx(data) {
         connection = await db.getConnection(); 
 
         const sql = `
-INSERT INTO T_MESSAGE(
-    ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
-) VALUES (
-    :roomId, :senderId, :content, :messageType, :fileUrl, :fileName, :sentAt)
-RETURNING
-    MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
-INTO
-    :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName, :outSentAt
-`
+                    INSERT INTO T_MESSAGE(
+                        ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
+                    ) VALUES (
+                        :roomId, :senderId, :content, :messageType, :fileUrl, :fileName, :sentAt)
+                    RETURNING
+                        MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
+                    INTO
+                        :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName, :outSentAt
+                    `;
 
         const binds = {
             roomId: roomId,
@@ -226,4 +226,84 @@ export async function deleteMember({ roomId, userId }) {
         }
     }
     
+}
+
+// [수정됨] 1. 방 멤버 수 조회 (executeQuery 사용)
+export async function countRoomMembers(roomId) {
+    // [주의] 테이블명 T_ROOM_MEMBER 인지 확인하세요.
+    const sql = `
+        SELECT COUNT(*) AS "cnt"
+        FROM T_ROOM_MEMBER 
+        WHERE ROOM_ID = :roomId
+    `;
+    
+    // db.execute -> executeQuery 로 변경
+    const result = await executeQuery(sql, { roomId });
+    return result.rows[0]?.cnt || result.rows[0]?.CNT || 0;
+}
+
+export async function countReadStatusByMessageIds(roomId, messageIds) {
+    if (!messageIds || messageIds.length === 0) return [];
+
+    const bindVars = {};
+    messageIds.forEach((id, index) => {
+        bindVars[`id${index}`] = id;
+    });
+    const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
+
+    // [!!!] 핵심 수정: SYS_EXTRACT_UTC를 사용하여 타임존 오차 제거 [!!!]
+    // 이 부분이 적용되어야 '이미 읽은 메시지'가 0으로 정확히 로드됩니다.
+    const sql = `
+        SELECT 
+            m.MSG_ID,
+            COUNT(DISTINCT r.USER_ID) AS "readCount"
+        FROM T_MESSAGE m
+        LEFT JOIN UserRoomReadStatus r 
+            ON TO_CHAR(m.ROOM_ID) = r.ROOM_ID
+            AND r.lastReadTimestamp >= (
+                (CAST(SYS_EXTRACT_UTC(FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), SESSIONTIMEZONE)) AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000
+            )
+        WHERE m.ROOM_ID = :roomId
+          AND m.MSG_ID IN (${inClause})
+        GROUP BY m.MSG_ID
+    `;
+
+    bindVars.roomId = roomId;
+
+    const result = await executeQuery(sql, bindVars);
+    return result.rows || []; 
+}
+
+// [수정됨] 3. 읽음 상태 저장/업데이트 (executeTransaction 사용)
+export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
+    const sql = `
+        MERGE INTO USERROOMREADSTATUS t
+        USING (SELECT :userId AS U_ID, :roomId AS R_ID FROM DUAL) s
+        ON (t.USER_ID = s.U_ID AND t.ROOM_ID = s.R_ID)
+        WHEN MATCHED THEN
+            UPDATE SET t.lastReadTimestamp = :ts
+            WHERE t.lastReadTimestamp < :ts
+        WHEN NOT MATCHED THEN
+            INSERT (USER_ID, ROOM_ID, lastReadTimestamp)
+            VALUES (:userId, :roomId, :ts)
+    `;
+
+    const result = await executeTransaction(sql, { 
+        userId, 
+        roomId, 
+        ts: lastReadTimestamp 
+    }, { autoCommit: true });
+
+    return result.rowsAffected;
+}
+
+// [추가] 방 멤버들의 읽음 상태 조회
+export async function getRoomReadStatus(roomId) {
+    const sql = `
+        SELECT USER_ID, LASTREADTIMESTAMP
+        FROM UserRoomReadStatus
+        WHERE ROOM_ID = :roomId
+    `;
+    const result = await executeQuery(sql, { roomId });
+    return result.rows || [];
 }
