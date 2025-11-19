@@ -30,6 +30,8 @@ export default function ChatPage() {
         isLoadingMore,
         hasMoreMessages,
         loadMoreMessages,
+        markAsRead,
+        isReadStatusLoaded,
     } = useChatSocket({ userId, userNickname });
 
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -136,6 +138,8 @@ const handleSendFile = ({ fileName, mimeType, fileData }) => {
                             isLoadingMore={isLoadingMore}
                             hasMoreMessages={hasMoreMessages}
                             isInitialLoad={isInitialLoad}
+                            markAsRead={markAsRead}
+                            isReadStatusLoaded={isReadStatusLoaded}
                         />
 
                         <MessageInput
