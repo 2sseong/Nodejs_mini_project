@@ -204,6 +204,16 @@ export async function getMemberReadStatus(roomId) {
     return statusMap;
 }
 
+// [추가] 메시지 수정 서비스
+export async function modifyMessage({ msgId, userId, content }) {
+    return await repo.updateMessageTx({ msgId, senderId: userId, content });
+}
+
+// [추가] 메시지 삭제 서비스
+export async function removeMessage({ msgId, userId }) {
+    return await repo.deleteMessageTx({ msgId, senderId: userId });
+}
+
 export default {
     createRoom,
     listRoomsForUser,
@@ -217,5 +227,7 @@ export default {
     updateLastReadTimestamp,
     calculateUnreadCounts,
     calculateInitialUnreadCount,
-    getMemberReadStatus
+    getMemberReadStatus,
+    modifyMessage,
+    removeMessage
 };
