@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+// src/hooks/useChatSocket.js
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createSocket } from '../lib/socket';
 
 const CHAT_PAGE_SIZE = 50;
 
 export function useChatSocket({ userId, userNickname }) {
+    // [수정 1] socket을 useMemo가 아닌 State로 관리
+    const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [rooms, setRooms] = useState([]);
     const [currentRoomId, setCurrentRoomId] = useState(null);
@@ -13,15 +16,29 @@ export function useChatSocket({ userId, userNickname }) {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [onlineUsers, setOnlineUsers] = useState([]);
 
-    // [수정] 읽음 맵은 렌더링과 무관하므로 Ref로만 관리 (동기화 문제 원천 차단)
+    // 읽음 맵 Refs
     const readStatusMapRef = useRef({}); 
     const isReadStatusLoadedRef = useRef(false);
-    // (isReadStatusLoaded state는 MessageList 전달용으로 유지)
     const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false);
+    
     const isPaginatingRef = useRef(false);
     const currentRoomIdRef = useRef(null);
-    const socket = useMemo(() => createSocket(userId), [userId]);
     const messagesRef = useRef(messages);
+
+    // [수정 2] 소켓 생성 및 해제 전용 useEffect 추가
+    // userId가 변경될 때만 소켓을 새로 생성하고, 컴포넌트가 사라질 때 닫습니다.
+    useEffect(() => {
+        if (!userId) return;
+
+        console.log('[useChatSocket] Creating new socket connection...');
+        const newSocket = createSocket(userId);
+        setSocket(newSocket);
+
+        return () => {
+            console.log('[useChatSocket] Disconnecting socket...');
+            newSocket.disconnect();
+        };
+    }, [userId]);
 
     useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -45,7 +62,6 @@ export function useChatSocket({ userId, userNickname }) {
         setIsInitialLoad(true);
         isPaginatingRef.current = false;
         
-        // 읽음 상태 및 로딩 플래그 초기화
         readStatusMapRef.current = {};
         setIsReadStatusLoaded(false);
         isReadStatusLoadedRef.current = false;
@@ -56,7 +72,6 @@ export function useChatSocket({ userId, userNickname }) {
         const rid = String(newRoomId || '');
         if (!socket || !userId || !rid) return;
 
-        // 해당 방의 메시지 기록 요청 (화면 표시용)
         socket.emit('chat:get_history', {
             roomId: rid,
             beforeMsgId: null,
@@ -100,7 +115,7 @@ export function useChatSocket({ userId, userNickname }) {
     }, [isLoadingMore, hasMoreMessages, socket, setIsLoadingMore, setIsInitialLoad]);
 
 
-    // [수정] onReadUpdate (Ref만 사용)
+    // onReadUpdate (Ref만 사용)
     const onReadUpdate = useCallback((data) => {
         if (!isReadStatusLoadedRef.current) return;
 
@@ -116,13 +131,10 @@ export function useChatSocket({ userId, userNickname }) {
 
         if (isNaN(readingTime)) return;
 
-        // Ref에서 직접 조회 (가장 최신 값 보장됨)
         const prevReadTime = readStatusMapRef.current[strReaderId] || 0;
 
-        // 과거 이벤트 무시
         if (readingTime <= prevReadTime) return;
 
-        // Ref 업데이트 (State 업데이트 제거함 - 동기화 문제 방지)
         readStatusMapRef.current[strReaderId] = readingTime;
 
         console.log(`[🔥Socket] User ${strReaderId} Update: ${prevReadTime} -> ${readingTime}`);
@@ -142,14 +154,13 @@ export function useChatSocket({ userId, userNickname }) {
                     messageTime <= readingTime + 1000 && 
                     String(strReaderId) !== String(msg.SENDER_ID)
                 ) {
-                     return { ...msg, unreadCount: Math.max(0, msg.unreadCount - 1) };
+                      return { ...msg, unreadCount: Math.max(0, msg.unreadCount - 1) };
                 }
                 return msg;
             });
         });
     }, []);
 
-    // [추가] 메시지 수정 요청 함수
     const editMessage = useCallback((msgId, newContent) => {
         if (!socket || !currentRoomIdRef.current) return;
         socket.emit('chat:edit', { 
@@ -159,7 +170,6 @@ export function useChatSocket({ userId, userNickname }) {
         });
     }, [socket]);
 
-    // [추가] 메시지 삭제 요청 함수
     const deleteMessage = useCallback((msgId) => {
         if (!socket || !currentRoomIdRef.current) return;
         socket.emit('chat:delete', { 
@@ -171,9 +181,11 @@ export function useChatSocket({ userId, userNickname }) {
 
     // 메인 소켓 이벤트 바인딩
     useEffect(() => {
+        // socket이 null이거나 연결되지 않았을 때는 바인딩하지 않음
         if (!socket || !userId) return;
 
         const onConnect = () => {
+            console.log('[Socket] Connected event received');
             setConnected(true);
             const authToken = localStorage.getItem('authToken');
             socket.emit('rooms:fetch', { userId, authToken });
@@ -185,12 +197,10 @@ export function useChatSocket({ userId, userNickname }) {
             console.warn('socket disconnected:', reason);
         };
 
-        // [중요] 방 목록을 받으면 -> 모든 방에 대해 Join 요청을 보냄 (알림 수신용)
         const onRoomsList = (roomList) => {
             const normalized = (roomList || []).map(r => ({ ...r, ROOM_ID: String(r.ROOM_ID) }));
             setRooms(normalized);
 
-            // 🌟 모든 방 Join (백그라운드 알림을 위해 필수)
             normalized.forEach(room => {
                 socket.emit('room:join', { roomId: room.ROOM_ID, userId });
             });
@@ -207,7 +217,6 @@ export function useChatSocket({ userId, userNickname }) {
                     normalizedMap[String(key)] = Number(data.memberReadStatus[key]);
                 });
                 
-                // Ref만 업데이트 (State 제거)
                 readStatusMapRef.current = normalizedMap;
                 
                 setIsReadStatusLoaded(true);
@@ -249,14 +258,12 @@ export function useChatSocket({ userId, userNickname }) {
                 messageTime = new Date(msg.SENT_AT).getTime();
             }
 
-            // 현재 저장된 시간보다 더 최신일 때만 업데이트
             const currentSenderTime = readStatusMapRef.current[senderId] || 0;
             if (messageTime > currentSenderTime) {
                 readStatusMapRef.current[senderId] = messageTime;
                 console.log(`[Socket] Implicit Read Update for Sender ${senderId}: -> ${messageTime}`);
             }
 
-            // 2. 메시지 목록 추가
             if (String(msg.SENDER_ID) === String(userId) && msg.TEMP_ID) {
                 setMessages(prev =>
                     prev.map(m => (m.TEMP_ID === msg.TEMP_ID ? msg : m))
@@ -264,19 +271,17 @@ export function useChatSocket({ userId, userNickname }) {
                 return;
             }
         
-        const incomingRoomId = String(msg.ROOM_ID || msg.roomId);
-        const currentRefId = String(currentRoomIdRef.current);
-        if (incomingRoomId === currentRefId) {
-            setMessages(prev => [...prev, msg]);
-        }
-    };
+            const incomingRoomId = String(msg.ROOM_ID || msg.roomId);
+            const currentRefId = String(currentRoomIdRef.current);
+            if (incomingRoomId === currentRefId) {
+                setMessages(prev => [...prev, msg]);
+            }
+        };
 
-       const onNewRoomCreated = (roomData) => {
+        const onNewRoomCreated = (roomData) => {
             if (!roomData) return;
             refreshRooms();
-            // 새 방이 생기면 그 방도 Join (자동) - refreshRooms -> onRoomsList -> join
             
-            // 만약 내가 만든 방이면 바로 이동
             if (String(roomData.makerId) === String(userId)) {
                  const newRoomId = String(roomData.roomId || roomData.ROOM_ID);
                  setCurrentRoomId(newRoomId);
@@ -284,7 +289,6 @@ export function useChatSocket({ userId, userNickname }) {
             }
         };
 
-        // [추가] 메시지 수정됨 이벤트 핸들러
         const onMessageUpdated = ({ msgId, content }) => {
             setMessages(prev => prev.map(m => {
                 const id = m.MSG_ID || m.TEMP_ID;
@@ -295,7 +299,6 @@ export function useChatSocket({ userId, userNickname }) {
             }));
         };
 
-        // [추가] 메시지 삭제됨 이벤트 핸들러
         const onMessageDeleted = ({ msgId }) => {
             setMessages(prev => prev.filter(m => {
                 const id = m.MSG_ID || m.TEMP_ID;
@@ -303,6 +306,7 @@ export function useChatSocket({ userId, userNickname }) {
             }));
         };
 
+        // 이벤트 리스너 등록
         socket.on('rooms:refresh', onRoomsRefresh);
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);
@@ -315,6 +319,7 @@ export function useChatSocket({ userId, userNickname }) {
         socket.on('ONLINE_USERS', (list) => {setOnlineUsers(list.map(String));});
 
         return () => {
+            // 이벤트 리스너 해제
             socket.off('connect', onConnect);
             socket.off('disconnect', onDisconnect);
             socket.off('rooms:list', onRoomsList);
@@ -328,12 +333,13 @@ export function useChatSocket({ userId, userNickname }) {
         };
     }, [socket, userId, handleRoomChange, refreshRooms, onRoomsRefresh]); 
 
-    // [독립] 읽음 업데이트 전용 리스너
+    // 읽음 업데이트 전용 리스너
     useEffect(() => {
         if (!socket) return;
         const handleReadUpdate = (data) => {
             onReadUpdate(data);
         };
+        // 중복 방지
         socket.off('chat:read_update');
         socket.on('chat:read_update', handleReadUpdate);
         return () => {
@@ -341,12 +347,8 @@ export function useChatSocket({ userId, userNickname }) {
         };
     }, [socket, onReadUpdate]);
     
-    // 언마운트 시 소켓 닫기
-    useEffect(() => {
-        return () => { socket?.close(); };
-    }, [socket]);
-
-    // Ref 동기화
+    // [수정 3] Ref 동기화 및 socket.close() 제거
+    // socket 생성 useEffect에서 이미 close를 처리하므로 여기서는 제거했습니다.
     useEffect(() => {
         currentRoomIdRef.current = currentRoomId;
     }, [currentRoomId]);
@@ -357,6 +359,7 @@ export function useChatSocket({ userId, userNickname }) {
         if (!trimmed || !currentRoomId || !socket || !userId) return;
 
         if (!socket.connected) {
+            console.log('[sendMessage] Socket disconnected, reconnecting...');
             socket.connect();
             return;
         }
@@ -374,11 +377,9 @@ export function useChatSocket({ userId, userNickname }) {
         socket.emit('chat:message', msg);
     }, [currentRoomId, socket, userId, userNickname]);
 
-    // 읽음 처리 함수 (안전장치 포함)
     const markAsRead = useCallback(() => {
         const latestMessage = messagesRef.current[messagesRef.current.length - 1];
         
-        // 로딩 전이거나 데이터 없으면 중단
         if (!socket || !currentRoomIdRef.current || !latestMessage || !latestMessage.SENT_AT) {
             return;
         }
@@ -405,8 +406,8 @@ export function useChatSocket({ userId, userNickname }) {
         isInitialLoad,
         loadMoreMessages,
         markAsRead,
-        isReadStatusLoaded, // Prop으로 전달하기 위해 반환
-        editMessage,   // 반환 추가
+        isReadStatusLoaded, 
+        editMessage,    
         deleteMessage,
         onlineUsers
     };

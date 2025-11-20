@@ -11,7 +11,7 @@ export default function FriendPage() {
     const [userList, setUserList] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { authLoaded, userId, userNickname } = useAuth();
+    const { userId, userNickname } = useAuth();
 
     // 소켓 훅에서 온라인 사용자 목록 가져오기
     const { onlineUsers } = useChatSocket({ userId, userNickname });
