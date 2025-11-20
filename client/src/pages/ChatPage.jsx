@@ -1,5 +1,5 @@
 // src/pages/ChatPage.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState} from 'react';
 import '../styles/ChatPage.css';
 
 import { useAuth } from '../hooks/useAuth';
