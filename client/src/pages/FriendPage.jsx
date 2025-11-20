@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import FriendRequestList from '../components/Friend/FriendRequestList';
+import { useAuth } from '../hooks/AuthContext.jsx';
 import UserSearch from '../components/Friend/UserSearch.jsx';
 import FriendList from '../components/Friend/FriendList.jsx';
+import { useChatSocket } from '../hooks/useChatSocket.js';
 import '../styles/FriendPage.css';
 
 export default function FriendPage() {
@@ -9,6 +11,10 @@ export default function FriendPage() {
     const [userList, setUserList] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { authLoaded, userId, userNickname } = useAuth();
+
+    // 소켓 훅에서 온라인 사용자 목록 가져오기
+    const { onlineUsers } = useChatSocket({ userId, userNickname });
 
     // 사용자 ID 상태 - 동적관리
     const [myUserId, setMyUserId] = useState(null);
@@ -100,6 +106,7 @@ export default function FriendPage() {
                 users={userList} // 불러온 전체 유저 목록
                 myUserId={myUserId} // 로컬 저장소에서 가져온 내 ID
                 searchQuery={searchQuery} // 검색어 상태 전달
+                onlineUsers={onlineUsers}
             />
         );
     }

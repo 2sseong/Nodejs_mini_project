@@ -57,3 +57,8 @@ export function removeSocket(userId) {
         console.log(`[SocketStore] ??? User ${userId} disconnected. Total online: ${userSocketMap.size}`);
     }
 }
+
+// 현재 온라인인 사용자 ID 목록 반환
+export function getOnlineUserIds() {
+    return Array.from(userSocketMap.keys()).map(String);
+}

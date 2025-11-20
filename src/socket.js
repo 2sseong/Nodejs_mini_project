@@ -1,6 +1,6 @@
 // src/socket.js
 import { Server } from 'socket.io';
-import { addSocket, removeSocket, setIoInstance } from './sockets/socketStore.js';
+import { addSocket, removeSocket, setIoInstance, getOnlineUserIds } from './sockets/socketStore.js';
 import chatSocket from './features/chat/chat.socket.js'; // [핵심] chat.socket.js 임포트
 
 export default function initSocket(server) { // [수정] 'io' 대신 'server'를 받음
@@ -26,6 +26,8 @@ export default function initSocket(server) { // [수정] 'io' 대신 'server'를
         
         socket.data.userId = userId;
         addSocket(userId, socket);
+        // 온라인 사용자 목록 전체에 보내기
+        io.emit('ONLINE_USERS', getOnlineUserIds());
         socket.join(`user:${userId}`);
         console.log(`[socket] user connected: ${userId}`); // 로그 추가
 
@@ -34,6 +36,9 @@ export default function initSocket(server) { // [수정] 'io' 대신 'server'를
 
         socket.on('disconnect', (reason) => {
             removeSocket(userId);
+
+            // 온라인 목록 갱신해서 전체에게 보내기
+            io.emit('ONLINE_USERS',getOnlineUserIds());
             // [수정] 버전 A의 상세 로그 사용
             console.log(`[socket] user disconnected: ${userId} (${reason})`);
         });

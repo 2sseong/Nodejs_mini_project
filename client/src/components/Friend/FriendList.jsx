@@ -9,7 +9,8 @@ import './FriendList.css';
  * @param {string} myUserId - 현재 로그인한 사용자의 고유 ID
  * @param {string} searchQuery - FriendPage에서 받은 현재 검색어 (결과 없을 때 메시지 용도)
  */
-export default function FriendList({ users, myUserId, searchQuery }) { 
+export default function FriendList({ users, myUserId, searchQuery, onlineUsers }) { 
+    
     
     // 1. 나 자신을 목록 맨 위로 올리기 위해 정렬
     const sortedUsers = [...users].sort((a, b) => {
@@ -40,6 +41,7 @@ export default function FriendList({ users, myUserId, searchQuery }) {
         <ul className="user-list">
             {sortedUsers.map((user) => {
                 const isMe = user.USER_ID === myUserId;
+                const isOnline = onlineUsers.includes(String(user.USER_ID));
                 
                 return (
                     <li 
@@ -48,6 +50,9 @@ export default function FriendList({ users, myUserId, searchQuery }) {
                         style={{ backgroundColor: isMe ? '#e6f7ff' : 'white', borderLeft: isMe ? '4px solid #1890ff' : 'none' }}
                     >
                         <div className="user-info">
+                            <span 
+                            className={`status-dot ${isOnline ? 'online' : 'offline'}`} 
+                            ></span>
                             <span className="user-nickname">
                                 {isMe && <span className="me-tag" style={{ marginLeft: '8px', color: '#6fa9e0ff', fontWeight: 'bold' }}>[나] </span>} 
                                 {user.NICKNAME} 

@@ -69,3 +69,19 @@
     text-align: center;
     color: #777;
 }
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.status-dot.online {
+    background-color: #75a576; /* green */
+}
+
+.status-dot.offline {
+    background-color: #bdbdbd; /* gray */
+}

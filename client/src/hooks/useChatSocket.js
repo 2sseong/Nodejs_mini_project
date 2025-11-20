@@ -11,6 +11,7 @@ export function useChatSocket({ userId, userNickname }) {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [onlineUsers, setOnlineUsers] = useState([]);
 
     // [수정] 읽음 맵은 렌더링과 무관하므로 Ref로만 관리 (동기화 문제 원천 차단)
     const readStatusMapRef = useRef({}); 
@@ -322,6 +323,7 @@ export function useChatSocket({ userId, userNickname }) {
         socket.on('room:new_created', onNewRoomCreated);
         socket.on('chat:message_updated', onMessageUpdated);
         socket.on('chat:message_deleted', onMessageDeleted);
+        socket.on('ONLINE_USERS', (list) => {setOnlineUsers(list.map(String));});
 
         return () => {
             socket.off('connect', onConnect);
@@ -333,6 +335,7 @@ export function useChatSocket({ userId, userNickname }) {
             socket.off('rooms:refresh', onRoomsRefresh);
             socket.off('chat:message_updated', onMessageUpdated);
             socket.off('chat:message_deleted', onMessageDeleted);
+            socket.off('ONLINE_USERS');
         };
     }, [socket, userId, handleRoomChange, refreshRooms, onRoomsRefresh]); 
 
@@ -415,6 +418,7 @@ export function useChatSocket({ userId, userNickname }) {
         markAsRead,
         isReadStatusLoaded, // Prop으로 전달하기 위해 반환
         editMessage,   // 반환 추가
-        deleteMessage
+        deleteMessage,
+        onlineUsers
     };
 }
