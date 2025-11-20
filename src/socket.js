@@ -6,7 +6,8 @@ import chatSocket from './features/chat/chat.socket.js'; // [핵심] chat.socket
 export default function initSocket(server) { // [수정] 'io' 대신 'server'를 받음
     const io = new Server(server, { 
         cors: { 
-            origin: process.env.CLIENT_URL || 'http://localhost:5173', // server.js와 동일하게 수정
+            // origin: process.env.CLIENT_URL || 'http://localhost:5173', // server.js와 동일하게 수정
+            origin: '*',
             methods: ['GET', 'POST'], 
             credentials: true 
         } 
