@@ -17,14 +17,11 @@ export function useChatSocket({ userId, userNickname }) {
     const isReadStatusLoadedRef = useRef(false);
     // (isReadStatusLoaded state는 MessageList 전달용으로 유지)
     const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false);
-
     const isPaginatingRef = useRef(false);
     const currentRoomIdRef = useRef(null);
-    const prevRoomIdRef = useRef(null);
-    
     const socket = useMemo(() => createSocket(userId), [userId]);
-
     const messagesRef = useRef(messages);
+
     useEffect(() => { messagesRef.current = messages; }, [messages]);
 
     // 방 목록 갱신
@@ -58,12 +55,7 @@ export function useChatSocket({ userId, userNickname }) {
         const rid = String(newRoomId || '');
         if (!socket || !userId || !rid) return;
 
-        const prev = prevRoomIdRef.current;
-        if (prev && prev !== rid) {
-            socket.emit('room:leave', { roomId: prev, userId });
-        }
-
-        socket.emit('room:join', { roomId: rid, userId });
+        // 해당 방의 메시지 기록 요청 (화면 표시용)
         socket.emit('chat:get_history', {
             roomId: rid,
             beforeMsgId: null,
@@ -71,7 +63,6 @@ export function useChatSocket({ userId, userNickname }) {
         });
 
         currentRoomIdRef.current = rid;
-        prevRoomIdRef.current = rid;
     }, [socket, userId]);
 
     const selectRoom = useCallback((roomId) => {
@@ -186,15 +177,6 @@ export function useChatSocket({ userId, userNickname }) {
             const authToken = localStorage.getItem('authToken');
             socket.emit('rooms:fetch', { userId, authToken });
             refreshRooms();
-            const rid = currentRoomIdRef.current;
-            if (rid) {
-                socket.emit('room:join', { roomId: rid, userId });
-                socket.emit('chat:get_history', {
-                    roomId: rid,
-                    beforeMsgId: null,
-                    limit: CHAT_PAGE_SIZE
-                });
-            }
         };
 
         const onDisconnect = (reason) => {
@@ -202,14 +184,16 @@ export function useChatSocket({ userId, userNickname }) {
             console.warn('socket disconnected:', reason);
         };
 
+        // [중요] 방 목록을 받으면 -> 모든 방에 대해 Join 요청을 보냄 (알림 수신용)
         const onRoomsList = (roomList) => {
             const normalized = (roomList || []).map(r => ({ ...r, ROOM_ID: String(r.ROOM_ID) }));
             setRooms(normalized);
-            if (currentRoomIdRef.current == null && normalized.length > 0) {
-                const first = normalized[0].ROOM_ID;
-                setCurrentRoomId(first);
-                handleRoomChange(first);
-            }
+
+            // 🌟 모든 방 Join (백그라운드 알림을 위해 필수)
+            normalized.forEach(room => {
+                socket.emit('room:join', { roomId: room.ROOM_ID, userId });
+            });
+            console.log(`[Socket] Joined all ${normalized.length} rooms for notifications.`);
         };
 
         const onChatHistory = (data) => {
@@ -286,12 +270,17 @@ export function useChatSocket({ userId, userNickname }) {
         }
     };
 
-        const onNewRoomCreated = (roomData) => {
+       const onNewRoomCreated = (roomData) => {
             if (!roomData) return;
             refreshRooms();
-            const newRoomId = String(roomData.roomId || roomData.ROOM_ID);
-            setCurrentRoomId(newRoomId);
-            handleRoomChange(newRoomId);
+            // 새 방이 생기면 그 방도 Join (자동) - refreshRooms -> onRoomsList -> join
+            
+            // 만약 내가 만든 방이면 바로 이동
+            if (String(roomData.makerId) === String(userId)) {
+                 const newRoomId = String(roomData.roomId || roomData.ROOM_ID);
+                 setCurrentRoomId(newRoomId);
+                 handleRoomChange(newRoomId);
+            }
         };
 
         // [추가] 메시지 수정됨 이벤트 핸들러
