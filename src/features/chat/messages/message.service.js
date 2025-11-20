@@ -1,0 +1,165 @@
+import * as messageRepo from './message.repository.js';
+import * as roomRepo from '../rooms/room.repository.js'; // 방 인원수 조회를 위해 필요
+
+export async function getHistory({ roomId, limit, beforeMsgId }) {
+    return await messageRepo.getHistory({ roomId, limit, beforeMsgId });
+}
+
+// 텍스트 메시지 저장
+export async function saveMessage({ userId, ROOM_ID, CONTENT, activeUserIds = [] }) {
+    const savedRow = await messageRepo.saveMessageTx({
+        roomId: ROOM_ID, 
+        senderId: userId, 
+        content: CONTENT,
+        messageType: 'TEXT',
+        fileUrl: null,
+        fileName: null,
+    });
+
+    // 보고 있는 사람들(activeUserIds) 모두 읽음 처리
+    if (savedRow.SENT_AT) {
+        const timestamp = new Date(savedRow.SENT_AT).getTime();
+        
+        // activeUserIds가 비어있으면 보낸 사람(userId)만이라도 넣음
+        const usersToUpdate = activeUserIds.length > 0 ? activeUserIds : [userId];
+
+        // 병렬 처리: DB에 '이 사람들 다 읽었음' 기록
+        await Promise.all(usersToUpdate.map(async (uid) => {
+            await messageRepo.upsertReadStatus(uid, ROOM_ID, timestamp);
+        }));
+    }
+    return savedRow;
+}
+
+// 파일 메시지 저장
+export async function saveFileMessage({ roomId, userId, fileName, fileURL, mimeType, activeUserIds = [] }) {
+    console.log('message.service: Saving file message:', { roomId, userId, fileName, fileURL, mimeType });
+    const savedRow = await messageRepo.saveMessageTx({
+        roomId: roomId,
+        senderId: userId,
+        content: null, 
+        messageType: 'FILE', 
+        fileUrl: fileURL,
+        fileName: fileName
+    });
+    
+    // 메시지를 보낸 사람(나) 및 보고 있는 사람들 읽음 처리
+    if (savedRow.SENT_AT) {
+        const timestamp = new Date(savedRow.SENT_AT).getTime();
+        const usersToUpdate = activeUserIds.length > 0 ? activeUserIds : [userId];
+
+        await Promise.all(usersToUpdate.map(async (uid) => {
+            await messageRepo.upsertReadStatus(uid, roomId, timestamp);
+        }));
+    }
+
+    return savedRow;
+}
+
+// 읽음 수 확인
+export async function getReadCountsForMessages(roomId, messages) {
+    if (!messages || messages.length === 0) return {};
+
+    const msgIds = messages.map(m => m.MSG_ID || m.TEMP_ID);
+    
+    const rows = await messageRepo.countReadStatusByMessageIds(roomId, msgIds);
+
+    const readCountMap = {};
+    rows.forEach(row => {
+        const id = row.MSG_ID || row.msg_id;
+        const count = row.readCount || row.READCOUNT || row["readCount"] || 0;
+        if (id) {
+            readCountMap[id] = count;
+        }
+    });
+
+    return readCountMap;
+}
+
+// 읽음 상태 업데이트
+export async function updateLastReadTimestamp(userId, roomId, lastReadTimestamp) {
+    if (!userId || !roomId || !lastReadTimestamp) return;
+
+    let timestampNumber;
+
+    if (typeof lastReadTimestamp === 'number') {
+        timestampNumber = lastReadTimestamp;
+    } else if (typeof lastReadTimestamp === 'string') {
+        timestampNumber = new Date(lastReadTimestamp).getTime();
+    } else {
+        console.error("Invalid timestamp type received:", typeof lastReadTimestamp);
+        return;
+    }
+
+    if (isNaN(timestampNumber)) {
+        console.error("Invalid timestamp received (NaN):", lastReadTimestamp);
+        return; 
+    }
+
+    const rowsAffected = await messageRepo.upsertReadStatus(userId, roomId, timestampNumber);
+    return rowsAffected > 0;
+}
+
+/**
+ * 메시지 객체 배열에 안 읽은 카운트(unreadCount)를 계산하여 추가
+ */
+export async function calculateUnreadCounts({ messages, currentUserId, membersInRoom, readCountMap }) {
+    if (!messages || messages.length === 0) return [];
+    
+    const messagesWithUnread = messages.map(msg => {
+        const readCount = readCountMap[msg.MSG_ID] || 0;
+        const unread = membersInRoom - readCount;
+        const calculatedUnreadCount = Math.max(0, unread); 
+        
+        return {
+            ...msg,
+            unreadCount: calculatedUnreadCount 
+        };
+    });
+
+    return messagesWithUnread;
+}
+
+/**
+ * 새 메시지 전송 시 초기 안 읽음 카운트를 계산
+ * (Room Repository 의존)
+ */
+export async function calculateInitialUnreadCount(roomId) {
+    // 1. 멤버 수 조회 (Room Repo 호출)
+    const count = await roomRepo.countRoomMembers(roomId);
+    const membersInRoom = parseInt(count, 10);
+    
+    // 2. 초기 안 읽음 수 계산 (총 인원 - 1명)
+    return Math.max(0, membersInRoom - 1);
+}
+
+// 방 멤버들의 읽음 상태를 Map 형태로 반환
+export async function getMemberReadStatus(roomId) {
+    const rows = await messageRepo.getRoomReadStatus(roomId);
+    
+    const statusMap = {};
+    rows.forEach(row => {
+        const userId = row.USER_ID || row.user_id || row.UserId;
+        const ts = row.lastReadTimestamp || 
+                   row.LASTREADTIMESTAMP || 
+                   row.LAST_READ_TIMESTAMP || 
+                   row.last_read_timestamp;
+                   
+        if (userId && ts) {
+            statusMap[userId] = Number(ts);
+        }
+    });
+    
+    console.log(`[Service] Loaded ReadMap for Room ${roomId}:`, Object.keys(statusMap).length, 'users');
+    return statusMap;
+}
+
+// 메시지 수정 서비스
+export async function modifyMessage({ msgId, userId, content }) {
+    return await messageRepo.updateMessageTx({ msgId, senderId: userId, content });
+}
+
+// 메시지 삭제 서비스
+export async function removeMessage({ msgId, userId }) {
+    return await messageRepo.deleteMessageTx({ msgId, senderId: userId });
+}

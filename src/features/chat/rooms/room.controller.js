@@ -1,11 +1,12 @@
-//chat.controller.js
-import chatService from './chat.service.js';
-import socketGateway from '../../sockets/socket.gateway.js';
+// src/features/chat/rooms/room.controller.js
+import * as roomService from './room.service.js';
+import socketGateway from '../../../sockets/socket.gateway.js';
 
 export async function createRoom(req, res, next) {
     try {
         const { roomName, creatorId } = req.body;
-        const result = await chatService.createRoom({ roomName, creatorId });
+        // chatService -> roomService로 변경
+        const result = await roomService.createRoom({ roomName, creatorId });
 
         socketGateway.notifyRoomCreatedToUser(result.creatorId, {
             roomId: result.roomId, roomName: result.roomName, roomType: result.roomType,
@@ -18,7 +19,9 @@ export async function createRoom(req, res, next) {
 export async function invite(req, res, next) {
     try {
         const { roomId, inviterId, inviteeId } = req.body;
-        await chatService.inviteUserToRoom({ roomId, inviterId, inviteeId });
+        // chatService -> roomService로 변경
+        await roomService.inviteUserToRoom({ roomId, inviterId, inviteeId });
+        
         res.json({ success: true, message: '사용자를 성공적으로 초대했습니다.' });
 
         socketGateway.requestRoomsRefresh(inviteeId);
@@ -43,7 +46,8 @@ export async function leaveRoom(req, res, next) {
     }
 
     try {
-        const rowsAffected = await chatService.leaveRoom({ roomId, userId });
+        // chatService -> roomService로 변경
+        const rowsAffected = await roomService.leaveRoom({ roomId, userId });
 
         // 성공 응답 전 소켓 이벤트 트리거
         socketGateway.requestRoomsRefresh(userId);
