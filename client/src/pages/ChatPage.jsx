@@ -2,7 +2,7 @@
 import React, { useState} from 'react';
 import '../styles/ChatPage.css';
 
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatNotifications } from '../hooks/useChatNotifications'; // [추가]
 import { useChatHandlers } from '../hooks/useChatHandlers';         // [추가]
