@@ -1,8 +1,9 @@
+// src/pages.LoginPage.jsx
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../styles/LoginPage.css'
 import { login } from '../api/authApi'
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/AuthContext';
 
 export default function LoginPage() {
     const nav = useNavigate()
@@ -56,8 +57,6 @@ export default function LoginPage() {
                     // 서버 응답은 성공했지만, 토큰이 없는 이상한 상황 처리
                     throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
                 }
-
-                nav('/chat', { replace: true })
             } catch (err) {
                 setError(err.message || '알 수 없는 오류가 발생했습니다.')
             } finally {

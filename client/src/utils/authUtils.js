@@ -1,3 +1,4 @@
+// src/utils/uthUtils.js
 // localStorage에 접근해서 인증 정보를 없애거나 확인하는 로직을 담음
 // 로그인 상태 확인하는 유틸리티 함수
 export const getAuthToken = () => {

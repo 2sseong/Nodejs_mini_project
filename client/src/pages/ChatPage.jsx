@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import '../styles/ChatPage.css';
 
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/AuthContext.jsx';
 import { useChatSocket } from '../hooks/useChatSocket';
 
 import ChatSidebar from '../components/Chatpage/Sidebar/ChatSidebar.jsx';
@@ -13,6 +13,7 @@ import CreateRoomModal from '../components/Chatpage/Modals/CreateRoomModal.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 
 import { apiLeaveRoom } from '../api/roomApi.jsx';
+import { Navigate } from 'react-router-dom';
 
 export default function ChatPage() {
     const { authLoaded, userId, userNickname } = useAuth();
@@ -220,7 +221,8 @@ const handleSendFile = ({ fileName, mimeType, fileData }) => {
 
 
     if (!authLoaded) return <div>로딩 중... (인증 확인)</div>;
-    if (!userId || !userNickname) return <div>로그인 페이지로 이동 중...</div>;
+    // if (!userId || !userNickname) return <div>로그인 페이지로 이동 중...</div>;
+    if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
     return (
         <div className="chat-container">
