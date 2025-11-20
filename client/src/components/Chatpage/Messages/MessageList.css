@@ -128,7 +128,86 @@
     line-height: 1.45;
 }
 
+/* 컨텍스트 메뉴 (우클릭 수정/삭제) */
+.context-menu {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    z-index: 1000;
+    overflow: hidden;
+    min-width: 100px;
+    animation: fadeIn 0.1s ease-out;
+}
 
+.context-menu button {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 14px;
+    cursor: pointer;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.context-menu button:hover {
+    background-color: #f8f9fa;
+}
+
+.context-menu button.delete-option {
+    color: #dc3545;
+}
+
+.context-menu button.delete-option:hover {
+    background-color: #fff5f5;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* 수정 모드 인풋 스타일 */
+.edit-input-area {
+    display: flex;
+    gap: 5px;
+    flex-direction: column;
+}
+.edit-input {
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 100%;
+    resize: none; /* 텍스트에어리어 크기 고정 */
+}
+.edit-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+.edit-btn-save {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.edit-btn-cancel {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
 
 
 

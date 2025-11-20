@@ -220,4 +220,56 @@ export default function chatSocket(io, socket) {
             console.error('[socket] chat:mark_as_read error:', error);
         }
     });
+
+    socket.on('chat:mark_as_read', async (payload) => {
+        try {
+            const { roomId, lastReadTimestamp } = payload;
+            const userId = socket.userId; // (소켓 인증 시 저장된 ID)
+
+            if (!roomId || !lastReadTimestamp || !userId) return;
+            // 1. 단 하나의 쿼리 (UPSERT: 없으면 INSERT, 있으면 UPDATE)
+            // Oracle의 MERGE 구문이나, 
+            // SELECT 후 COUNT로 분기처리 (간단한 방식)
+            await chatService.updateLastReadTimestamp(userId, roomId, lastReadTimestamp);
+            
+            // 2. (중요) 아무에게도 방송(emit)하지 않습니다.
+            // DB에만 조용히 쓰고 끝냅니다. (성능 확보)
+        } catch (error) {
+            console.error('Error marking as read:', error);
+        }
+    });
+
+    // [추가] 메시지 수정 핸들러
+    socket.on('chat:edit', async (payload) => {
+        const { roomId, msgId, content } = payload;
+        if (!roomId || !msgId || !content) return;
+
+        try {
+            const success = await chatService.modifyMessage({ msgId, userId, content });
+            if (success) {
+                // 방 전체에 수정된 내용 전파
+                io.to(String(roomId)).emit('chat:message_updated', { msgId, content });
+            }
+        } catch (e) {
+            console.error('[socket] chat:edit error', e);
+        }
+    });
+
+    // [추가] 메시지 삭제 핸들러
+    socket.on('chat:delete', async (payload) => {
+        const { roomId, msgId } = payload;
+        if (!roomId || !msgId) return;
+
+        try {
+            const success = await chatService.removeMessage({ msgId, userId });
+            if (success) {
+                // 방 전체에 삭제된 ID 전파
+                io.to(String(roomId)).emit('chat:message_deleted', { msgId });
+            }
+        } catch (e) {
+            console.error('[socket] chat:delete error', e);
+        }
+    });
+
+
 }

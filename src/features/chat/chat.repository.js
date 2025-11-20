@@ -307,3 +307,34 @@ export async function getRoomReadStatus(roomId) {
     const result = await executeQuery(sql, { roomId });
     return result.rows || [];
 }
+
+// 메시지 수정 (본인만 가능)
+export async function updateMessageTx({ msgId, senderId, content }) {
+    // 타임스탬프 업데이트도 고려할 수 있으나, 여기서는 내용만 수정합니다.
+    const sql = `
+        UPDATE T_MESSAGE 
+        SET CONTENT = :content 
+        WHERE MSG_ID = :msgId AND SENDER_ID = :senderId
+    `;
+    const result = await executeTransaction(sql, { 
+        msgId, 
+        senderId, 
+        content 
+    }, { autoCommit: true });
+    
+    return result.rowsAffected > 0;
+}
+
+// 메시지 삭제 (본인만 가능)
+export async function deleteMessageTx({ msgId, senderId }) {
+    const sql = `
+        DELETE FROM T_MESSAGE 
+        WHERE MSG_ID = :msgId AND SENDER_ID = :senderId
+    `;
+    const result = await executeTransaction(sql, { 
+        msgId, 
+        senderId 
+    }, { autoCommit: true });
+    
+    return result.rowsAffected > 0;
+}

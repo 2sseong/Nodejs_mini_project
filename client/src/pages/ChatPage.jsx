@@ -33,6 +33,8 @@ export default function ChatPage() {
         loadMoreMessages,
         markAsRead,
         isReadStatusLoaded,
+        editMessage,   // [추가]
+        deleteMessage
     } = useChatSocket({ userId, userNickname });
 
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -142,6 +144,8 @@ const handleSendFile = ({ fileName, mimeType, fileData }) => {
                             isInitialLoad={isInitialLoad}
                             markAsRead={markAsRead}
                             isReadStatusLoaded={isReadStatusLoaded}
+                            onEditMessage={editMessage}
+                            onDeleteMessage={deleteMessage}
                         />
 
                         <MessageInput

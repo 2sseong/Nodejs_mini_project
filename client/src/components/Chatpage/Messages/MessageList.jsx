@@ -20,7 +20,9 @@ export default function MessageList({
     hasMoreMessages,
     isInitialLoad, 
     markAsRead,
-    isReadStatusLoaded // [핵심] 로딩 완료 상태 Prop
+    isReadStatusLoaded, // [핵심] 로딩 완료 상태 Prop
+    onEditMessage,   // [추가] 부모(ChatPage)에서 전달받음
+    onDeleteMessage
 }) {
 
     // [핵심] 메시지 목록 변경 또는 데이터 로딩 완료 시 읽음 처리
@@ -103,6 +105,7 @@ export default function MessageList({
                 return (
                     <MessageItem
                         key={uniqueKey} 
+                        msgId={msgId}
                         mine={String(senderId) === String(userId)} 
                         nickname={nickname} 
                         sentAt={sentAt}
@@ -111,6 +114,8 @@ export default function MessageList({
                         fileUrl={fileUrl}
                         fileName={fileName}
                         unreadCount={unreadCount}
+                        onEdit={onEditMessage}     // 핸들러 전달
+                        onDelete={onDeleteMessage}
                     />
                 );
             })}
