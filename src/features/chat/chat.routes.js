@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import * as ctrl from './chat.controller.js';
+import roomRoutes from './rooms/room.routes.js';
 
-// (선택) Zod/Joi validate 미들웨어 붙이면 더 안전
 const r = Router();
-r.post('/create', ctrl.createRoom);
-r.post('/invite', ctrl.invite);
-r.delete('/exit/:roomId/:userId', ctrl.leaveRoom);
+
+// Room 관련 라우트 마운트
+r.use('/', roomRoutes); 
+// Message 관련 라우트가 생긴다면 r.use('/messages', messageRoutes) 추가
 
 export default r;
