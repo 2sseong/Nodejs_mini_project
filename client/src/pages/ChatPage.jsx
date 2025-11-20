@@ -1,5 +1,5 @@
 // src/pages/ChatPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import '../styles/ChatPage.css';
 
 import { useAuth } from '../hooks/useAuth';
@@ -42,7 +42,8 @@ export default function ChatPage() {
     const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(currentRoomId));
 
     if (!authLoaded) return <div>로딩 중... (인증 확인)</div>;
-    if (!userId || !userNickname) return <div>로그인 페이지로 이동 중...</div>;
+    // if (!userId || !userNickname) return <div>로그인 페이지로 이동 중...</div>;
+    if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
     return (
         <div className="chat-container">

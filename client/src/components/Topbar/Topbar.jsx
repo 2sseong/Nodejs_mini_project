@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import './Topbar.css'
-import { useAuth } from '../../hooks/useAuth'; 
+import { useAuth } from '../../hooks/AuthContext'; 
 
 export default function Topbar() {
     const loc = useLocation()
@@ -14,7 +14,7 @@ export default function Topbar() {
     const handleLogout = () => {
         logout(); // 전역 상태 초기화 및 로컬 스토리지 정리
         console.log(`${userNickname} 님, 로그아웃되었습니다.`);
-        nav('/', { replace: true }); // 로그아웃 후 홈/랜딩 페이지로 이동
+        nav('/login', { replace: true }); // 로그아웃 후 홈/랜딩 페이지로 이동
     };
 
     return (
