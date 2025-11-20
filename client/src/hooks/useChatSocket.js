@@ -157,6 +157,25 @@ export function useChatSocket({ userId, userNickname }) {
         });
     }, []);
 
+    // [추가] 메시지 수정 요청 함수
+    const editMessage = useCallback((msgId, newContent) => {
+        if (!socket || !currentRoomIdRef.current) return;
+        socket.emit('chat:edit', { 
+            roomId: currentRoomIdRef.current, 
+            msgId, 
+            content: newContent 
+        });
+    }, [socket]);
+
+    // [추가] 메시지 삭제 요청 함수
+    const deleteMessage = useCallback((msgId) => {
+        if (!socket || !currentRoomIdRef.current) return;
+        socket.emit('chat:delete', { 
+            roomId: currentRoomIdRef.current, 
+            msgId 
+        });
+    }, [socket]);
+
 
     // 메인 소켓 이벤트 바인딩
     useEffect(() => {
@@ -275,6 +294,25 @@ export function useChatSocket({ userId, userNickname }) {
             handleRoomChange(newRoomId);
         };
 
+        // [추가] 메시지 수정됨 이벤트 핸들러
+        const onMessageUpdated = ({ msgId, content }) => {
+            setMessages(prev => prev.map(m => {
+                const id = m.MSG_ID || m.TEMP_ID;
+                if (String(id) === String(msgId)) {
+                    return { ...m, CONTENT: content };
+                }
+                return m;
+            }));
+        };
+
+        // [추가] 메시지 삭제됨 이벤트 핸들러
+        const onMessageDeleted = ({ msgId }) => {
+            setMessages(prev => prev.filter(m => {
+                const id = m.MSG_ID || m.TEMP_ID;
+                return String(id) !== String(msgId);
+            }));
+        };
+
         socket.on('rooms:refresh', onRoomsRefresh);
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);
@@ -282,6 +320,8 @@ export function useChatSocket({ userId, userNickname }) {
         socket.on('chat:history', onChatHistory);
         socket.on('chat:message', onChatMessage);
         socket.on('room:new_created', onNewRoomCreated);
+        socket.on('chat:message_updated', onMessageUpdated);
+        socket.on('chat:message_deleted', onMessageDeleted);
 
         return () => {
             socket.off('connect', onConnect);
@@ -291,6 +331,8 @@ export function useChatSocket({ userId, userNickname }) {
             socket.off('chat:message', onChatMessage);
             socket.off('room:new_created', onNewRoomCreated);
             socket.off('rooms:refresh', onRoomsRefresh);
+            socket.off('chat:message_updated', onMessageUpdated);
+            socket.off('chat:message_deleted', onMessageDeleted);
         };
     }, [socket, userId, handleRoomChange, refreshRooms, onRoomsRefresh]); 
 
@@ -371,6 +413,8 @@ export function useChatSocket({ userId, userNickname }) {
         isInitialLoad,
         loadMoreMessages,
         markAsRead,
-        isReadStatusLoaded // Prop으로 전달하기 위해 반환
+        isReadStatusLoaded, // Prop으로 전달하기 위해 반환
+        editMessage,   // 반환 추가
+        deleteMessage
     };
 }
