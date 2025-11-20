@@ -7,7 +7,7 @@ import FriendPage from './pages/FriendPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
 import Titlebar from './components/Titlebar/Titlebar.jsx';
 import NotificationWindowPage from './pages/NotificationWindowPage.jsx'; 
-import { useAuth } from './hooks/useAuth.js';
+import { useAuth } from './hooks/AuthContext.jsx';
 import './App.css';
 
 // 보호된 라우트 컴포넌트
