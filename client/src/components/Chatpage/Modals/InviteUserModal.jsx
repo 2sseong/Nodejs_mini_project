@@ -99,7 +99,7 @@ export default function InviteUserModal({
             );
 
             if (res.data?.success) {
-                alert(`${inviteeUsername} 님을 성공적으로 초대했습니다.`);
+                console.log(`${inviteeUsername} 님을 성공적으로 초대했습니다.`);
                 onClose(true);
             } else {
                 alert(`초대 실패: ${res.data?.message || '알 수 없는 오류'}`);

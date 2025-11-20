@@ -40,9 +40,8 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     }
 }
 
-// [!!!] listRoomsByUser 함수 수정 (특수 공백 문자 모두 제거) [!!!]
+
 export async function listRoomsByUser({ userId }) {
-    // [!!!] 수정: 'SELECT' 앞/뒤의 모든 특수 공백(혻) 제거 [!!!]
     const sql = `
                 SELECT T2.ROOM_ID, T2.ROOM_NAME, T2.ROOM_TYPE
                 FROM T_ROOM_MEMBER T1
@@ -151,11 +150,11 @@ export async function saveMessageTx(data) {
             sentAt: now,
             outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
             outRoomId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-            outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-            outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-            outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
+            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 }, 
+            outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
+            outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 },
+            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 1000 },
             outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
         };
 

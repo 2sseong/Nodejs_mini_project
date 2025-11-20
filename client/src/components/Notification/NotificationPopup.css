@@ -1,0 +1,126 @@
+/* 기본 팝업 스타일 */
+.notification-popup {
+  /* 중요: 투명 윈도우 내에서 위치 잡기 */
+  width: 100%; 
+  max-width: 320px; /* 가로폭 제한 */
+  background-color: #ffffff;
+  border-left: 5px solid #4F46E5; /* 포인트 컬러 (Indigo) */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* 그림자 좀 더 진하게 */
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  overflow: hidden;
+  pointer-events: auto; /* 투명 윈도우에서 이 요소만 클릭 가능하게 */
+  margin-bottom: 10px; /* 윈도우 하단 여백 */
+  margin-right: 10px;  /* 윈도우 우측 여백 */
+}
+
+/* 다크모드 대응 */
+@media (prefers-color-scheme: dark) {
+  .notification-popup {
+    background-color: #1F2937; /* Gray-800 */
+    color: #F3F4F6;
+    border-left-color: #6366F1;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* 등장 애니메이션 (우측에서 슬라이드) */
+.slide-in {
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 퇴장 애니메이션 (아래로 페이드 아웃) */
+.fade-out {
+  animation: fadeOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+}
+
+/* 헤더 (방 이름 + 닫기 버튼) */
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.notification-room-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.notification-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.notification-close-btn:hover {
+  color: #4B5563;
+}
+
+/* 본문 (보낸 사람 + 내용) */
+.notification-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-sender {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #111827;
+}
+
+.notification-content {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.4;
+  
+  /* 2줄까지만 표시하고 ... 처리 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 다크모드 텍스트 색상 보정 */
+@media (prefers-color-scheme: dark) {
+    .notification-sender { color: #FFFFFF; }
+    .notification-room-name { color: #9CA3AF; }
+    .notification-content { color: #D1D5DB; }
+    .notification-close-btn:hover { color: #E5E7EB; }
+}
