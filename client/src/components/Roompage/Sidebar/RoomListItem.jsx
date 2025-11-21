@@ -1,4 +1,4 @@
-// src/components/Chatpage/Sidebar/RoomListItem.jsx
+// src/components/Roompage/Sidebar/RoomListItem.jsx
 export default function RoomListItem({ room, active, onClick }) {
     return (
         <li

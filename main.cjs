@@ -11,6 +11,8 @@ let backendProcess;
 let notificationWindow = null;
 let notifTimeout = null;
 
+let chatWindows = {};
+
 function startBackendServer() {
   const backendPath = path.join(__dirname, 'src');
 
@@ -162,4 +164,49 @@ ipcMain.on('window-show-focus', () => {
     mainWindow.show(); 
     mainWindow.focus(); 
   }
+});
+
+// [추가] 채팅방 창 열기 핸들러
+ipcMain.on('open-chat-window', (event, roomId) => {
+  // 1. 이미 열려있는 방이면 그 창을 앞으로 가져옴 (Focus)
+  if (chatWindows[roomId]) {
+    if (chatWindows[roomId].isMinimized()) chatWindows[roomId].restore();
+    chatWindows[roomId].focus();
+    return;
+  }
+
+  // 2. 새 창 생성
+  const win = new BrowserWindow({
+    width: 400,
+    height: 600,
+    minWidth: 300,
+    minHeight: 400,
+    title: '채팅방', // 나중에 동적으로 변경 가능
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js') // preload 공유
+    }
+  });
+
+  // 3. React 라우팅 주소로 로드 (예: /popup/roomId)
+  // 개발 모드 vs 배포 모드 주소 분기
+  const startUrl = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true'
+    ? `http://localhost:5173/#/popup/${roomId}`
+    : `file://${path.join(__dirname, '../client/dist/index.html')}#/popup/${roomId}`; // HashRouter 사용 시
+
+  win.loadURL(startUrl);
+
+  win.webContents.openDevTools({ mode: 'detach' });
+
+  // 4. 관리 객체에 저장
+  chatWindows[roomId] = win;
+
+  // 5. 닫힐 때 관리 객체에서 제거
+  win.on('closed', () => {
+    delete chatWindows[roomId];
+  });
+  
+  // (옵션) 메뉴바 없애기
+  win.setMenu(null);
 });

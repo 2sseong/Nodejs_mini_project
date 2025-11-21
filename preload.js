@@ -33,4 +33,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('cmd-select-room', subscription);
     };
   },
+  
+  openChatWindow: (roomId) => ipcRenderer.send('open-chat-window', roomId),
 });

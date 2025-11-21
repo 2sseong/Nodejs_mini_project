@@ -64,17 +64,38 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
 
     // 더보기 로드
     const loadMoreMessages = useCallback(() => {
-        if (isLoadingMore || !hasMoreMessages || !currentRoomId) return;
+        // [디버깅] 상태 확인 로그
+        console.log('[loadMore] 호출됨! 상태:', {
+            hasSocket: !!socket, // 소켓 존재 여부 (false면 여기서 막아야 함)
+            isLoadingMore,
+            hasMoreMessages,
+            currentRoomId,
+        });
+
+        // 1. 방어 로직 강화: socket이 없으면 즉시 종료 (!socket 추가)
+        if (!socket || isLoadingMore || !hasMoreMessages || !currentRoomId) {
+            console.log('[loadMore] 조건 불충족으로 중단됨. (소켓 연결 대기 중일 수 있음)');
+            return;
+        }
         
-        const oldest = messagesRef.current.find(m => m.MSG_ID);
-        if (!oldest) return;
+        // 2. 가장 오래된 메시지 찾기
+        const oldest = messagesRef.current.find(m => m.MSG_ID || m.msg_id);
+        
+        if (!oldest) {
+            console.warn('[loadMore] 기준 메시지 ID를 찾을 수 없음');
+            return;
+        }
+
+        // 3. 요청 전송
+        console.log('[loadMore] 요청 전송:', oldest.MSG_ID || oldest.msg_id);
 
         setIsLoadingMore(true);
         isPaginatingRef.current = true;
         
+        // 여기서 socket.emit을 하므로 위에서 !socket 체크가 필수
         socket.emit('chat:get_history', {
             roomId: currentRoomId,
-            beforeMsgId: oldest.MSG_ID,
+            beforeMsgId: oldest.MSG_ID || oldest.msg_id,
             limit: CHAT_PAGE_SIZE
         });
     }, [isLoadingMore, hasMoreMessages, currentRoomId, socket]);
@@ -116,9 +137,17 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
 
             if (isPaginatingRef.current) {
                 setMessages(prev => {
-                    const exists = new Set(prev.map(m => m.MSG_ID || m.TEMP_ID));
-                    return [...newMessages.filter(m => !exists.has(m.MSG_ID || m.TEMP_ID)), ...prev];
+                    const exists = new Set(prev.map(m => String(m.MSG_ID || m.msg_id || m.TEMP_ID)));
+                    
+                    const filteredNew = newMessages.filter(m => {
+                        const id = String(m.MSG_ID || m.msg_id || m.TEMP_ID);
+                        return !exists.has(id);
+                    });
+
+                    // 과거 메시지를 앞에 붙임
+                    return [...filteredNew, ...prev];
                 });
+                setIsInitialLoad(false);
                 isPaginatingRef.current = false;
             } else {
                 setMessages(newMessages);
