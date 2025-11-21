@@ -1,16 +1,17 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'; // [수정] Outlet 추가
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Topbar from './components/Topbar/Topbar.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import ChatPage from './pages/ChatPage.jsx';
+import RoomPage from './pages/RoomPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import FriendPage from './pages/FriendPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
 import Titlebar from './components/Titlebar/Titlebar.jsx';
 import NotificationWindowPage from './pages/NotificationWindowPage.jsx'; 
 import { useAuth } from './hooks/AuthContext.jsx';
+import PopupChatPage from './pages/PopupChatPage.jsx'; // [필수] import 확인
 import './App.css';
 
-// 보호된 라우트 컴포넌트
+// 보호된 라우트
 const ProtectedRoute = ({ children }) => {
     const { userId, authLoaded } = useAuth();
     if (!authLoaded) return <div>Loading...</div>;
@@ -18,15 +19,13 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
-// [신규] 메인 레이아웃 컴포넌트
-// (Titlebar, Topbar 등 앱의 기본 프레임을 담당)
+// 메인 레이아웃 (타이틀바 + 탑바 + 콘텐츠)
 const MainLayout = () => {
     return (
         <div className="App">
             <Titlebar />
             <Topbar />
             <div className="content-area">
-                {/* Outlet 자리에 자식 라우트(ChatPage 등)가 렌더링됨 */}
                 <Outlet />
             </div>
         </div>
@@ -36,18 +35,28 @@ const MainLayout = () => {
 export default function App() {
     return (
         <Routes>
-            {/* 1. 알림 윈도우용 라우트 (레이아웃 없이 독립적) */}
-            {/* 가장 먼저 매칭시켜서 메인 레이아웃의 영향을 받지 않게 함 */}
+            {/* ------------------------------------------------------- */}
+            {/* 1. 독립적인 윈도우 라우트 (MainLayout의 영향을 받지 않음) */}
+            {/* ------------------------------------------------------- */}
+            
+            {/* 알림 창 */}
             <Route path="/notification" element={<NotificationWindowPage />} />
 
-            {/* 2. 메인 앱 라우트들 (MainLayout으로 감쌈) */}
+            {/* [핵심 수정] 팝업 채팅 창 라우트 추가 */}
+            {/* Topbar 없이 채팅 화면만 꽉 채우기 위해 Layout 바깥에 둡니다. */}
+            <Route path="/popup/:roomId" element={<PopupChatPage />} />
+
+
+            {/* ------------------------------------------------------- */}
+            {/* 2. 메인 앱 라우트 (MainLayout 적용: Topbar 등 포함)      */}
+            {/* ------------------------------------------------------- */}
             <Route element={<MainLayout />}>
                 <Route path="/" element={<Navigate to="/chat" replace />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 
                 <Route path="/chat" element={
-                    <ProtectedRoute><ChatPage /></ProtectedRoute>
+                    <ProtectedRoute><RoomPage /></ProtectedRoute>
                 } />
                 <Route path="/notifications" element={
                     <ProtectedRoute><NotificationsPage /></ProtectedRoute>
@@ -56,6 +65,7 @@ export default function App() {
                     <ProtectedRoute><FriendPage /></ProtectedRoute>
                 } />
                 
+                {/* 위 경로에 해당하지 않는 모든 요청은 여기서 처리 (404) */}
                 <Route path="*" element={<div style={{ padding: 24 }}>404 Not Found</div>} />
             </Route>
         </Routes>

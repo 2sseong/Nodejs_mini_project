@@ -1,0 +1,40 @@
+/* PopupChatPage.css - 새 창으로 열리는 채팅 화면 스타일 */
+
+/* 전체 팝업 컨테이너 */
+.popup-chat-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    overflow: hidden; /* 전체 스크롤 방지 (내부 스크롤 사용) */
+    pointer-events: auto; /* 클릭 이벤트 활성화 */
+}
+
+/* 메시지 리스트 영역 (스크롤 가능) */
+.popup-message-list-area {
+    flex: 1;            /* 남은 높이 모두 차지 */
+    overflow-y: auto;   /* 세로 스크롤 허용 */
+    min-height: 0;      /* Flexbox 내부 스크롤 버그 방지 */
+    display: flex;
+    flex-direction: column;
+    background-color: #fff; /* 배경색 명시 */
+}
+
+/* (선택 사항) 스크롤바 스타일 커스터마이징 */
+.popup-message-list-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.popup-message-list-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.popup-message-list-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.popup-message-list-area::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}

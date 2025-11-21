@@ -27,8 +27,8 @@ export default defineConfig({
                 changeOrigin: true,
             },
             '/users': {
-            target: 'http://localhost:1337',
-            changeOrigin: true,
+                target: 'http://localhost:1337',
+                changeOrigin: true,
             },
             '/uploads': {
                 target: 'http://localhost:1337',

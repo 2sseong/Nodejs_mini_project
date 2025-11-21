@@ -66,15 +66,28 @@ export function useChatNotifications({
             const myId = String(userIdRef.current || '');
             const activeRoomId = String(currentRoomIdRef.current || '');
 
-            console.log(`[DEBUG] 알림 판별: 보낸이(${msgSenderId}) vs 나(${myId})`);
-
-            // 1. 내가 보낸 메시지는 알림 띄우지 않음
+            // 1. 내가 보낸 메시지는 알림 X
             if (msgSenderId === myId) return;
             
-            // 2. 현재 보고 있는 방에서 온 메시지는 알림 띄우지 않음
-            if (msgRoomId === activeRoomId) return;
+            // ✅ [수정된 로직]
+            // 조건: "해당 방을 보고 있음" AND "창이 활성화(Focus) 되어 있음"
+            // 이 두 가지가 모두 충족될 때만 알림을 무시합니다.
+            const isViewingRoom = (msgRoomId === activeRoomId);
+            const isWindowFocused = document.hasFocus(); // 현재 창 포커스 여부
 
-            // 방 이름 찾기
+            if (isViewingRoom && isWindowFocused) {
+                console.log('👀 현재 방을 보고 있고 창이 활성화되어 있어 알림 생략');
+                return;
+            }
+
+            // ---------------------------------------------------
+            // [참고] 멀티 윈도우(새 창) 모드를 사용할 경우 추가 고려 사항
+            // 만약 '새 창'이 열려있고 그 창이 포커스된 상태라면, 
+            // 메인 창에서는 알림을 띄우지 않아야 할 수도 있습니다.
+            // 이 부분은 IPC 통신으로 "해당 방의 윈도우가 포커스 상태인가?"를 체크해야 합니다.
+            // (일단은 현재 창 기준으로만 작성했습니다)
+            // ---------------------------------------------------
+
             const targetRoom = roomsRef.current.find(r => String(r.ROOM_ID) === msgRoomId);
             const roomName = targetRoom ? targetRoom.ROOM_NAME : '새로운 메시지';
             
@@ -82,12 +95,10 @@ export function useChatNotifications({
                 ? `📄 파일: ${msg.FILE_NAME || '전송됨'}` 
                 : (msg.CONTENT || msg.TEXT || '');
 
-            // 텍스트 길이 제한 (IPC 부하 방지)
             if (contentText.length > 150) {
                 contentText = contentText.substring(0, 150) + '...';
             }
 
-            // 알림 요청 함수 호출
             showSystemNotification(
                 `💬 ${roomName} - ${msg.NICKNAME || '상대방'}`,
                 contentText,
