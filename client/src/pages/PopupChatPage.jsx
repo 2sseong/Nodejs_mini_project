@@ -57,9 +57,12 @@ export default function PopupChatPage() {
                 title={roomName}
                 onOpenInvite={() => setIsInviteOpen(true)}
                 disabled={!connected}
-                onLeaveRoom={() => {
-                    handleLeaveRoom();
-                    window.close(); // 방 나가기 후 창 닫기
+                onLeaveRoom={async () => { // 1. async 함수로 변경
+                    const success = await handleLeaveRoom();
+                    // 3. 성공했을 때만 창을 닫음
+                    if (success) {
+                        window.close(); 
+                    }
                 }}
             />
 

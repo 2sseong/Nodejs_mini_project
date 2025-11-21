@@ -14,12 +14,13 @@ export function useChatHandlers({
     // 방 나가기 핸들러
     const handleLeaveRoom = async () => {
         const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(currentRoomId));
-        if (!currentRoomId || !userId || !currentRoom) return;
+        if (!currentRoomId || !userId || !currentRoom) return false; // 실패
 
         const confirmLeave = window.confirm(`[${currentRoom.ROOM_NAME}] 방을 정말 나가시겠습니까?`);
-        if (!confirmLeave) return;
+        if (!confirmLeave) return false; // 취소됨
 
         try {
+            // 서버 요청 대기
             await apiLeaveRoom(currentRoom.ROOM_ID, userId);
             
             selectRoom(null);
@@ -27,9 +28,11 @@ export function useChatHandlers({
             clearMessages();
             
             alert(`[${currentRoom.ROOM_NAME}] 방에서 성공적으로 나갔습니다.`);
+            return true; // [수정] 성공 시 true 반환
         } catch (error) {
             console.error('방 나가기 실패:', error.response?.data || error.message);
             alert(error.response?.data?.message || '서버 오류로 인해 방 나가기에 실패했습니다.');
+            return false; // [수정] 실패 시 false 반환
         }
     };
 
