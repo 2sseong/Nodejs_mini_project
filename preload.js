@@ -16,7 +16,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeNotificationWindow: () => ipcRenderer.send('close-notification-window'),
   clickNotification: (roomId) => ipcRenderer.send('notification-clicked', roomId),
   
-  // [추가] 이벤트 리스너 (Main -> Renderer)
-  onShowNotification: (callback) => ipcRenderer.on('show-notification-data', callback),
-  onCmdSelectRoom: (callback) => ipcRenderer.on('cmd-select-room', callback),
+  // [수정] 리스너 등록 시 '제거 함수(cleanup)'를 반환하도록 변경
+  onShowNotification: (callback) => {
+    const subscription = (event, ...args) => callback(event, ...args);
+    ipcRenderer.on('show-notification-data', subscription);
+    // 리스너 제거 함수 반환
+    return () => {
+      ipcRenderer.removeListener('show-notification-data', subscription);
+    };
+  },
+
+  onCmdSelectRoom: (callback) => {
+    const subscription = (event, ...args) => callback(event, ...args);
+    ipcRenderer.on('cmd-select-room', subscription);
+    return () => {
+      ipcRenderer.removeListener('cmd-select-room', subscription);
+    };
+  },
 });

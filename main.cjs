@@ -41,8 +41,10 @@ if (process.platform === 'win32') {
 function createNotificationWindow() {
   const display = screen.getPrimaryDisplay();
   const { width, height } = display.workAreaSize;
+  
   const notifWidth = 340;
-  const notifHeight = 150;
+  // [수정] 알림이 쌓일 수 있도록 높이를 충분히 늘립니다 (예: 500px)
+  const notifHeight = 480; 
 
   notificationWindow = new BrowserWindow({
     width: notifWidth,
@@ -54,7 +56,7 @@ function createNotificationWindow() {
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    show: false, // 숨김 상태로 생성
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
