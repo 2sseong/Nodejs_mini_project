@@ -5,13 +5,13 @@ const path = require('path');
 const { spawn } = require('child_process');
 require('dotenv').config({path:path.join(__dirname, '.env')});
 
-let mainWindow;
 let backendProcess;
-
 let notificationWindow = null;
 let notifTimeout = null;
-
 let chatWindows = {};
+
+// 메인 창 관리 배열
+let mainWindows = [];
 
 function startBackendServer() {
   const backendPath = path.join(__dirname, 'src');
@@ -25,7 +25,9 @@ function startBackendServer() {
   backendProcess.stdout.on('data', (data) => {
     console.log(`[Backend Log]: ${data}`);
     setTimeout(() => {
-        if (!mainWindow) {
+        if (mainWindows.length === 0) {
+          // 테스트를 위해 두 개의 메인 창을 엽니다.
+          createWindow();
           createWindow();
           createNotificationWindow(); // 알림창 미리 생성
         }
@@ -100,7 +102,7 @@ function showCustomNotification(data) {
 }
 
 function createWindow () {
-  mainWindow = new BrowserWindow({
+  let mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
     frame: false,
@@ -115,6 +117,15 @@ function createWindow () {
   });
   
   mainWindow.loadURL('http://localhost:5173'); 
+
+  // 창이 닫힐 때 배열에서 제거
+  mainWindow.on('closed', () => {
+    mainWindows = mainWindows.filter(win => win !== mainWindow);
+    mainWindow = null;
+  });
+
+  mainWindows.push(mainWindow);
+  return mainWindow;
 }
 
 app.whenReady().then(() => {
@@ -131,9 +142,23 @@ app.on('activate', () => {
 });
 
 // === IPC 핸들러 ===
-ipcMain.on('window-minimize', () => mainWindow.minimize());
-ipcMain.on('window-maximize', () => mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize());
-ipcMain.on('window-close', () => mainWindow.close());
+// 각 IPC 메시지를 보낸 웹 콘텐츠가 속한 BrowserWindow를 찾아서 처리
+ipcMain.on('window-minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+});
+
+ipcMain.on('window-maximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.isMaximized() ? win.unmaximize() : win.maximize();
+  }
+});
+
+ipcMain.on('window-close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+});
 
 // 알림 요청 수신
 ipcMain.on('req-custom-notification', (event, data) => {
@@ -149,20 +174,25 @@ ipcMain.on('close-notification-window', () => {
 
 // 알림 클릭 수신
 ipcMain.on('notification-clicked', (event, roomId) => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore(); 
-    mainWindow.show(); 
-    mainWindow.focus(); 
-    mainWindow.webContents.send('cmd-select-room', roomId);
+  // 알림 클릭 시 어떤 창을 활성화할지 결정해야 합니다.
+  // 여기서는 편의상 첫 번째 메인 창을 활성화하고 방 이동 명령을 보냅니다.
+  const targetWindow = mainWindows[0];
+  if (targetWindow) {
+    if (targetWindow.isMinimized()) targetWindow.restore(); 
+    targetWindow.show(); 
+    targetWindow.focus(); 
+    targetWindow.webContents.send('cmd-select-room', roomId);
   }
 });
 
 // 테스트 및 강제 활성화
-ipcMain.on('window-show-focus', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore(); 
-    mainWindow.show(); 
-    mainWindow.focus(); 
+ipcMain.on('window-show-focus', (event) => {
+  // 요청을 보낸 창을 활성화
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    if (win.isMinimized()) win.restore(); 
+    win.show(); 
+    win.focus(); 
   }
 });
 
@@ -209,4 +239,32 @@ ipcMain.on('open-chat-window', (event, roomId) => {
   
   // (옵션) 메뉴바 없애기
   win.setMenu(null);
+});
+
+
+//-------------------------메인창 크기조절-----------------------------//
+// 💡 [신규 추가] 마우스 이벤트 무시 설정 핸들러
+ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    // ignore: true면 마우스 무시(통과), false면 마우스 감지
+    // options: { forward: true }를 주면 무시하면서 뒤로 전달 (주로 true로 사용)
+    win.setIgnoreMouseEvents(ignore, options);
+  }
+});
+
+// 프론트엔드에서 계산된 새로운 bounds(x, y, width, height)를 받아서 적용합니다.
+ipcMain.on('resize-window', (event, bounds) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    win.setBounds(bounds);
+  } else {
+    console.log('[Main] Window not found or destroyed');
+  }
+});
+
+// (선택 사항) 현재 창 크기/위치 요청 핸들러
+ipcMain.handle('get-window-bounds', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return win ? win.getBounds() : null;
 });
