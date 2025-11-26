@@ -68,7 +68,7 @@ function createNotificationWindow() {
     }
   });
 
-  const startUrl = 'http://localhost:5173/notification'; 
+  const startUrl = 'http://localhost:5173/#/notification'; 
   notificationWindow.loadURL(startUrl);
 
   notificationWindow.on('close', (e) => {
