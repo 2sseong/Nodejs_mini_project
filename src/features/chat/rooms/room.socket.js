@@ -20,13 +20,33 @@ export default function roomSocket(io, socket) {
         }
     });
 
-    socket.on('room:join', ({ roomId }) => {
-        console.log(`[Socket ${socket.id}] joining room: ${roomId}`);
+    socket.on('room:join', async ({ roomId }) => {
         socket.join(String(roomId));
     });
 
     socket.on('room:leave', ({ roomId }) => {
         console.log(`[Socket ${socket.id}] leaving room: ${roomId}`);
         socket.leave(String(roomId));
+    });
+
+    // 채팅목록 읽음처리 전용 핸들러(DB 업데이트)
+    socket.on('room:read', async ({ roomId, userId: reqUserId }) => {
+        const targetUserId = reqUserId || userId;
+        
+        if (targetUserId && roomId) {
+            try {
+                // 1. DB 업데이트 (Timezone 이슈 해결된 로직 사용)
+                await roomService.markRoomAsRead({ roomId, userId: targetUserId });
+                
+                // 2. [추가됨] 해당 유저의 모든 기기에 "읽음 완료" 이벤트 전송
+                // io.to(userId)를 사용하면, 같은 아이디로 로그인한 '다른 탭'이나 '모바일'도 동시에 업데이트됩니다.
+                io.to(String(targetUserId)).emit('room:read_complete', { 
+                    roomId: String(roomId) 
+                });
+
+            } catch (err) {
+                console.error(`[Socket] Failed to mark room ${roomId} read:`, err);
+            }
+        }
     });
 }

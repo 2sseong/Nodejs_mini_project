@@ -32,3 +32,11 @@ export async function getRoomMemberCount(roomId) {
     const count = await roomRepo.countRoomMembers(roomId);
     return parseInt(count, 10);
 }
+
+/**
+ * 방 읽음 처리
+ * - 소켓에서 방 입장(join) 시 호출됨
+ */
+export async function markRoomAsRead({ roomId, userId }) {
+    return await roomRepo.updateLastReadAt({ roomId, userId });
+}
