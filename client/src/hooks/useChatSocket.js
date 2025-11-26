@@ -20,6 +20,7 @@ export function useChatSocket({ userId, userNickname, roomId: initialRoomId = nu
     // [핵심] URL로 받은 roomId가 있으면 그걸 쓰고, 아니면 내부 상태(stateCurrentRoomId)를 씀
     // 팝업창은 initialRoomId가 항상 존재하므로, 절대 null이 되지 않음!
     const activeRoomId = initialRoomId || stateCurrentRoomId;
+    
 
     // 3. 메시지 관리 (activeRoomId 전달)
     const {
@@ -33,7 +34,11 @@ export function useChatSocket({ userId, userNickname, roomId: initialRoomId = nu
         markAsRead,
         editMessage,
         deleteMessage,
-        clearMessages
+        clearMessages,
+        loadNewerMessages,
+        isLoadingNewer,
+        hasFutureMessages,
+        overrideMessages
     } = useChatMessages(socket, userId, userNickname, activeRoomId);
 
     return {
@@ -51,6 +56,10 @@ export function useChatSocket({ userId, userNickname, roomId: initialRoomId = nu
         editMessage,
         deleteMessage,
         clearMessages,
+        loadNewerMessages,
+        isLoadingNewer,
+        hasFutureMessages,
+        overrideMessages,
         isLoadingMore,
         hasMoreMessages,
         isInitialLoad,

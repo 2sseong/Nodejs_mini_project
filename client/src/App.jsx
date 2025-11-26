@@ -44,7 +44,7 @@ const MainLayout = () => {
         // e.screenX, e.screenY는 모니터 전체 기준 좌표입니다.
         startPos.current = { x: e.screenX, y: e.screenY };
 
-        // 💡💡💡 [핵심 수정] 이벤트 리스너 등록을 먼저 합니다. 💡💡💡
+        // [핵심 수정] 이벤트 리스너 등록을 먼저 합니다.
         // getWindowBounds가 실패하더라도 드래그 이벤트는 감지해야 합니다.
         console.log('[App.jsx] Adding mousemove/mouseup listeners');
         window.addEventListener('mousemove', handleMouseMove);
@@ -80,7 +80,7 @@ const MainLayout = () => {
             const minWidth = 400;
             const minHeight = 300;
 
-            // 💡💡💡 모든 방향에 대한 계산 로직 추가 💡💡💡
+            // 모든 방향에 대한 계산 로직 추가
             
             // 동쪽 (오른쪽) 변경
             if (dir.includes('right')) {
