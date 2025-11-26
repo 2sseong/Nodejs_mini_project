@@ -1,12 +1,11 @@
-html,
-body,
+html, body {
+    height: 100%; /* 화면 전체 높이를 잡기 위해 필수 */
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Electron에서 불필요한 스크롤 방지 */
+}
+
 #root {
-  /* 💡 핵심: 웹페이지 자체의 배경을 투명하게 */
-  background: transparent; 
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  pointer-events: none;
+    height: 100%; /* React 앱이 마운트되는 div도 높이를 상속받아야 함 */
+    width: 100%;
 }

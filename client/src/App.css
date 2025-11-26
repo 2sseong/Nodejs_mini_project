@@ -1,11 +1,12 @@
 .App {
-  margin: 10px;
-  width: calc(100% - 20px);
-  height: calc(100% - 20px);
-  background-color: #ffffff; /* 1. 앱의 실제 배경색 (불투명해야 함) */
-  border-radius: 12px; 
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 10px 30px rgba(0, 0, 0, 0.05);
-  overflow: hidden; 
+  /* 🚨 마진 제거 및 꽉 찬 화면 설정 */
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 15px; 
+  background-color: #ffffff;
+  box-shadow: 15px 15px 30px #bebebe, -15px -15px 30px #ffffff;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
@@ -58,4 +59,91 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* --- 크기 조절 핸들 (Resize Handles) --- */
+
+/* 모든 핸들의 공통 스타일 */
+.resize-handle {
+    position: absolute;
+    z-index: 99999;
+    
+    /* 1. 드래그 영역과 겹쳐도 문제없도록 설정 */
+    -webkit-app-region: no-drag; 
+    /* 마우스 이벤트를 강제로 활성화합니다. */
+    pointer-events: auto !important;
+    
+    /* 테스트용 빨간색*/
+    background-color: rgba(255, 0, 0, 0.5) !important; 
+}
+
+/* 💡💡💡 모든 방향 핸들 추가 (창 바깥으로 배치) 💡💡💡 */
+/* 두께 변수 설정 (필요에 따라 조절) */
+:root {
+    --handle-size: 8px; /* 가장자리 핸들 두께 */
+    --corner-size: 12px; /* 모서리 핸들 크기 */
+}
+
+/* --- 가장자리 (Edges) --- */
+.resize-handle-top {
+    top: 0; /* 0으로 변경 */
+    left: 0;
+    width: 100%;
+    height: var(--handle-size);
+    cursor: n-resize;
+}
+.resize-handle-bottom {
+    bottom: 0; /* 0으로 변경 */
+    left: 0;
+    width: 100%;
+    height: var(--handle-size);
+    cursor: s-resize;
+}
+.resize-handle-left {
+    top: 0;
+    left: 0; /* 0으로 변경 */
+    width: var(--handle-size);
+    height: 100%;
+    cursor: w-resize;
+}
+.resize-handle-right {
+    top: 0;
+    right: 0; /* 0으로 변경 */
+    width: var(--handle-size);
+    height: 100%;
+    cursor: e-resize;
+}
+
+/* --- 모서리 (Corners) --- */
+.resize-handle-top-left {
+    top: 0; /* 0으로 변경 */
+    left: 0; /* 0으로 변경 */
+    width: var(--corner-size);
+    height: var(--corner-size);
+    cursor: nw-resize;
+    z-index: 100000;
+}
+.resize-handle-top-right {
+    top: 0; /* 0으로 변경 */
+    right: 0; /* 0으로 변경 */
+    width: var(--corner-size);
+    height: var(--corner-size);
+    cursor: ne-resize;
+    z-index: 100000;
+}
+.resize-handle-bottom-left {
+    bottom: 0; /* 0으로 변경 */
+    left: 0; /* 0으로 변경 */
+    width: var(--corner-size);
+    height: var(--corner-size);
+    cursor: sw-resize;
+    z-index: 100000;
+}
+.resize-handle-bottom-right {
+    bottom: 0; /* 0으로 변경 */
+    right: 0; /* 0으로 변경 */
+    width: var(--corner-size);
+    height: var(--corner-size);
+    cursor: se-resize;
+    z-index: 100000;
 }

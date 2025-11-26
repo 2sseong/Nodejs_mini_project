@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),
+  resizeWindow: (bounds) => ipcRenderer.send('resize-window', bounds),
+  getWindowBounds: () => ipcRenderer.invoke('get-window-bounds'),
   
   // [추가] 테스트 및 강제 활성화
   showFocusWindow: () => ipcRenderer.send('window-show-focus'),
