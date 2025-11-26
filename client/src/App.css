@@ -70,8 +70,6 @@
     
     /* 1. 드래그 영역과 겹쳐도 문제없도록 설정 */
     -webkit-app-region: no-drag; 
-    /* 마우스 이벤트를 강제로 활성화합니다. */
-    pointer-events: auto !important;
     
     /* 테스트용 빨간색*/
     background-color: rgba(255, 0, 0, 0.5) !important; 
