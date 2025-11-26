@@ -163,3 +163,20 @@ export async function modifyMessage({ msgId, userId, content }) {
 export async function removeMessage({ msgId, userId }) {
     return await messageRepo.deleteMessageTx({ msgId, senderId: userId });
 }
+
+// [추가] 대화 내용 검색 서비스
+export async function searchMessages({ roomId, keyword }) {
+    // 필요한 경우 여기서 비즈니스 로직 처리 (예: 검색어 유효성 검사 등)
+    return await messageRepo.searchMessages(roomId, keyword);
+}
+
+// [추가] 특정 메시지 기준 문맥 조회 서비스
+export async function getMessagesContext({ roomId, msgId }) {
+    // 리포지토리의 getMessagesAroundId 호출 (기본 offset 25)
+    return await messageRepo.getMessagesAroundId(roomId, msgId);
+}
+
+// 메시지 아래로 스크롤 시 조회
+export async function getNewerMessages({ roomId, msgId }) {
+    return await messageRepo.getMessagesAfterId(roomId, msgId);
+}

@@ -16,7 +16,7 @@ export default function MessageItem(props) {
         fileName,
         unreadCount,
         onEdit,   // [추가]
-        onDelete
+        onDelete,
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
@@ -104,7 +104,7 @@ export default function MessageItem(props) {
     const displayCount = unreadCount > 0 ? unreadCount : null;
 
     return (
-        <div className={`message-item ${mine ? 'mine' : 'theirs'}`}>
+        <div className={`message-item ${mine ? 'mine' : 'theirs'}`} id={`msg-${msgId}`}>
             {!mine && <div className="sender-nickname">{nickname}</div>}
 
             {/* 말풍선 영역에 우클릭 이벤트 연결 */}

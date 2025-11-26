@@ -1,5 +1,6 @@
 // client/src/hooks/chat/useChatMessages.js
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { getNewerMessagesApi } from '../../api/chatApi'; // [import 추가]
 
 const CHAT_PAGE_SIZE = 50;
 
@@ -8,6 +9,10 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+    // [추가] 아래로 로딩 관련 상태
+    const [isLoadingNewer, setIsLoadingNewer] = useState(false);
+    const [hasFutureMessages, setHasFutureMessages] = useState(false);
     
     // 읽음 상태 관련
     const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false);
@@ -15,6 +20,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     const isReadStatusLoadedRef = useRef(false);
 
     const messagesRef = useRef(messages);
+    const hasFutureMessagesRef = useRef(hasFutureMessages);
     const currentRoomIdRef = useRef(currentRoomId);
     const isPaginatingRef = useRef(false);
 
@@ -41,6 +47,38 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             limit: CHAT_PAGE_SIZE
         });
     }, [socket, userId, currentRoomId]);
+
+    // [추가] 아래로 스크롤(최신 메시지 로드) 함수
+    const loadNewerMessages = useCallback(async () => {
+        if (!currentRoomId || isLoadingNewer || !hasFutureMessages) return;
+
+        const newest = messagesRef.current[messagesRef.current.length - 1];
+        if (!newest) return;
+
+        const newestId = newest.MSG_ID || newest.msg_id;
+        console.log('[loadNewer] Fetching after:', newestId);
+
+        setIsLoadingNewer(true);
+        try {
+            const res = await getNewerMessagesApi(currentRoomId, newestId);
+            const newItems = res.data?.data || [];
+
+            if (newItems.length > 0) {
+                setMessages(prev => [...prev, ...newItems]);
+            }
+
+            // 가져온 개수가 요청 개수보다 적으면 "더 이상 미래 데이터 없음" -> 실시간 모드 전환
+            if (newItems.length < CHAT_PAGE_SIZE) {
+                setHasFutureMessages(false);
+                console.log('[loadNewer] Reached live edge. Resuming real-time updates.');
+            }
+        } catch (err) {
+            console.error('Failed to load newer messages:', err);
+        } finally {
+            setIsLoadingNewer(false);
+        }
+    }, [currentRoomId, isLoadingNewer, hasFutureMessages]);
+
 
     // 메시지 전송
     const sendMessage = useCallback(({ text }) => {
@@ -119,6 +157,14 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         if (socket && currentRoomId) socket.emit('chat:delete', { roomId: currentRoomId, msgId });
     }, [socket, currentRoomId]);
 
+    // [추가] 메시지 리스트 강제 교체 (검색 이동용)
+    const overrideMessages = useCallback((newMessages) => {
+        setMessages(newMessages);
+        setIsInitialLoad(false);
+        setHasMoreMessages(true);
+        setHasFutureMessages(true);
+    }, []);
+
     // 이벤트 핸들러 등록
     useEffect(() => {
         if (!socket) return;
@@ -161,6 +207,11 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         const onChatMessage = (msg) => {
             if (!msg) return;
             setIsInitialLoad(false);
+
+            if (hasFutureMessagesRef.current) {
+                console.log('Viewing past history. Real-time message buffered/ignored:', msg.MSG_ID);
+                return; 
+            }
             
             // 암시적 읽음 처리
             const senderId = String(msg.SENDER_ID);
@@ -217,6 +268,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     return {
         messages, isLoadingMore, hasMoreMessages, isInitialLoad, isReadStatusLoaded,
         sendMessage, loadMoreMessages, markAsRead, editMessage, deleteMessage,
-        clearMessages: () => setMessages([]) 
+        clearMessages: () => setMessages([]), overrideMessages, loadNewerMessages, isLoadingNewer,
+        hasFutureMessages,
     };
 }
