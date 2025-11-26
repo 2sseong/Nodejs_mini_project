@@ -72,7 +72,7 @@
     -webkit-app-region: no-drag; 
     
     /* 테스트용 빨간색*/
-    background-color: rgba(255, 0, 0, 0.5) !important; 
+    /* background-color: rgba(255, 0, 0, 0.5) !important;  */
 }
 
 /* 💡💡💡 모든 방향 핸들 추가 (창 바깥으로 배치) 💡💡💡 */
