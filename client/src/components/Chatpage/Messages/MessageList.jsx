@@ -57,7 +57,6 @@ export default function MessageList({
             onLoadMore(); // 최신 소켓이 담긴 onLoadMore가 실행됩니다.
         }
         // 2. [추가] 아래로 스크롤 (미래 데이터 로드)
-        // 스크롤이 바닥에서 50px 이내이고, 미래 데이터가 있으며, 로딩 중이 아닐 때
         if (scrollHeight - scrollTop - clientHeight <= 50) {
             if (hasFutureMessages && !isLoadingNewer) {
                 
