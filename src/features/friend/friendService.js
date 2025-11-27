@@ -81,27 +81,6 @@ export const searchUsers = async (userId, query) => {
             userNickname: user.USERNICKNAME,
         }
     })
-    // if(!trimmed){
-    //     return await getAllUsers(userId);
-    // }
-
-    // console.log('trimmed:', trimmed);
-
-    // // 2. Repository를 통해 DB에서 사용자 검색 및 관계 조회
-    // const rawResults = await friendRepository.searchUsersByQuery(userId, trimmed);
-
-    // console.log('rawResults:', rawResults);
-
-    // // 3. 데이터를 프론트엔드 형식에 맞게 가공
-    // const formattedResults = rawResults.map(user => {
-
-    //     return {
-    //         userId: user.USERID,
-    //         username: user.USERNAME,
-    //         userNickname: user.USERNICKNAME,
-    //         relationshipStatus: user.RELATIONSHIPSTATUS,
-    //     };
-    // });
 
     return formattedResults;
 };
