@@ -9,8 +9,9 @@ export const getFriendList = async (req, res) => {
     const currentUserId = req.user.id; 
 
     try {
-        // 1. Service 계층에게 비즈니스 로직 실행을 위임합
-        const friends = await friendService.getFriendList(currentUserId);
+        // 1. Service 계층에게 비즈니스 로직 실행을 위임합'
+        // 검색어는 null로 전달
+        const friends = await friendService.searchUsers(currentUserId, null);
 
         // 2. HTTP 상태 코드 200(OK)과 함께 결과를 JSON 형태로 클라이언트에게 응답
         return res.status(200).json(friends);
@@ -74,12 +75,13 @@ export const requestFriendship = async (req, res) => {
  */
 export const searchUsers = async (req, res) => {
     // 1. URL 쿼리 파라미터에서 검색어(query)와 userId 추출
-    const { query, userId: paramUserId } = req.query; // paramUserId로 쿼리에서 받음
+    const { query } = req.query; // paramUserId로 쿼리에서 받음
 
     // 2. 로그인 사용자 ID 확정: 프론트엔드에서 보낸 ID를 사용
-    const userId = paramUserId;
+    const userId = req.user.userId;
 
     if (!userId) {
+        console.error('인증된 사용자 ID를 찾을 수 없습니다.')
         return res.status(400).json({ error: '사용자 ID를 제공해야 합니다.' });
     }
 

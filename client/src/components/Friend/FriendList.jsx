@@ -32,7 +32,7 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
     }
     // 1. 각 user에 isMe / isOnline 플래그 붙이기
     const usersWithFlags = users.map((u) => {
-        const idStr = String(u.USER_ID);
+        const idStr = String(u.userId);
         const myIdStr = String(myUserId);
 
         return {
@@ -68,8 +68,8 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
         if (!a.isMe && b.isMe) return 1;
 
         // 2순위: 닉네임 한글 오름차순
-        const nicknameA = a.NICKNAME || '';
-        const nicknameB = b.NICKNAME || '';
+        const nicknameA = a.userNickname || '';
+        const nicknameB = b.userNickname || '';
         return nicknameA.localeCompare(nicknameB, 'ko', {sensitivity: 'base'});
     });
 
@@ -99,7 +99,8 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
                 
                 return (
                     <li 
-                        key={user.USER_ID} 
+                        // key={user.USER_ID} 
+                        key={user.userId} 
                         className={`user-list-item ${isMe ? 'user-me' : ''}`}
                         style={{ backgroundColor: isMe ? '#e6f7ff' : 'white', borderLeft: isMe ? '4px solid #1890ff' : 'none' }}
                     >
@@ -109,9 +110,9 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
                             ></span>
                             <span className="user-nickname">
                                 {isMe && <span className="me-tag" style={{ marginLeft: '8px', color: '#6fa9e0ff', fontWeight: 'bold' }}>[나] </span>} 
-                                {user.NICKNAME} 
+                                {user.userNickname} 
                             </span>
-                            <span className="user-username">( {user.USERNAME} )</span>
+                            <span className="user-username">( {user.username} )</span>
                         </div>
                         
                         {!isMe && (

@@ -101,6 +101,8 @@ export default function FriendPage() {
                 
             } catch (err) {
                 setError(err.message);
+            } finally {
+                setIsLoading(false);
             }
         };
         fetchUserList();

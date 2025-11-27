@@ -119,7 +119,6 @@ export const searchAllUsers = async (query = '', userId) => {
         const response = await api.get('/friends/search', {
             params: {
                 query: query,
-                userId: userId
             }
         });
         
