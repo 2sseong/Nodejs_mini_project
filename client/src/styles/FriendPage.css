@@ -172,3 +172,71 @@
 .friend-page::-webkit-scrollbar-thumb:hover {
     background: #64b5f6;
 }
+
+/* 전체, 접속중, 즐겨찾기 버튼 css */
+/* 필터 버튼 컨테이너 */
+.filter-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+
+/* 필터 버튼 기본 스타일 */
+.filter-buttons button {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #666666;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+/* 호버 효과 */
+.filter-buttons button:hover {
+    background-color: #f5f5f5;
+    border-color: #d0d0d0;
+}
+
+/* 활성화된 버튼 스타일 */
+.filter-buttons button.active {
+    background-color: #4A90E2;
+    color: #ffffff;
+    border-color: #4A90E2;
+    font-weight: 600;
+}
+
+/* 별(⭐) 버튼 특별 스타일 */
+/* .filter-buttons button:last-child {
+    font-size: 16px;
+}
+
+/* 활성화된 별 버튼 */
+/* .filter-buttons button:last-child.active {
+    background-color: #FFD700;
+    border-color: #FFD700;
+    color: #333333;
+} */ 
+
+/* 포커스 상태 */
+.filter-buttons button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+/* 반응형 - 작은 화면 */
+@media (max-width: 768px) {
+    .filter-buttons {
+        gap: 6px;
+    }
+    
+    .filter-buttons button {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
