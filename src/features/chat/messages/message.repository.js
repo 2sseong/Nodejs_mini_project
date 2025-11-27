@@ -119,7 +119,9 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
-    // [수정] CAST(m.SENT_AT AS DATE)를 추가하여 결과값을 NUMBER로 변환
+    // [최종 수정] 복잡한 타임존 함수 제거 -> 저장된 날짜 그대로 비교
+    // CAST(AS DATE)를 통해 ORA-00932 에러를 방지하고, 
+    // 불필요한 시간 차감 없이 1:1로 비교합니다.
     const sql = `
         SELECT 
             m.MSG_ID,
