@@ -87,8 +87,12 @@ export async function updateLastReadTimestamp(userId, roomId, lastReadTimestamp)
         return; 
     }
 
+    // DB에 읽음 상태 저장
     const rowsAffected = await messageRepo.upsertReadStatus(userId, roomId, timestampNumber);
-    return rowsAffected > 0;
+    
+    // [핵심 수정] rowsAffected 체크 제거하고 무조건 true 반환
+    // DB 변경이 없더라도(이미 읽음 상태여도) 클라이언트 화면 갱신을 위해 알림을 보내야 함
+    return true; 
 }
 
 /**

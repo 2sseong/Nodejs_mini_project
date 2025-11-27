@@ -1,6 +1,6 @@
 import db, { oracledb, executeQuery, executeTransaction, getConnection } from '../../../../db/oracle.js';
 
-// getHistory 함수 수정 
+// getHistory 함수
 export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
     const binds = {
         roomId: roomId,
@@ -47,7 +47,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
 export async function saveMessageTx(data) {
 
     const { roomId, senderId, content, messageType, fileUrl, fileName } = data; 
-    const now = new Date();
+    const now = new Date(); // [중요] Node.js의 정확한 현재 시간 (UTC)
 
     let connection;
     try {
@@ -93,19 +93,20 @@ export async function saveMessageTx(data) {
                 MESSAGE_TYPE: result.outBinds.outMsgType[0],
                 FILE_URL: result.outBinds.outFileUrl[0],
                 FILE_NAME: result.outBinds.outFileName[0],
-                SENT_AT: result.outBinds.outSentAt[0],
+                // [핵심] DB 리턴값 대신 정확한 now 객체 사용
+                SENT_AT: now, 
             };
-            return savedRow; // [!!!] 완전한 객체를 리턴
+            return savedRow; 
         } else {
             throw new Error("메시지 저장 실패 (DB)");
         }
 
     } catch (err) {
         console.error("DB 에러 (saveMessageTx):", err);
-        throw err; // 에러를 상위로 전파
+        throw err; 
     } finally {
         if (connection) {
-            await connection.close(); // 또는 connection.release()
+            await connection.close(); 
         }
     }
 }
@@ -119,7 +120,11 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
-    // [수정] CAST(m.SENT_AT AS DATE)를 추가하여 결과값을 NUMBER로 변환
+    // [!!! 최종 수정 !!!] 
+    // 1. FROM_TZ(..., 'UTC'): DB에 저장된 시간을 UTC로 간주합니다.
+    // 2. - TIMESTAMP '1970... UTC': 1970년 UTC와의 차이(Interval)를 구합니다.
+    // 3. EXTRACT: 일, 시, 분, 초, 밀리초를 각각 추출하여 총 밀리초로 변환합니다.
+    // 이 방식은 DB 세션 타임존 설정에 전혀 영향을 받지 않습니다.
     const sql = `
         SELECT 
             m.MSG_ID,
@@ -128,7 +133,10 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
         LEFT JOIN UserRoomReadStatus r 
             ON TO_CHAR(m.ROOM_ID) = r.ROOM_ID
             AND r.lastReadTimestamp >= (
-                (CAST(m.SENT_AT AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000
+                EXTRACT(DAY FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 86400000 +
+                EXTRACT(HOUR FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 3600000 +
+                EXTRACT(MINUTE FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 60000 +
+                EXTRACT(SECOND FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 1000
             )
         WHERE m.ROOM_ID = :roomId
           AND m.MSG_ID IN (${inClause})
@@ -141,7 +149,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     return result.rows || []; 
 }
 
-// [수정됨] 3. 읽음 상태 저장/업데이트 (executeTransaction 사용)
+// ... (나머지 함수들은 기존 코드 유지)
 export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
     const sql = `
         MERGE INTO USERROOMREADSTATUS t
@@ -164,7 +172,6 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
     return result.rowsAffected;
 }
 
-// [추가] 방 멤버들의 읽음 상태 조회
 export async function getRoomReadStatus(roomId) {
     const sql = `
         SELECT USER_ID, LASTREADTIMESTAMP
@@ -175,9 +182,7 @@ export async function getRoomReadStatus(roomId) {
     return result.rows || [];
 }
 
-// 메시지 수정 (본인만 가능)
 export async function updateMessageTx({ msgId, senderId, content }) {
-    // 타임스탬프 업데이트도 고려할 수 있으나, 여기서는 내용만 수정합니다.
     const sql = `
         UPDATE T_MESSAGE 
         SET CONTENT = :content 
@@ -192,7 +197,6 @@ export async function updateMessageTx({ msgId, senderId, content }) {
     return result.rowsAffected > 0;
 }
 
-// 메시지 삭제 (본인만 가능)
 export async function deleteMessageTx({ msgId, senderId }) {
     const sql = `
         DELETE FROM T_MESSAGE 
@@ -206,9 +210,7 @@ export async function deleteMessageTx({ msgId, senderId }) {
     return result.rowsAffected > 0;
 }
 
-// [추가] 1. 대화 내용 검색 (키워드로 ID 조회)
 export async function searchMessages(roomId, keyword) {
-    // Oracle Text 검색이나 LIKE 검색 사용
     const sql = `
         SELECT MSG_ID, CONTENT, SENT_AT
         FROM T_MESSAGE
@@ -217,7 +219,6 @@ export async function searchMessages(roomId, keyword) {
         ORDER BY SENT_AT ASC
     `;
     
-    // LIKE 검색을 위해 앞뒤로 % 붙임
     const searchPattern = `%${keyword}%`;
     
     const result = await executeQuery(sql, { 
@@ -228,9 +229,7 @@ export async function searchMessages(roomId, keyword) {
     return result.rows || [];
 }
 
-// [추가] 2. 특정 메시지 기준 앞뒤 문맥 조회 (총 50개 로드)
 export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
-    // 1. LIMIT 계산 (+1은 자바스크립트에서 처리)
     const limitPlusOne = Number(offset) + 1; 
 
     const binds = {
@@ -240,8 +239,6 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
         limitCntNext: limitPlusOne
     };
 
-    // 2. [핵심 수정] UNION ALL 전체를 감싸는 SELECT * FROM (...) 구문 추가
-    // 이렇게 해야 바깥쪽 ORDER BY에서 SENT_AT 컬럼을 인식할 수 있습니다.
     const sql = `
         SELECT * FROM (
             SELECT * FROM (
@@ -286,7 +283,6 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
     }
 }
 
-// [추가] 3. 특정 메시지 이후의 데이터 조회 (아래로 스크롤 용)
 export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
     const binds = {
         roomId,
@@ -294,7 +290,6 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
         limitCnt: Number(limit)
     };
 
-    // 타겟 ID보다 큰(미래) 메시지를 오름차순으로 가져옴
     const sql = `
         SELECT * FROM (
             SELECT 

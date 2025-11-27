@@ -148,12 +148,17 @@ export default function messageSocket(io, socket) {
             const { roomId, lastReadTimestamp } = payload;
             const currentUserId = socket.data.userId;
 
+            console.log(`[Socket] chat:mark_as_read 요청 받음. User: ${currentUserId}, Room: ${roomId}, TS: ${lastReadTimestamp}`); // [로그 추가 1]
+
             if (!roomId || !lastReadTimestamp || !currentUserId) return;
 
             const isUpdated = await messageService.updateLastReadTimestamp(currentUserId, roomId, lastReadTimestamp);
 
+            console.log(`[Socket] DB 업데이트 결과 (isUpdated):`, isUpdated); // [로그 추가 2 - 여기가 false면 알림 안 감]
+
             // 시간이 갱신되었을 때만 전파 (중복 방지)
             if (isUpdated) {
+                console.log('[Socket] chat:read_update 이벤트 방출!');
                 io.to(String(roomId)).emit('chat:read_update', {
                     userId: currentUserId,
                     roomId: roomId,

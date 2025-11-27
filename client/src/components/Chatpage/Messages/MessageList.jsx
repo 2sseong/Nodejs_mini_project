@@ -45,15 +45,26 @@ export default function MessageList({
 
     // [추가] 윈도우 포커스 감지: 창을 클릭하거나 Alt+Tab으로 돌아왔을 때 읽음 처리
     useEffect(() => {
-        const handleWindowFocus = () => {
+        const handleActivity = () => {
+            // 조건: 메시지가 있고, 읽음 상태가 로드되었으며, 현재 창이 포커스된 상태일 때
             if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
-                console.log('[MessageList] Window focused, marking messages as read.');
-                markAsRead();
+                if (document.hasFocus()) {
+                    console.log('[MessageList] User active (Focus/Click), marking as read.'); // [로그 확인용]
+                    markAsRead();
+                }
             }
         };
 
-        window.addEventListener('focus', handleWindowFocus);
-        return () => window.removeEventListener('focus', handleWindowFocus);
+        // 이벤트 리스너 3중 등록 (하나라도 걸리면 읽음 처리)
+        window.addEventListener('focus', handleActivity); // 창 활성화 (Alt+Tab 등)
+        window.addEventListener('click', handleActivity); // 창 내부 클릭
+        document.addEventListener('visibilitychange', handleActivity); // 탭 전환 감지
+
+        return () => {
+            window.removeEventListener('focus', handleActivity);
+            window.removeEventListener('click', handleActivity);
+            document.removeEventListener('visibilitychange', handleActivity);
+        };
     }, [messages.length, markAsRead, isReadStatusLoaded]);
 
     const listRef = useRef(null);
