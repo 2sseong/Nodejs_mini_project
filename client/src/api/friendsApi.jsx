@@ -1,4 +1,4 @@
-﻿console.log('🚀 friendApi.js 파일 로드됨!');
+﻿// console.log('🚀 friendApi.js 파일 로드됨!');
 import axios from 'axios';
 
 // 백엔드 API 기본 URL (server.js의 포트: 1337에 맞게 설정)
@@ -19,7 +19,7 @@ api.interceptors.request.use(
         const token = localStorage.getItem('authToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('✅ Authorization 헤더 추가됨');
+            // console.log('✅ Authorization 헤더 추가됨');
         } else {
             console.log('⚠️ 토큰 없음 - Authorization 헤더 없이 요청');
         }
@@ -112,8 +112,8 @@ export const acceptFriendRequest = (requestId) => {
 
 // 사용자 검색 함수 
 export const searchAllUsers = async (query = '', userId) => {
-    console.log("🔥🔥🔥 searchAllUsers 호출됨! baseURL:", api.defaults.baseURL);
-    console.log("실제 API: 사용자 검색 요청", { query, userId });
+    // console.log("🔥🔥🔥 searchAllUsers 호출됨! baseURL:", api.defaults.baseURL);
+    // console.log("실제 API: 사용자 검색 요청", { query, userId });
     try {
         // api 인스턴스 사용 + 괄호 사용
         const response = await api.get('/friends/search', {
@@ -122,7 +122,7 @@ export const searchAllUsers = async (query = '', userId) => {
             }
         });
         
-        console.log("검색 API 응답 원본 데이터 구조:", response.data);
+        // console.log("검색 API 응답 원본 데이터 구조:", response.data);
         
         if (Array.isArray(response.data)) {
             return response.data;

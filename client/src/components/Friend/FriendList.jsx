@@ -27,20 +27,15 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
                 </div>
             );
         } else {
-            return <p className="empty-list-text">등록된 사용자가 없습니다.</p>
+            return <p className="empty-list-text">등록된 사용자가 없습니다.</p>;
         }
     }
     // 1. 각 user에 isMe / isOnline 플래그 붙이기
-    const usersWithFlags = users.map((u) => {
-        const idStr = String(u.userId);
-        const myIdStr = String(myUserId);
-
-        return {
+    const usersWithFlags = users.map((u) => ({
             ...u,
-            isMe: idStr === myIdStr,
-            isOnline: onlineUsers.includes(idStr),
-        };
-    });
+            isMe: String(u.userId) === String(myUserId),
+            isOnline: onlineUsers.includes(String(u.userId)),
+    }));
 
     // 2. 필터 타입에 따라 걸러내기
     let filtered = usersWithFlags;
@@ -61,17 +56,17 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
         }
     }
 
-    // 4. 나를 위로 + 닉네임 오름차순 정렬
-    const sorted = [...filtered].sort((a,b) => {
-        // 1순위: isMe(내가 맨 위)
-        if (a.isMe && !b.isMe) return -1;
-        if (!a.isMe && b.isMe) return 1;
+    // 4. 나를 위로 + 닉네임 오름차순 정렬 > FriendPage.jsx로 이전
+    // const sorted = [...filtered].sort((a,b) => {
+    //     // 1순위: isMe(내가 맨 위)
+    //     if (a.isMe && !b.isMe) return -1;
+    //     if (!a.isMe && b.isMe) return 1;
 
-        // 2순위: 닉네임 한글 오름차순
-        const nicknameA = a.userNickname || '';
-        const nicknameB = b.userNickname || '';
-        return nicknameA.localeCompare(nicknameB, 'ko', {sensitivity: 'base'});
-    });
+    //     // 2순위: 닉네임 한글 오름차순
+    //     const nicknameA = a.userNickname || '';
+    //     const nicknameB = b.userNickname || '';
+    //     return nicknameA.localeCompare(nicknameB, 'ko', {sensitivity: 'base'});
+    // });
 
     // 검색 결과가 없을 때의 로직
     // if (sortedUsers.length === 0) {
@@ -94,7 +89,7 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
 
     return (
         <ul className="user-list">
-            {sorted.map((user) => {
+            {filtered.map((user) => {
                 const {isMe, isOnline} = user;
                 
                 return (

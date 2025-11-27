@@ -42,18 +42,10 @@ export default function FriendPage() {
         setSearchQuery(query.trim());
     };
 
-    // 4. 데이터 페칭 (검색어 변경 시마다 실행)
+    // 4. 데이터 페칭 + 정렬 (검색어 변경 시마다 실행)
     useEffect(() => {
         // ID를 불러오지 못했거나 ID가 없으면 페칭을 실행하지 않음
-        if (!myUserId) {
-            // myUserId가 로드될 때까지 기다람
-            if (myUserId === null) return; 
-
-            // 로드되었는데 ID가 null이면 에러를 표시
-            setIsLoading(false);
-            return;
-        }
-
+        if (!myUserId) return;
         const fetchUserList = async () => {
             setIsLoading(true);
             setError(null);
@@ -61,44 +53,42 @@ export default function FriendPage() {
             try {
                 const data = await searchAllUsers(searchQuery, myUserId);
 
-            //     // 백엔드 응답이 { users: [...] } 형태일 수도, 배열일 수도 있음
-            //     const usersFromServer = data.users || data || [];
+                console.log('=== 정렬 디버깅 ===');
+                console.log('myUserId (localStorage):', myUserId, typeof myUserId);
+                console.log('받아온 데이터:', data);
+                console.log('첫 번째 유저 객체의 키:', data[0] ? Object.keys(data[0]) : '데이터 없음');
+                console.log('AuthContext의 userId:', userId);
+                // 🔍 내 정보가 API 응답에 포함되어 있는지 확인
+                const hasMe = data.some(u => String(u.userId) === String(myUserId));
+                console.log('API 응답에 내 정보 포함 여부:', hasMe);
+                let usersWithMe = data;
+                if (!hasMe && userNickname) {
+                    const myInfo = {
+                        userId: myUserId,
+                        username: localStorage.getItem('username') || '나',
+                        userNickname: userNickname,
+                    };
+                    usersWithMe = [myInfo, ...data];
+                }
 
-            //     if (usersFromServer.length > 0) {
-            //         console.log('서버에서 온 user 객체:', usersFromServer[0]);
-            //     } else {
-            //         console.log('서버에서 온 user 목록이 비어있습니다.');
-            //     }
+                // 정렬: 나를 맨 위로 + 나머지는 닉네임 오름차순               
+                const sorted = [...usersWithMe].sort((a,b) => {
+                    const isAMe = String(a.userId) === String(myUserId);
+                    const isBMe = String(b.userId) === String(myUserId);
+               
+                // 1순위: isMe(내가 맨 위)
+                if (isAMe && !isBMe) return -1;
+                if (!isAMe && isBMe) return 1;
 
-            //     // 닉네임 기준 정렬 (한글 정렬 지원)
-            //     const sortedUsers = [...usersFromServer].sort((a, b) => {
-            //         const nicknameA = a.NICKNAME || a.userNickname || a.nickname;
-            //         const nicknameB = b.NICKNAME || b.userNickname || b.nickname;
+                // 2순위: 닉네임 한글 오름차순
+                const nicknameA = a.userNickname || '';
+                const nicknameB = b.userNickname || '';
+                return nicknameA.localeCompare(nicknameB, 'ko', {sensitivity: 'base'});
+            });
 
-            //         return String(nicknameA || '').localeCompare(
-            //             String(nicknameB || ''),
-            //             'ko',
-            //             { sensitivity: 'base' }
-            //         );
-            //     });
-
-            //     setUserList(sortedUsers);
-            // } catch (err) {
-            //     console.error(err);
-            //     setError(err.message || '사용자 목록을 불러오는 중 오류가 발생했습니다.');
-            // } finally {
-            //     setIsLoading(false);
-            // }
-                console.log("서버에서 온 user 객체:", data[0]);
-    
-                const sortedUsers = [...data].sort((a, b) => {
-                    const nicknameA = a.NICKNAME;
-                    const nicknameB = b.NICKNAME;
-                    return String(nicknameA || '').localeCompare(String(nicknameB || ''), 'ko', { sensitivity: 'base' });
-                });
-                
-                setUserList(sortedUsers);
-                
+                console.log('정렬 후 첫 번째 유저:', sorted[0]);
+                console.log('==================');
+                setUserList(sorted);                
             } catch (err) {
                 setError(err.message);
             } finally {
