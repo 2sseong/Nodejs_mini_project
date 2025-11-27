@@ -20,7 +20,7 @@ export default function initSocket(server) { // [수정] 'io' 대신 'server'를
         const userId = rawUserId ? String(rawUserId).trim() : '';
 
         if (!userId) {
-            console.error('[Socket] userId missing. disconnect.');
+            // console.error('[Socket] userId missing. disconnect.');
             socket.disconnect();
             return;
         }
@@ -41,7 +41,7 @@ export default function initSocket(server) { // [수정] 'io' 대신 'server'를
             // 온라인 목록 갱신해서 전체에게 보내기
             io.emit('ONLINE_USERS',getOnlineUserIds());
             // [수정] 버전 A의 상세 로그 사용
-            console.log(`[socket] user disconnected: ${userId} (${reason})`);
+            // console.log(`[socket] user disconnected: ${userId} (${reason})`);
         });
     });
 

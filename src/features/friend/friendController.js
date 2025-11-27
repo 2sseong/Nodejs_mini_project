@@ -4,9 +4,9 @@
 
 export const getFriendList = async (req, res) => {
     // 실제 인증 미들웨어를 통해 req.user.id에서 로그인된 사용자 ID를 가져와야 함
-    // 임시로 'TEST_USER_A'를 사용 (나중에 req.user.id로 변경하기)
-    const currentUserId = 'TEST_USER_A';
-    // const currentUserId = req.user.id; 
+    // 임시로 'TEST_USER_A'를 사용 (나중에 req.user.id로 변경하기)-> 구현
+    // const currentUserId = 'TEST_USER_A';
+    const currentUserId = req.user.id; 
 
     try {
         // 1. Service 계층에게 비즈니스 로직 실행을 위임합
@@ -79,15 +79,15 @@ export const searchUsers = async (req, res) => {
     // 2. 로그인 사용자 ID 확정: 프론트엔드에서 보낸 ID를 사용
     const userId = paramUserId;
 
-    if (!query || !userId) {
-        return res.status(400).json({ error: '검색어 또는 사용자 ID를 제공해야 합니다.' });
+    if (!userId) {
+        return res.status(400).json({ error: '사용자 ID를 제공해야 합니다.' });
     }
 
     try {
         const results = await friendService.searchUsers(userId, query);
         return res.status(200).json(results);
     } catch (error) {
-        // ... (에러 처리 로직) ...
+        console.error("⭐⭐⭐⭐friendService.searchUsers 실행 중 오류 발생:", error);
         return res.status(500).json({ error: "사용자 검색 처리 중 서버 오류가 발생했습니다." });
     }
 };

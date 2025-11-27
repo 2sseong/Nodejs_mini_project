@@ -4,7 +4,9 @@ import { useAuth } from '../hooks/AuthContext.jsx';
 import UserSearch from '../components/Friend/UserSearch.jsx';
 import FriendList from '../components/Friend/FriendList.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
+import { searchAllUsers } from '../api/friendsApi.jsx';
 import '../styles/FriendPage.css';
+
 
 export default function FriendPage() {
     // 1. 유저 목록 상태 관리
@@ -12,6 +14,7 @@ export default function FriendPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const { userId, userNickname } = useAuth();
+    const [filterType, setFilterType] = useState('ALL'); // 'ALL' | 'ONLINE' | '⭐'
 
     // 소켓 훅에서 온라인 사용자 목록 가져오기
     const { onlineUsers } = useChatSocket({ userId, userNickname });
@@ -54,39 +57,50 @@ export default function FriendPage() {
         const fetchUserList = async () => {
             setIsLoading(true);
             setError(null);
-            
-            // 검색어에 따라 쿼리 파라미터 생성: 검색어가 없으면 전체 목록 요청
-            const queryParam = searchQuery ? `?query=${searchQuery}` : '';
 
             try {
-            // 통합된 엔드포인트: /users/search + queryParam
-                const response = await fetch(`/users/search${queryParam}`); 
-                
-                if (!response.ok) {
-                    throw new Error('사용자 목록을 불러오는 데 실패했습니다.');
-                }
-                
-                const data = await response.json();
+                const data = await searchAllUsers(searchQuery, myUserId);
 
-                // 서버 응답 형태가 {success: true, users: [...]}라고 쳤을때
-                const usersFromServer = data.users || data;
+            //     // 백엔드 응답이 { users: [...] } 형태일 수도, 배열일 수도 있음
+            //     const usersFromServer = data.users || data || [];
 
-                const sortedUsers = [...usersFromServer].sort((a, b) => {
+            //     if (usersFromServer.length > 0) {
+            //         console.log('서버에서 온 user 객체:', usersFromServer[0]);
+            //     } else {
+            //         console.log('서버에서 온 user 목록이 비어있습니다.');
+            //     }
 
-                    // 비교 값 설정
+            //     // 닉네임 기준 정렬 (한글 정렬 지원)
+            //     const sortedUsers = [...usersFromServer].sort((a, b) => {
+            //         const nicknameA = a.NICKNAME || a.userNickname || a.nickname;
+            //         const nicknameB = b.NICKNAME || b.userNickname || b.nickname;
+
+            //         return String(nicknameA || '').localeCompare(
+            //             String(nicknameB || ''),
+            //             'ko',
+            //             { sensitivity: 'base' }
+            //         );
+            //     });
+
+            //     setUserList(sortedUsers);
+            // } catch (err) {
+            //     console.error(err);
+            //     setError(err.message || '사용자 목록을 불러오는 중 오류가 발생했습니다.');
+            // } finally {
+            //     setIsLoading(false);
+            // }
+                console.log("서버에서 온 user 객체:", data[0]);
+    
+                const sortedUsers = [...data].sort((a, b) => {
                     const nicknameA = a.NICKNAME;
                     const nicknameB = b.NICKNAME;
-
-                    const comparisonResult = String(nicknameA || '').localeCompare(String(nicknameB || ''), 'ko', { sensitivity: 'base' });
-                    
-                    return comparisonResult;
+                    return String(nicknameA || '').localeCompare(String(nicknameB || ''), 'ko', { sensitivity: 'base' });
                 });
-            setUserList(sortedUsers);        
+                
+                setUserList(sortedUsers);
                 
             } catch (err) {
                 setError(err.message);
-            } finally {
-                setIsLoading(false);
             }
         };
         fetchUserList();
@@ -107,6 +121,7 @@ export default function FriendPage() {
                 myUserId={myUserId} // 로컬 저장소에서 가져온 내 ID
                 searchQuery={searchQuery} // 검색어 상태 전달
                 onlineUsers={onlineUsers}
+                filterType={filterType}
             />
         );
     }
@@ -126,6 +141,28 @@ export default function FriendPage() {
                         <h2 className="section-title">
                             {searchQuery ? `검색 결과 (${userList.length}건)` : '사용자 목록'}
                         </h2>
+                    </div>
+                    <div className="filter-buttons">
+                        <button
+                            className={filterType === 'ALL' ? 'active' : ''}
+                            onClick={() => setFilterType('ALL')}
+                        >
+                            전체
+                        </button>
+
+                        <button
+                            className={filterType === 'ONLINE' ? 'active' : ''}
+                            onClick={() => setFilterType('ONLINE')}
+                        >
+                            접속중
+                        </button>
+
+                        <button
+                            className={filterType === 'PICK' ? 'active' : ''}
+                            onClick={() => setFilterType('PICK')}
+                        >
+                            ⭐
+                        </button>
                     </div>
                     <div className="section-content">
                         {/* UserSearch 컴포넌트를 이 섹션 안으로 이동 */}

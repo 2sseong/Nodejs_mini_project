@@ -21,7 +21,7 @@ function startBackendServer() {
   }); 
   
   backendProcess.stdout.on('data', (data) => {
-    console.log(`[Backend Log]: ${data}`);
+    // console.log(`[Backend Log]: ${data}`);
     setTimeout(() => {
         if (!mainWindow) {
           createWindow();

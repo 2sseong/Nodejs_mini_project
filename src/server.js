@@ -21,6 +21,8 @@ import friendRoutes from './features/friend/friendRoutes.js'
 import initSocket from './socket.js'            // ← 현재 initSocket(io)를 쓰는 형태라면 그대로
 //import { setIoInstance } from './sockets/socketStore.js'
 
+console.log('🔥 server.js loaded');
+
 const app = express()
 const PORT = process.env.PORT || 1337
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -41,6 +43,10 @@ app.use('/chats', chatsRouter)
 app.use('/users', searchRouter)
 app.use('/api/friends', friendRoutes)
 
+app.use((req, res, next) => {
+    console.log('요청:', req.method, req.path); // ⭐ 모든 요청 로깅
+    next();
+});
 // 정적 파일
 const publicPath = path.join(__dirname, '../client/dist')
 const oneDay = 60 * 60 * 24 * 1000

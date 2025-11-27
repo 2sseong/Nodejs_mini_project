@@ -34,6 +34,10 @@ export default defineConfig({
                 target: 'http://localhost:1337',
                 changeOrigin: true, //출처 변경
             },
+            // '/friends': {
+            //     target: 'http://localhost:1337',
+            //     changeOrigin: true,
+            // },
         }
     }
 })

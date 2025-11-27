@@ -64,25 +64,44 @@ export const requestFriendship = async (requesterId, recipientId) => {
  * @returns {Promise<Array>} - 검색된 사용자 목록
  */
 export const searchUsers = async (userId, query) => {
-    // 1. 입력값 검증 (Service 책임)
-    if (!query || query.length < 2) {
-        // 검색어는 최소 2자 이상이어야 한다는 비즈니스 정책 가정
-        throw new Error("검색어는 최소 2자 이상 입력해야 합니다.");
-    }
+    console.log('====== [SERVICE searchUsers] ======');
+    console.log('userId:', userId);
+    console.log('query(raw):', query);
+    const trimmed = (query ?? '').trim();
+    
+    // 1. 검색어 없으면 빈 문자열로 검색 (전체 목록 조회)
+    const rawResults = await friendRepository.searchUsersByQuery(userId, trimmed);
 
-    // 2. Repository를 통해 DB에서 사용자 검색 및 관계 조회
-    const rawResults = await friendRepository.searchUsersByQuery(userId, query);
+    console.log('rawResults:', rawResults);
 
-    // 3. 데이터를 프론트엔드 형식에 맞게 가공
     const formattedResults = rawResults.map(user => {
-
         return {
             userId: user.USERID,
             username: user.USERNAME,
             userNickname: user.USERNICKNAME,
-            relationshipStatus: user.RELATIONSHIPSTATUS,
-        };
-    });
+        }
+    })
+    // if(!trimmed){
+    //     return await getAllUsers(userId);
+    // }
+
+    // console.log('trimmed:', trimmed);
+
+    // // 2. Repository를 통해 DB에서 사용자 검색 및 관계 조회
+    // const rawResults = await friendRepository.searchUsersByQuery(userId, trimmed);
+
+    // console.log('rawResults:', rawResults);
+
+    // // 3. 데이터를 프론트엔드 형식에 맞게 가공
+    // const formattedResults = rawResults.map(user => {
+
+    //     return {
+    //         userId: user.USERID,
+    //         username: user.USERNAME,
+    //         userNickname: user.USERNICKNAME,
+    //         relationshipStatus: user.RELATIONSHIPSTATUS,
+    //     };
+    // });
 
     return formattedResults;
 };

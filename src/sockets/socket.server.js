@@ -9,7 +9,7 @@ export default function initSocket(server) {
     io.on('connection', (socket) => {
         const userId = socket.handshake.query?.userId;
         if (!userId) {
-            console.error('[Socket] userId missing. disconnect.');
+            // console.error('[Socket] userId missing. disconnect.');
             socket.disconnect();
             return;
         }
