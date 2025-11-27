@@ -1,5 +1,5 @@
-// src/components/Chatpage/Sidebar/ChatSidebar.jsx
-import RoomListItem from './RoomListItem';
+// src/components/Roompage/Sidebar/ChatSidebar.jsx
+import RoomListItem from './RoomListItem.jsx';
 import './ChatSidebar.css';
 
 export default function ChatSidebar({

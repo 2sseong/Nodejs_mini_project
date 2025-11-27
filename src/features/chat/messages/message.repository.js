@@ -206,3 +206,112 @@ export async function deleteMessageTx({ msgId, senderId }) {
     
     return result.rowsAffected > 0;
 }
+
+// [추가] 1. 대화 내용 검색 (키워드로 ID 조회)
+export async function searchMessages(roomId, keyword) {
+    // Oracle Text 검색이나 LIKE 검색 사용
+    const sql = `
+        SELECT MSG_ID, CONTENT, SENT_AT
+        FROM T_MESSAGE
+        WHERE ROOM_ID = :roomId
+          AND (CONTENT LIKE :keyword OR FILE_NAME LIKE :keyword)
+        ORDER BY SENT_AT ASC
+    `;
+    
+    // LIKE 검색을 위해 앞뒤로 % 붙임
+    const searchPattern = `%${keyword}%`;
+    
+    const result = await executeQuery(sql, { 
+        roomId, 
+        keyword: searchPattern 
+    });
+    
+    return result.rows || [];
+}
+
+// [추가] 2. 특정 메시지 기준 앞뒤 문맥 조회 (총 50개 로드)
+export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
+    // 1. LIMIT 계산 (+1은 자바스크립트에서 처리)
+    const limitPlusOne = Number(offset) + 1; 
+
+    const binds = {
+        roomId,
+        targetMsgId: Number(targetMsgId),
+        limitCnt: Number(offset),
+        limitCntNext: limitPlusOne
+    };
+
+    // 2. [핵심 수정] UNION ALL 전체를 감싸는 SELECT * FROM (...) 구문 추가
+    // 이렇게 해야 바깥쪽 ORDER BY에서 SENT_AT 컬럼을 인식할 수 있습니다.
+    const sql = `
+        SELECT * FROM (
+            SELECT * FROM (
+                SELECT * FROM (
+                    SELECT 
+                        T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
+                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                        T2.NICKNAME
+                    FROM T_MESSAGE T1
+                    JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                    WHERE T1.ROOM_ID = :roomId 
+                      AND T1.MSG_ID < :targetMsgId
+                    ORDER BY T1.MSG_ID DESC
+                )
+                WHERE ROWNUM <= :limitCnt
+            )
+            UNION ALL
+            SELECT * FROM (
+                SELECT * FROM (
+                    SELECT 
+                        T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
+                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                        T2.NICKNAME
+                    FROM T_MESSAGE T1
+                    JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                    WHERE T1.ROOM_ID = :roomId 
+                      AND T1.MSG_ID >= :targetMsgId
+                    ORDER BY T1.MSG_ID ASC
+                )
+                WHERE ROWNUM <= :limitCntNext
+            )
+        )
+        ORDER BY SENT_AT ASC
+    `;
+
+    try {
+        const result = await executeQuery(sql, binds);
+        return result.rows || [];
+    } catch (err) {
+        console.error('Error fetching context messages:', err);
+        throw err;
+    }
+}
+
+// [추가] 3. 특정 메시지 이후의 데이터 조회 (아래로 스크롤 용)
+export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
+    const binds = {
+        roomId,
+        afterMsgId: Number(afterMsgId),
+        limitCnt: Number(limit)
+    };
+
+    // 타겟 ID보다 큰(미래) 메시지를 오름차순으로 가져옴
+    const sql = `
+        SELECT * FROM (
+            SELECT 
+                T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
+                T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                T2.NICKNAME
+            FROM T_MESSAGE T1
+            JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+            WHERE T1.ROOM_ID = :roomId 
+              AND T1.MSG_ID > :afterMsgId
+            ORDER BY T1.MSG_ID ASC
+        )
+        WHERE ROWNUM <= :limitCnt
+        ORDER BY MSG_ID ASC
+    `;
+
+    const result = await executeQuery(sql, binds);
+    return result.rows || [];
+}

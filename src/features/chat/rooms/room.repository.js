@@ -40,19 +40,6 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     }
 }
 
-
-export async function listRoomsByUser({ userId }) {
-    const sql = `
-                SELECT T2.ROOM_ID, T2.ROOM_NAME, T2.ROOM_TYPE
-                FROM T_ROOM_MEMBER T1
-                JOIN T_CHAT_ROOM T2 ON T1.ROOM_ID = T2.ROOM_ID
-                WHERE T1.USER_ID = :userId
-                ORDER BY T2.CREATED_AT DESC
-                `;
-    const res = await executeQuery(sql, { userId });
-    return res.rows || [];
-}
-
 export async function ensureUserExists(userId) {
     const sql = 'SELECT USER_ID FROM T_USER WHERE USER_ID = :1';
     const res = await executeQuery(sql, [userId]);
@@ -127,4 +114,74 @@ export async function countRoomMembers(roomId) {
     // db.execute -> executeQuery 로 변경
     const result = await executeQuery(sql, { roomId });
     return result.rows[0]?.cnt || result.rows[0]?.CNT || 0;
+}
+
+export async function listRoomsByUser({ userId }) {
+    const sql = `
+        SELECT 
+            r.ROOM_ID,
+            r.ROOM_NAME,
+            r.ROOM_TYPE,
+            NVL(lm.CONTENT, '대화 내용이 없습니다.') AS LAST_MESSAGE,
+            NVL(lm.SENT_AT, r.CREATED_AT) AS LAST_MESSAGE_AT,
+            (
+                SELECT COUNT(*)
+                FROM T_MESSAGE msg
+                WHERE msg.ROOM_ID = r.ROOM_ID
+                  -- [핵심 수정] NUMBER(밀리초) -> DATE 변환 후 비교
+                  AND msg.SENT_AT > NVL(
+                      TO_DATE('1970-01-01','YYYY-MM-DD') + (urs.LASTREADTIMESTAMP / 86400000), 
+                      r.CREATED_AT
+                  )
+                  AND msg.SENDER_ID != :userId 
+            ) AS UNREAD_COUNT
+        FROM T_ROOM_MEMBER rm
+        JOIN T_CHAT_ROOM r ON rm.ROOM_ID = r.ROOM_ID
+        LEFT JOIN USERROOMREADSTATUS urs 
+               ON rm.ROOM_ID = urs.ROOM_ID 
+              AND rm.USER_ID = urs.USER_ID
+        LEFT JOIN (
+            SELECT ROOM_ID, CONTENT, SENT_AT
+            FROM (
+                SELECT 
+                    ROOM_ID, 
+                    CONTENT, 
+                    SENT_AT,
+                    ROW_NUMBER() OVER(PARTITION BY ROOM_ID ORDER BY SENT_AT DESC) as rn
+                FROM T_MESSAGE
+            )
+            WHERE rn = 1
+        ) lm ON r.ROOM_ID = lm.ROOM_ID
+        WHERE rm.USER_ID = :userId
+        ORDER BY LAST_MESSAGE_AT DESC
+    `;
+    
+    const res = await executeQuery(sql, { userId });
+    return res.rows || [];
+}
+
+/**
+ * [수정됨] 방 입장 시 '마지막 읽은 시간' 업데이트
+ * - 컬럼 타입(NUMBER)에 맞춰 현재 시간을 밀리초(Epoch)로 변환하여 저장
+ */
+export async function updateLastReadAt({ roomId, userId }) {
+    const sql = `
+        MERGE INTO USERROOMREADSTATUS t
+        USING (
+            SELECT 
+                :userId AS U_ID, 
+                :roomId AS R_ID, 
+                -- [핵심 수정] UTC 변환 없이 현재 DB 세션 시간(CURRENT_TIMESTAMP) 사용
+                (CAST(CURRENT_TIMESTAMP AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000 AS NOW 
+            FROM DUAL
+        ) s
+        ON (t.USER_ID = s.U_ID AND t.ROOM_ID = s.R_ID)
+        WHEN MATCHED THEN
+            UPDATE SET t.LASTREADTIMESTAMP = s.NOW
+        WHEN NOT MATCHED THEN
+            INSERT (USER_ID, ROOM_ID, LASTREADTIMESTAMP)
+            VALUES (s.U_ID, s.R_ID, s.NOW)
+    `;
+    
+    await executeTransaction(sql, { roomId, userId });
 }

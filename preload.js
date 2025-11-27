@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),
+  resizeWindow: (bounds) => ipcRenderer.send('resize-window', bounds),
+  getWindowBounds: () => ipcRenderer.invoke('get-window-bounds'),
   
   // [추가] 테스트 및 강제 활성화
   showFocusWindow: () => ipcRenderer.send('window-show-focus'),
@@ -16,7 +18,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeNotificationWindow: () => ipcRenderer.send('close-notification-window'),
   clickNotification: (roomId) => ipcRenderer.send('notification-clicked', roomId),
   
-  // [추가] 이벤트 리스너 (Main -> Renderer)
-  onShowNotification: (callback) => ipcRenderer.on('show-notification-data', callback),
-  onCmdSelectRoom: (callback) => ipcRenderer.on('cmd-select-room', callback),
+  // [수정] 리스너 등록 시 '제거 함수(cleanup)'를 반환하도록 변경
+  onShowNotification: (callback) => {
+    const subscription = (event, ...args) => callback(event, ...args);
+    ipcRenderer.on('show-notification-data', subscription);
+    // 리스너 제거 함수 반환
+    return () => {
+      ipcRenderer.removeListener('show-notification-data', subscription);
+    };
+  },
+
+  onCmdSelectRoom: (callback) => {
+    const subscription = (event, ...args) => callback(event, ...args);
+    ipcRenderer.on('cmd-select-room', subscription);
+    return () => {
+      ipcRenderer.removeListener('cmd-select-room', subscription);
+    };
+  },
+  
+  openChatWindow: (roomId) => ipcRenderer.send('open-chat-window', roomId),
 });

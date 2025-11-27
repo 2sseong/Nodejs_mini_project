@@ -1,8 +1,8 @@
-import { useRef, useEffect } from 'react';
+// src/components/Chatpage/Messages/MessageList.jsx
+import { useRef, useEffect, useLayoutEffect } from 'react'; // [변경] useLayoutEffect 추가
 import MessageItem from './MessageItem';
 import './MessageList.css';
 
-// 스크롤 감지 딜레이 (디바운싱)
 function debounce(func, delay) {
   let timeout;
   return function(...args) {
@@ -20,12 +20,17 @@ export default function MessageList({
     hasMoreMessages,
     isInitialLoad, 
     markAsRead,
-    isReadStatusLoaded, // [핵심] 로딩 완료 상태 Prop
-    onEditMessage,   // [추가] 부모(ChatPage)에서 전달받음
-    onDeleteMessage
+    isReadStatusLoaded, 
+    onEditMessage,    
+    onDeleteMessage,
+    scrollToMsgId,
+    searchKeyword,
+    loadNewerMessages, 
+    hasFutureMessages, 
+    isLoadingNewer
 }) {
 
-    // [핵심] 메시지 목록 변경 또는 데이터 로딩 완료 시 읽음 처리
+    // 1. 읽음 처리 로직 (이건 useEffect 유지 - 화면 그려진 후 천천히 실행돼도 됨)
     useEffect(() => {
         if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
             const timer = setTimeout(() => {
@@ -33,40 +38,99 @@ export default function MessageList({
             }, 300);
             return () => clearTimeout(timer);
         }
-    }, [messages, markAsRead, isReadStatusLoaded]); // 의존성 필수
+    }, [messages, markAsRead, isReadStatusLoaded]);
 
     const listRef = useRef(null);
     const prevScrollHeightRef = useRef(null);
+    const isLoadingNewerRef = useRef(false);
 
-    // 스크롤 이벤트 핸들러
+    // 2. 스크롤 핸들러 (로그가 잘 찍히던 그 로직 그대로)
     const handleScroll = () => {
         if (!listRef.current) return;
-        const { scrollTop } = listRef.current;
+        
+        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
 
-        if (scrollTop === 0 && !isLoadingMore && hasMoreMessages) {
-            console.log('Reached top, loading more...');
-            prevScrollHeightRef.current = listRef.current.scrollHeight;
-            onLoadMore();
+        // 이제 여기서 최신 isLoadingMore, hasMoreMessages 값을 참조합니다.
+        if (scrollTop <= 50 && !isLoadingMore && hasMoreMessages) {
+            console.log('Near top, loading more...');
+            prevScrollHeightRef.current = scrollHeight;
+            onLoadMore(); // 최신 소켓이 담긴 onLoadMore가 실행됩니다.
+        }
+        // 2. [추가] 아래로 스크롤 (미래 데이터 로드)
+        if (scrollHeight - scrollTop - clientHeight <= 50) {
+            if (hasFutureMessages && !isLoadingNewer) {
+                
+                // [핵심] 로딩 시작 시 플래그 설정 -> useLayoutEffect에서 스크롤 이동 방지
+                isLoadingNewerRef.current = true; 
+                
+                if (loadNewerMessages) loadNewerMessages();
+            }
         }
     };
 
-    const debouncedHandleScroll = useRef(debounce(handleScroll, 200)).current;
-  
-    // 스크롤 위치 제어
+    // (A) 최신 handleScroll 함수를 항상 ref에 저장해 둡니다.
+    const handleScrollRef = useRef(handleScroll);
+    
+    // (B) 렌더링 될 때마다 ref를 최신 함수로 업데이트합니다.
     useEffect(() => {
+        handleScrollRef.current = handleScroll;
+    });
+
+    // (C) 디바운스 함수는 "한 번만" 생성되지만, 실행될 때는 "ref에 들어있는 최신 함수"를 꺼내 씁니다.
+    const debouncedHandleScroll = useRef(
+        debounce((...args) => {
+            // ref.current를 호출하므로 항상 최신 props/state에 접근 가능!
+            if (handleScrollRef.current) {
+                handleScrollRef.current(...args);
+            }
+        }, 200)
+    ).current;
+  
+    // 3. [핵심 수정] 스크롤 위치 복구 로직
+    // useEffect -> useLayoutEffect로 변경하여 깜빡임 제거
+    useLayoutEffect(() => {
         const list = listRef.current;
         if (!list) return;
 
         const oldScrollHeight = prevScrollHeightRef.current;
+
+        // [핵심 수정] 아래로 로딩하여 메시지가 추가된 경우, 스크롤을 건드리지 않음
+        // (브라우저가 알아서 현재 위치 유지 -> 새 메시지는 화면 아래에 추가됨 -> 무한 로딩 방지)
+        if (isLoadingNewerRef.current) {
+            isLoadingNewerRef.current = false; // 플래그 초기화
+            return; 
+        }
         
+        // 처음 로딩이거나, 저장된 높이가 없으면 (맨 아래로)
         if (isInitialLoad || oldScrollHeight === null) {
             list.scrollTop = list.scrollHeight;
         } 
+        // 과거 메시지 로딩 후 (스크롤 위치 유지)
         else {
+            // (새로운 전체 높이) - (이전 전체 높이) = (새로 추가된 메시지들의 높이)
+            // 이만큼 스크롤을 내려줘야 사용자가 보던 위치가 유지됨
             list.scrollTop = list.scrollHeight - oldScrollHeight;
+            
+            // 복구 후 초기화
             prevScrollHeightRef.current = null;
         }
-    }, [messages, isInitialLoad]);
+    }, [messages, isInitialLoad]); // 메시지가 갱신될 때마다 실행
+
+    // 4. [추가] 검색된 메시지로 자동 스크롤
+    useEffect(() => {
+        if (scrollToMsgId) {
+            // 메시지 아이템에 id={`msg-${msgId}`}를 부여했다고 가정
+            const element = document.getElementById(`msg-${scrollToMsgId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 시각적 강조 효과 (선택사항: 클래스 추가 후 제거)
+                element.classList.add('highlight-flash');
+                setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+            } else {
+                console.log('Target message element not found:', scrollToMsgId);
+            }
+        }
+    }, [scrollToMsgId]); // scrollToMsgId가 바뀔 때마다 실행
 
     return (
         <div 
@@ -89,7 +153,6 @@ export default function MessageList({
             )}
             
             {messages.map((m, index) => {
-                // 대소문자 호환성 및 키 생성
                 const msgId = m.MSG_ID || m.msg_id || m.TEMP_ID;
                 const uniqueKey = msgId ? `${msgId}` : `msg_${index}`;
                 
@@ -114,11 +177,17 @@ export default function MessageList({
                         fileUrl={fileUrl}
                         fileName={fileName}
                         unreadCount={unreadCount}
-                        onEdit={onEditMessage}     // 핸들러 전달
+                        onEdit={onEditMessage}     
                         onDelete={onDeleteMessage}
+                        searchKeyword={searchKeyword}
                     />
                 );
             })}
+            {isLoadingNewer && (
+                <div className="loading-spinner-bottom" style={{ textAlign: 'center', padding: '10px' }}>
+                    <span>Loading newer messages...</span>
+                </div>
+            )}
         </div>
     );
 }

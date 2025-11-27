@@ -3,53 +3,73 @@ import NotificationPopup from '../components/Notification/NotificationPopup.jsx'
 import '../components/Notification/NotificationPopup.css'; // CSS도 여기서 불러옵니다
 
 export default function NotificationWindowPage() {
-  const [data, setData] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    // [핵심] Electron 메인 프로세스에서 보내주는 데이터를 수신합니다.
     if (window.electronAPI?.onShowNotification) {
-      window.electronAPI.onShowNotification((event, notificationData) => {
-        console.log('[NotificationPage] Data received:', notificationData);
-        setData(notificationData);
+      // [수정] 리스너 등록 및 해제 함수 받기
+      const removeListener = window.electronAPI.onShowNotification((event, newNotif) => {
+        console.log('[NotificationPage] New Data:', newNotif);
+        
+        const notifItem = { ...newNotif, _internalId: Date.now() + Math.random() };
+        
+        setNotifications((prev) => {
+          // 중복 방지 (혹시 몰라 ID로 한 번 더 체크)
+          if (prev.some(n => n.id === newNotif.id && n.roomId === newNotif.roomId)) {
+             return prev;
+          }
+          const updated = [...prev, notifItem];
+          if (updated.length > 5) return updated.slice(updated.length - 5);
+          return updated;
+        });
       });
+
+      // [핵심] 컴포넌트가 사라지거나 다시 그려질 때 리스너 제거
+      return () => {
+        if (removeListener) removeListener();
+      };
     }
   }, []);
 
-  const handleClose = () => {
-    // 닫기 요청 (윈도우 숨김)
-    if (window.electronAPI?.closeNotificationWindow) {
-      window.electronAPI.closeNotificationWindow();
-    }
+  // 개별 알림 닫기 (목록에서 제거)
+  const handleRemove = (id) => {
+    setNotifications((prev) => prev.filter((n) => n._internalId !== id));
   };
 
-  const handleClick = (roomId) => {
-    // 클릭 시 방 이동 요청
+  // 알림 클릭 시 (방 이동 + 해당 알림 닫기)
+  const handleClick = (roomId, id) => {
     if (window.electronAPI?.clickNotification) {
       window.electronAPI.clickNotification(roomId);
     }
-    handleClose();
+    handleRemove(id);
   };
 
-  // 데이터가 없으면 렌더링 안 함 (투명)
-  if (!data) return null;
+  // [중요] 알림이 하나도 없으면 창 숨김 요청 (Main 프로세스로)
+  useEffect(() => {
+    if (notifications.length === 0) {
+      // 약간의 딜레이 후 닫기 (애니메이션 고려)
+      const timer = setTimeout(() => {
+        if (window.electronAPI?.closeNotificationWindow) {
+             // 배열이 비었을 때만 진짜로 창을 숨김
+             // window.electronAPI.closeNotificationWindow(); // 필요시 주석 해제
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [notifications]);
 
   return (
-    <div style={{ 
-      width: '100vw', 
-      height: '100vh', 
-      background: 'transparent', 
-      overflow: 'hidden',
-      display: 'flex',
-      alignItems: 'flex-end', 
-      justifyContent: 'flex-end',
-    }}>
-      {/* 여기서 NotificationPopup에 data를 주입합니다 */}
-      <NotificationPopup 
-        key={data.id} 
-        data={data} 
-        onClose={handleClose} 
-        onClick={handleClick} 
-      />
+    <div className="notification-stack-container">
+      {/* 알림 목록 렌더링 */}
+      {notifications.map((data) => (
+        <div key={data._internalId} className="notification-wrapper">
+          <NotificationPopup 
+            data={data} 
+            onClose={() => handleRemove(data._internalId)} 
+            onClick={() => handleClick(data.roomId, data._internalId)} 
+          />
+        </div>
+      ))}
     </div>
   );
 }

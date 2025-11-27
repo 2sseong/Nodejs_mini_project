@@ -124,3 +124,40 @@
     .notification-content { color: #D1D5DB; }
     .notification-close-btn:hover { color: #E5E7EB; }
 }
+
+/* [추가] 전체 컨테이너: 아래쪽에 붙어서 위로 쌓이는 구조 */
+.notification-stack-container {
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column; /* 위에서 아래로? 아니면 아래에서 위로? */
+  justify-content: flex-end; /* 내용물을 바닥에 붙임 */
+  padding-bottom: 10px;      /* 하단 여백 */
+  padding-right: 10px;       /* 우측 여백 */
+  box-sizing: border-box;
+  pointer-events: none;      /* 빈 공간 클릭 통과 */
+}
+
+/* [추가] 개별 알림 래퍼: 애니메이션 적용 */
+.notification-wrapper {
+  pointer-events: auto;      /* 알림 자체는 클릭 가능해야 함 */
+  margin-top: 10px;          /* 알림 간 간격 */
+  animation: slideUp 0.4s ease-out forwards; /* 등장 애니메이션 */
+  width: 100%;
+  display: flex;
+  justify-content: flex-end; /* 우측 정렬 */
+}
+
+/* [추가] 아래에서 위로 올라오는 키프레임 */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%); /* 100% 아래에서 시작 */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);    /* 제자리 */
+  }
+}

@@ -8,6 +8,7 @@ export function useChatNotifications({
     selectRoom 
 }) {
     // 리스너 내부에서 최신 state를 참조하기 위한 Refs
+    // (Socket 이벤트 핸들러가 클로저 문제 없이 최신 값을 읽으려면 Ref가 필요합니다)
     const currentRoomIdRef = useRef(currentRoomId);
     const roomsRef = useRef(rooms);
     const userIdRef = useRef(userId);
@@ -16,22 +17,22 @@ export function useChatNotifications({
     useEffect(() => { roomsRef.current = rooms; }, [rooms]);
     useEffect(() => { userIdRef.current = userId; }, [userId]);
 
-    // [1] Electron -> React 방 이동 명령 수신
+    // [1] Electron -> React 방 이동 명령 수신 (기존 코드 원복)
     useEffect(() => {
-        if (window.electronAPI?.onCmdSelectRoom) {
-            const cleanup = window.electronAPI.onCmdSelectRoom((event, roomId) => {
+        // Electron 환경인지 확인
+        if (window.electronAPI && window.electronAPI.onCmdSelectRoom) {
+            window.electronAPI.onCmdSelectRoom((event, roomId) => {
                 console.log('[ChatPage] 알림 클릭 감지 -> 방 이동:', roomId);
                 selectRoom(roomId);
             });
-            // (참고: electronAPI 구현에 따라 cleanup 함수가 없을 수도 있음)
-            return () => { if(typeof cleanup === 'function') cleanup(); }
         }
     }, [selectRoom]);
 
-    // [2] 알림 띄우기 함수
+    // [2] 알림 띄우기 함수 (기존 코드 원복)
     const showSystemNotification = useCallback((title, body, roomId) => {
+        // Electron 환경인지 확인
         if (window.electronAPI && window.electronAPI.sendCustomNotification) {
-            // Electron 환경
+            // [Electron] 메인 프로세스로 데이터 전송
             window.electronAPI.sendCustomNotification({
                 id: Date.now(),
                 title,              
@@ -42,7 +43,7 @@ export function useChatNotifications({
                 type: 'TEXT' 
             });
         } else {
-            // 웹 브라우저 환경
+            // [Web Browser] 브라우저 알림 Fallback
             if (Notification.permission !== 'granted') {
                 Notification.requestPermission();
             } else {
@@ -65,11 +66,27 @@ export function useChatNotifications({
             const myId = String(userIdRef.current || '');
             const activeRoomId = String(currentRoomIdRef.current || '');
 
-            // 1. 내가 보낸 메시지 무시
+            // 1. 내가 보낸 메시지는 알림 X
             if (msgSenderId === myId) return;
             
-            // 2. 현재 보고 있는 방 메시지 무시
-            if (msgRoomId === activeRoomId) return;
+            // ✅ [수정된 로직]
+            // 조건: "해당 방을 보고 있음" AND "창이 활성화(Focus) 되어 있음"
+            // 이 두 가지가 모두 충족될 때만 알림을 무시합니다.
+            const isViewingRoom = (msgRoomId === activeRoomId);
+            const isWindowFocused = document.hasFocus(); // 현재 창 포커스 여부
+
+            if (isViewingRoom && isWindowFocused) {
+                console.log('👀 현재 방을 보고 있고 창이 활성화되어 있어 알림 생략');
+                return;
+            }
+
+            // ---------------------------------------------------
+            // [참고] 멀티 윈도우(새 창) 모드를 사용할 경우 추가 고려 사항
+            // 만약 '새 창'이 열려있고 그 창이 포커스된 상태라면, 
+            // 메인 창에서는 알림을 띄우지 않아야 할 수도 있습니다.
+            // 이 부분은 IPC 통신으로 "해당 방의 윈도우가 포커스 상태인가?"를 체크해야 합니다.
+            // (일단은 현재 창 기준으로만 작성했습니다)
+            // ---------------------------------------------------
 
             const targetRoom = roomsRef.current.find(r => String(r.ROOM_ID) === msgRoomId);
             const roomName = targetRoom ? targetRoom.ROOM_NAME : '새로운 메시지';
@@ -90,6 +107,7 @@ export function useChatNotifications({
         };
 
         socket.on('chat:message', handleIncomingMessage);
+
         return () => {
             socket.off('chat:message', handleIncomingMessage);
         };
