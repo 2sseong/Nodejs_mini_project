@@ -231,16 +231,36 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         };
 
         const onReadUpdate = (data) => {
+            // 아직 읽음 상태 맵이 로드되지 않았으면 무시
             if (!isReadStatusLoadedRef.current) return;
-            const { userId: rId, lastReadTimestamp } = data;
-            const ts = typeof lastReadTimestamp === 'number' ? lastReadTimestamp : new Date(lastReadTimestamp).getTime();
-            
-            if (ts <= (readStatusMapRef.current[String(rId)] || 0)) return;
-            readStatusMapRef.current[String(rId)] = ts;
 
+            const { userId: rId, lastReadTimestamp } = data;
+            const newReadTs = typeof lastReadTimestamp === 'number' ? lastReadTimestamp : new Date(lastReadTimestamp).getTime();
+            
+            // 1. 업데이트 '전'의 마지막 읽은 시간을 가져옴
+            const prevReadTs = readStatusMapRef.current[String(rId)] || 0;
+
+            // 2. 이미 더 최신 상태가 기록되어 있다면 무시
+            if (newReadTs <= prevReadTs) return;
+
+            // 3. Ref를 최신 값으로 업데이트
+            readStatusMapRef.current[String(rId)] = newReadTs;
+
+            // 4. 메시지 목록 업데이트
             setMessages(prev => prev.map(msg => {
                 const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
-                if (msg.unreadCount > 0 && msgTs > (readStatusMapRef.current[String(rId)] || 0) && msgTs <= ts + 1000 && String(rId) !== String(msg.SENDER_ID)) {
+                
+                // [조건 상세]
+                // - unreadCount가 0보다 커야 함
+                // - 메시지 시간이 '이전 읽은 시간'보다는 크고 (안 읽었었던 메시지)
+                // - '새로 읽은 시간'보다는 작거나 같아야 함 (이제 읽은 메시지)
+                // - 읽은 사람이 메시지 보낸 본인이 아니어야 함 (내가 보낸 걸 내가 읽는 건 카운트 영향 X)
+                if (msg.unreadCount > 0 && 
+                    msgTs > prevReadTs && 
+                    msgTs <= newReadTs && 
+                    String(msg.SENDER_ID) !== String(rId)) {
+                    
+                    // 안 읽은 사람 수 1 감소
                     return { ...msg, unreadCount: Math.max(0, msg.unreadCount - 1) };
                 }
                 return msg;

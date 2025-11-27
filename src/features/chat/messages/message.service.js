@@ -16,17 +16,12 @@ export async function saveMessage({ userId, ROOM_ID, CONTENT, activeUserIds = []
         fileName: null,
     });
 
-    // 보고 있는 사람들(activeUserIds) 모두 읽음 처리
+    // 변경: 상대방은 클라이언트에서 'focus' 시점에 명시적으로 요청하도록 변경함.
     if (savedRow.SENT_AT) {
         const timestamp = new Date(savedRow.SENT_AT).getTime();
         
-        // activeUserIds가 비어있으면 보낸 사람(userId)만이라도 넣음
-        const usersToUpdate = activeUserIds.length > 0 ? activeUserIds : [userId];
-
-        // 병렬 처리: DB에 '이 사람들 다 읽었음' 기록
-        await Promise.all(usersToUpdate.map(async (uid) => {
-            await messageRepo.upsertReadStatus(uid, ROOM_ID, timestamp);
-        }));
+        // activeUserIds 대신 [userId]만 처리
+        await messageRepo.upsertReadStatus(userId, ROOM_ID, timestamp);
     }
     return savedRow;
 }
@@ -43,14 +38,10 @@ export async function saveFileMessage({ roomId, userId, fileName, fileURL, mimeT
         fileName: fileName
     });
     
-    // 메시지를 보낸 사람(나) 및 보고 있는 사람들 읽음 처리
+    // [변경] 보낸 사람(userId)만 읽음 처리
     if (savedRow.SENT_AT) {
         const timestamp = new Date(savedRow.SENT_AT).getTime();
-        const usersToUpdate = activeUserIds.length > 0 ? activeUserIds : [userId];
-
-        await Promise.all(usersToUpdate.map(async (uid) => {
-            await messageRepo.upsertReadStatus(uid, roomId, timestamp);
-        }));
+        await messageRepo.upsertReadStatus(userId, roomId, timestamp);
     }
 
     return savedRow;

@@ -30,15 +30,31 @@ export default function MessageList({
     isLoadingNewer
 }) {
 
-    // 1. 읽음 처리 로직 (이건 useEffect 유지 - 화면 그려진 후 천천히 실행돼도 됨)
+    // [수정 1] 메시지 업데이트 시: 현재 창이 '포커스' 상태일 때만 읽음 처리
     useEffect(() => {
         if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
-            const timer = setTimeout(() => {
-                markAsRead();
-            }, 300);
-            return () => clearTimeout(timer);
+            // document.hasFocus() 체크 추가
+            if (document.hasFocus()) {
+                const timer = setTimeout(() => {
+                    markAsRead();
+                }, 300);
+                return () => clearTimeout(timer);
+            }
         }
     }, [messages, markAsRead, isReadStatusLoaded]);
+
+    // [추가] 윈도우 포커스 감지: 창을 클릭하거나 Alt+Tab으로 돌아왔을 때 읽음 처리
+    useEffect(() => {
+        const handleWindowFocus = () => {
+            if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
+                console.log('[MessageList] Window focused, marking messages as read.');
+                markAsRead();
+            }
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+        return () => window.removeEventListener('focus', handleWindowFocus);
+    }, [messages.length, markAsRead, isReadStatusLoaded]);
 
     const listRef = useRef(null);
     const prevScrollHeightRef = useRef(null);

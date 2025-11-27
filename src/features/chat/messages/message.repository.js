@@ -34,7 +34,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
                 SELECT * FROM (
                     ${midSql}
                 )
-                ORDER BY SENT_AT ASC
+                ORDER BY SENT_AT ASC, MSG_ID ASC
                 `;
     
     const res = await executeQuery(sql, binds);
@@ -119,8 +119,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
-    // [!!!] 핵심 수정: SYS_EXTRACT_UTC를 사용하여 타임존 오차 제거 [!!!]
-    // 이 부분이 적용되어야 '이미 읽은 메시지'가 0으로 정확히 로드됩니다.
+    // [수정] CAST(m.SENT_AT AS DATE)를 추가하여 결과값을 NUMBER로 변환
     const sql = `
         SELECT 
             m.MSG_ID,
@@ -129,7 +128,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
         LEFT JOIN UserRoomReadStatus r 
             ON TO_CHAR(m.ROOM_ID) = r.ROOM_ID
             AND r.lastReadTimestamp >= (
-                (CAST(SYS_EXTRACT_UTC(FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), SESSIONTIMEZONE)) AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000
+                (CAST(m.SENT_AT AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000
             )
         WHERE m.ROOM_ID = :roomId
           AND m.MSG_ID IN (${inClause})

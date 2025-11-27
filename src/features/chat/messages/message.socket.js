@@ -20,6 +20,9 @@ export default function messageSocket(io, socket) {
         if (!roomId) { 
             return socket.emit('chat:history', { messages: [], membersInRoom: 0 });
         }
+
+        socket.join(String(roomId)); 
+        console.log(`[Socket] User ${userId} joined room channel: ${roomId}`);
         try {
             // 1. 메시지 히스토리 조회
             const messages = await messageService.getHistory({ roomId, beforeMsgId, limit });
@@ -68,9 +71,10 @@ export default function messageSocket(io, socket) {
                 activeUserIds 
             });
             
-            // 3. unreadCount 계산 (접속자 수 기반)
             const membersInRoom = await roomService.getRoomMemberCount(saved.ROOM_ID);
-            const calculatedUnreadCount = Math.max(0, membersInRoom - activeUserIds.length);
+            
+            // 접속자가 있어도 '포커스' 전엔 안 읽은 것으로 간주하므로, 보낸 사람(1)만 뺌.
+            const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
           
             const initialMessage = {
                  ...saved, 
@@ -121,7 +125,7 @@ export default function messageSocket(io, socket) {
 
             // 3. unreadCount 계산
             const membersInRoom = await roomService.getRoomMemberCount(savedMessage.ROOM_ID);
-            const calculatedUnreadCount = Math.max(0, membersInRoom - activeUserIds.length);
+            const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
 
             const broadcastData = { 
                 ...savedMessage, 
