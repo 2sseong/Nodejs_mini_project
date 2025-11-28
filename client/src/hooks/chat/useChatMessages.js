@@ -13,7 +13,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     // [추가] 아래로 로딩 관련 상태
     const [isLoadingNewer, setIsLoadingNewer] = useState(false);
     const [hasFutureMessages, setHasFutureMessages] = useState(false);
-    
+
     // 읽음 상태 관련
     const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false);
     const readStatusMapRef = useRef({});
@@ -115,10 +115,10 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             console.log('[loadMore] 조건 불충족으로 중단됨. (소켓 연결 대기 중일 수 있음)');
             return;
         }
-        
+
         // 2. 가장 오래된 메시지 찾기
         const oldest = messagesRef.current.find(m => m.MSG_ID || m.msg_id);
-        
+
         if (!oldest) {
             console.warn('[loadMore] 기준 메시지 ID를 찾을 수 없음');
             return;
@@ -129,7 +129,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
 
         setIsLoadingMore(true);
         isPaginatingRef.current = true;
-        
+
         // 여기서 socket.emit을 하므로 위에서 !socket 체크가 필수
         socket.emit('chat:get_history', {
             roomId: currentRoomId,
@@ -140,13 +140,22 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
 
     // 읽음 처리 요청
     const markAsRead = useCallback(() => {
-        const latest = messagesRef.current[messagesRef.current.length - 1];
+        // [수정] 임시 메시지(TEMP_ID 있음)는 건너뛰고, 서버에 저장된 마지막 메시지를 찾음
+        const messages = messagesRef.current;
+        let latest = null;
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (!messages[i].TEMP_ID) {
+                latest = messages[i];
+                break;
+            }
+        }
+
         if (!socket || !currentRoomId || !latest?.SENT_AT) return;
 
-        console.log('[Client] markAsRead 요청 전송:', { 
-            roomId: currentRoomId, 
-            ts: latest.SENT_AT 
-        }); // [로그
+        console.log('[Client] markAsRead 요청 전송:', {
+            roomId: currentRoomId,
+            ts: latest.SENT_AT
+        });
 
         socket.emit('chat:mark_as_read', {
             roomId: currentRoomId,
@@ -176,7 +185,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
 
         const onChatHistory = (data) => {
             const newMessages = data.messages || [];
-            
+
             // 읽음 맵 로드
             if (data.memberReadStatus) {
                 const map = {};
@@ -189,7 +198,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             if (isPaginatingRef.current) {
                 setMessages(prev => {
                     const exists = new Set(prev.map(m => String(m.MSG_ID || m.msg_id || m.TEMP_ID)));
-                    
+
                     const filteredNew = newMessages.filter(m => {
                         const id = String(m.MSG_ID || m.msg_id || m.TEMP_ID);
                         return !exists.has(id);
@@ -204,7 +213,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
                 setMessages(newMessages);
                 setIsInitialLoad(true);
             }
-            
+
             setIsLoadingMore(false);
             if (newMessages.length < CHAT_PAGE_SIZE) setHasMoreMessages(false);
         };
@@ -215,9 +224,9 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
 
             if (hasFutureMessagesRef.current) {
                 console.log('Viewing past history. Real-time message buffered/ignored:', msg.MSG_ID);
-                return; 
+                return;
             }
-        
+
             if (String(msg.SENDER_ID) === String(userId) && msg.TEMP_ID) {
                 setMessages(prev => prev.map(m => m.TEMP_ID === msg.TEMP_ID ? msg : m));
                 return;
@@ -231,32 +240,50 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         const onReadUpdate = (data) => {
             console.log('[Client] chat:read_update 수신:', data);
             if (!isReadStatusLoadedRef.current) return;
-            
+
             const { userId: rId, lastReadTimestamp } = data;
             const ts = typeof lastReadTimestamp === 'number' ? lastReadTimestamp : new Date(lastReadTimestamp).getTime();
-            
+
             // 1. [중요] 업데이트하기 '전'의 마지막 시간을 먼저 가져옵니다.
             const prevReadTs = readStatusMapRef.current[String(rId)] || 0;
 
+            console.log('[Client] chat:read_update processing:', {
+                rId,
+                ts,
+                prevReadTs,
+                diff: ts - prevReadTs
+            });
+
             // 2. 이미 최신 상태라면 무시
-            if (ts <= prevReadTs) return;
+            if (ts <= prevReadTs) {
+                console.log('[Client] chat:read_update ignored (ts <= prevReadTs)');
+                return;
+            }
 
             // 3. Ref를 최신 값으로 업데이트
             readStatusMapRef.current[String(rId)] = ts;
 
             setMessages(prev => prev.map(msg => {
                 const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
-                
+
                 // 4. [조건 수정]
                 // - msg.unreadCount > 0 : 안 읽은 상태여야 함
                 // - msgTs > prevReadTs  : 이전에 읽은 시점보다는 뒤에 온 메시지 (안 읽었던 것)
                 // - msgTs <= ts + 1000  : 지금 읽은 시점보다는 앞에 온 메시지 (이제 읽은 것) (+1000은 오차 범위 허용)
                 // - rId !== msg.SENDER_ID : 읽은 사람이 보낸 사람은 아니어야 함
-                if (msg.unreadCount > 0 && 
-                    msgTs > prevReadTs && 
-                    msgTs <= ts + 1000 && 
-                    String(rId) !== String(msg.SENDER_ID)) {
-                    
+
+                const isTarget = msg.unreadCount > 0 &&
+                    msgTs > prevReadTs &&
+                    msgTs <= ts + 1000 &&
+                    String(rId) !== String(msg.SENDER_ID);
+
+                if (isTarget) {
+                    console.log(`[Client] Decrementing unread for msg ${msg.MSG_ID || msg.TEMP_ID}`, {
+                        currentUnread: msg.unreadCount,
+                        msgTs,
+                        prevReadTs,
+                        ts
+                    });
                     return { ...msg, unreadCount: Math.max(0, msg.unreadCount - 1) };
                 }
                 return msg;
