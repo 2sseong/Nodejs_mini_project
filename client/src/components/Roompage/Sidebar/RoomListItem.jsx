@@ -3,7 +3,7 @@ import React from 'react';
 
 /**
  * 개별 채팅방 아이템 컴포넌트
- * - 구조: [방 이름 + 최근 메시지] 좌측 정렬, [안 읽은 배지] 우측 정렬
+ * - 구조: [방 이름(인원수) + 최근 메시지] 좌측, [안 읽은 배지] 우측
  */
 export default function RoomListItem({ room, active, onClick }) {
     return (
@@ -14,7 +14,7 @@ export default function RoomListItem({ room, active, onClick }) {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                padding: '10px 15px',
+                padding: '12px 15px',
                 cursor: 'pointer'
             }}
         >
@@ -25,18 +25,36 @@ export default function RoomListItem({ room, active, onClick }) {
                 flex: 1,
                 marginRight: '10px'
             }}>
-                <span className="room-name" style={{ 
-                    fontWeight: 'bold', 
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
                     marginBottom: '4px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                    width: '100%'
                 }}>
-                    {room.ROOM_NAME || '채팅방'}
-                </span>
+                    <span className="room-name" style={{ 
+                        fontWeight: 'bold', 
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '80%'
+                    }}>
+                        {room.ROOM_NAME || '채팅방'}
+                    </span>
+                    
+                    {/* 인원 수 표시 (데이터가 있을 경우에만 렌더링, 없으면 기본값 1 처리 혹은 숨김) */}
+                    <span className="member-count" style={{
+                        fontSize: '0.8em',
+                        color: active ? '#e6f7ff' : '#999',
+                        marginLeft: '6px',
+                        flexShrink: 0
+                    }}>
+                        {room.MEMBER_COUNT || 1}
+                    </span>
+                </div>
+
                 <span className="room-last-message" style={{ 
                     fontSize: '0.85em', 
-                    color: active ? '#e6f7ff' : '#888', // 활성화 시 텍스트 색상 조정
+                    color: active ? '#e6f7ff' : '#888',
                     whiteSpace: 'nowrap', 
                     overflow: 'hidden', 
                     textOverflow: 'ellipsis' 
@@ -45,10 +63,10 @@ export default function RoomListItem({ room, active, onClick }) {
                 </span>
             </div>
 
-            {/* 안 읽은 메시지 카운트 (0보다 클 때만 표시) */}
+            {/* 안 읽은 메시지 카운트 */}
             {room.UNREAD_COUNT > 0 && (
                 <div className="unread-badge" style={{
-                    backgroundColor: '#ff4d4f', // 붉은색 계열 (알림 강조)
+                    backgroundColor: '#ff4d4f',
                     color: 'white',
                     borderRadius: '12px',
                     padding: '0 6px',

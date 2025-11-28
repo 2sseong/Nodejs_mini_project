@@ -21,7 +21,19 @@ function requestRoomsRefresh(userId) {
     console.log(`[Gateway] Sent 'rooms:refresh' to user: ${userId}`);
 }
 
+// [추가됨] 방 인원수 변경 알림 (방에 있는 모든 사람에게)
+function notifyRoomMemberCount(roomId, memberCount) {
+    const io = _io();
+    if (!io) return;
+    
+    io.to(String(roomId)).emit('room:update_count', {
+        roomId: String(roomId),
+        memberCount: memberCount
+    });
+}
+
 export default {
     notifyRoomCreatedToUser,
     requestRoomsRefresh,
+    notifyRoomMemberCount,
 };

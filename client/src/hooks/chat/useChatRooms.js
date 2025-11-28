@@ -57,7 +57,8 @@ export function useChatRooms(socket, userId, connected) {
                 ROOM_ID: String(r.ROOM_ID),
                 // 초기값 설정 (백엔드에서 주지 않을 경우 대비)
                 UNREAD_COUNT: r.UNREAD_COUNT || 0,
-                LAST_MESSAGE: r.LAST_MESSAGE || ''
+                LAST_MESSAGE: r.LAST_MESSAGE || '',
+                MEMBER_COUNT: r.MEMBER_COUNT || r.memberCount || 1
             }));
             
             setRooms(normalized);
@@ -90,6 +91,20 @@ export function useChatRooms(socket, userId, connected) {
                         ? { ...r, UNREAD_COUNT: 0 } 
                         : r
                 )
+            );
+        };
+
+        const onRoomUpdateCount = ({ roomId, memberCount }) => {
+            setRooms((prevRooms) => 
+                prevRooms.map((room) => {
+                    if (String(room.ROOM_ID) === String(roomId)) {
+                        return { 
+                            ...room, 
+                            MEMBER_COUNT: memberCount // 서버에서 받은 최신값으로 교체
+                        };
+                    }
+                    return room;
+                })
             );
         };
 
@@ -132,11 +147,13 @@ export function useChatRooms(socket, userId, connected) {
             });
         };
 
+        // 리스너 추가
         socket.on('rooms:list', onRoomsList);
         socket.on('rooms:refresh', onRoomsRefresh);
         socket.on('room:new_created', onNewRoomCreated);
-        socket.on('chat:message', onChatMessage); // 리스너 추가
+        socket.on('chat:message', onChatMessage); 
         socket.on('room:read_complete', onReadComplete);
+        socket.on('room:update_count', onRoomUpdateCount);
 
         return () => {
             socket.off('rooms:list', onRoomsList);
@@ -144,6 +161,7 @@ export function useChatRooms(socket, userId, connected) {
             socket.off('room:new_created', onNewRoomCreated);
             socket.off('chat:message', onChatMessage);
             socket.off('room:read_complete', onReadComplete);
+            socket.off('room:update_count', onRoomUpdateCount);
         };
     }, [socket, userId, connected, refreshRooms]);
 

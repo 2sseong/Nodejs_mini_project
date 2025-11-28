@@ -16,16 +16,30 @@ export async function createRoom(req, res, next) {
     } catch (e) { next(e); }
 }
 
-export async function invite(req, res, next) {
+export async function inviteUser(req, res, next) {
     try {
-        const { roomId, inviterId, inviteeId } = req.body;
-        // chatService -> roomService로 변경
-        await roomService.inviteUserToRoom({ roomId, inviterId, inviteeId });
-        
-        res.json({ success: true, message: '사용자를 성공적으로 초대했습니다.' });
+        // req.body에서 필요한 정보 추출
+        // (프론트에서 inviterId를 안 보내면 req.user.userId 사용)
+        const { roomId, inviteeId, inviterId } = req.body; 
+        const requesterId = inviterId || req.user?.userId;
 
+        await roomService.inviteUserToRoom({ 
+            roomId, 
+            inviteeId, 
+            requesterId
+        });
+
+        // 1. 초대받은 사람에게 방 목록 갱신 요청
         socketGateway.requestRoomsRefresh(inviteeId);
-    } catch (e) { next(e); }
+
+        // 2. [수정됨] 방에 있는 기존 멤버들에게 실시간 인원수 업데이트 (Gateway 사용)
+        const memberCount = await roomService.getRoomMemberCount(roomId);
+        socketGateway.notifyRoomMemberCount(roomId, memberCount);
+        
+        res.status(200).json({ success: true, message: '사용자를 성공적으로 초대했습니다.' });
+    } catch (e) { 
+        next(e); 
+    }
 }
 
 /**
@@ -38,19 +52,21 @@ export async function leaveRoom(req, res, next) {
     const { roomId, userId } = req.params;
 
     if (!roomId || !userId) {
-        // [400] 직접 응답
         return res.status(400).json({
             success: false,
-            message: `채팅방 ID와 사용자 ID는 필수입니다.${roomId}${userId}`
+            message: `채팅방 ID와 사용자 ID는 필수입니다.`
         });
     }
 
     try {
-        // chatService -> roomService로 변경
         const rowsAffected = await roomService.leaveRoom({ roomId, userId });
 
-        // 성공 응답 전 소켓 이벤트 트리거
+        // 나간 본인에게 목록 갱신 요청
         socketGateway.requestRoomsRefresh(userId);
+
+        // [추가됨] 남은 사람들에게 인원수 업데이트 알림 (Gateway 사용)
+        const memberCount = await roomService.getRoomMemberCount(roomId);
+        socketGateway.notifyRoomMemberCount(roomId, memberCount);
 
         return res.status(200).json({
             success: true,

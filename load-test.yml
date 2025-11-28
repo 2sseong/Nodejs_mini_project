@@ -1,0 +1,33 @@
+config:
+  target: "http://localhost:1337" # 서버 주소 및 포트 (실제 환경에 맞게 수정)
+  phases:
+    - duration: 60  # 60초 동안 테스트 진행
+      arrivalRate: 10 # 1초당 10명씩 진입 (총 600명 진입 시도, 동시 접속 100명 이상 유지 가능)
+      name: "Warm up & Sustain"
+  engines:
+    socketio: {} # socket.io 엔진 사용
+
+scenarios:
+  - name: "채팅방 입장 및 메시지 전송"
+    engine: "socketio"
+    flow:
+      # 1. 소켓 연결 및 방 입장
+      - emit:
+          channel: "chat:get_history" # 기존 코드의 히스토리 요청 이벤트 (입장 처리)
+          data: { "roomId": "61", "limit": 50 } # 테스트할 방 ID (DB에 존재하는 방 ID여야 함)
+      
+      # 2. 잠시 대기 (사용자가 메시지를 읽는 시간 시뮬레이션)
+      - think: 1
+
+      # 3. 메시지 전송
+      - emit:
+          channel: "chat:message"
+          data: 
+            ROOM_ID: "61"
+            SENDER_ID: "TEST_USER" # 테스트용 ID
+            NICKNAME: "LoadTester"
+            CONTENT: "부하 테스트 메시지입니다."
+            TEMP_ID: "test_temp_id"
+      
+      # 4. 추가 대기 후 연결 종료
+      - think: 5
