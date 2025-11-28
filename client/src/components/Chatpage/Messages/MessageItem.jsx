@@ -86,8 +86,8 @@ export default function MessageItem(props) {
                                 src={downloadUrl} 
                                 alt={fileName} 
                                 style={{ 
-                                    maxWidth: '250px', 
-                                    maxHeight: '300px', 
+                                    maxWidth: '90%', 
+                                    maxHeight: '80%', 
                                     borderRadius: '8px',
                                     display: 'block',
                                     cursor: 'pointer',
@@ -111,7 +111,6 @@ export default function MessageItem(props) {
                                     alignItems: 'center',
                                     gap: '4px',
                                     fontWeight: 'bold',
-                                    opacity: 0.9
                                 }}
                             >
                                 ⬇ 저장

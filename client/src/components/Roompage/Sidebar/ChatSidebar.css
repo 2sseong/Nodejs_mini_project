@@ -1,7 +1,6 @@
 /* src/components/Roompage/Sidebar/ChatSidebar.css */
 .sidebar {
     flex: 0 0 300px;
-    max-width: 360px;
     min-width: 260px;
     background-color: #ffffff;
     border-right: 1px solid #e0e0e0;
