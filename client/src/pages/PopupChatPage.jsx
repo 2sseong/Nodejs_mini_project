@@ -154,6 +154,12 @@ export default function PopupChatPage() {
     // rooms 목록이 로드될 때까지 기다리거나, API로 단건 조회할 수도 있음
     const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(roomId));
     const roomName = currentRoom ? currentRoom.ROOM_NAME : '채팅방';
+    const memberCount = currentRoom ? currentRoom.MEMBER_COUNT : 0;
+
+    const handleOpenDrawer = () => {
+        // 새 창 열기 (경로는 App.jsx에 설정한 path와 일치해야 함)
+        window.open(`#/files/${roomId}`, 'FileDrawerWindow', 'width=400,height=600,resizable=yes,scrollbars=yes');
+    };
 
     if (!roomId) return <div>잘못된 접근입니다.</div>;
 
@@ -162,7 +168,9 @@ export default function PopupChatPage() {
             {/* 1. 헤더 */}
             <ChatHeader
                 title={roomName}
+                memberCount={memberCount}
                 onOpenInvite={() => setIsInviteOpen(true)}
+                onOpenDrawer={handleOpenDrawer}
                 disabled={!connected}
                 onLeaveRoom={async () => { // 1. async 함수로 변경
                     const success = await handleLeaveRoom();

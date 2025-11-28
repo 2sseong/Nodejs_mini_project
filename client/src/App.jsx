@@ -10,6 +10,7 @@ import Titlebar from './components/Titlebar/Titlebar.jsx';
 import NotificationWindowPage from './pages/NotificationWindowPage.jsx'; 
 import { useAuth } from './hooks/AuthContext.jsx';
 import PopupChatPage from './pages/PopupChatPage.jsx'; // [필수] import 확인
+import FileDrawerPage from './pages/FileDrawerPage.jsx'; // [추가] 파일 서랍 팝업 페이지 import
 import './App.css';
 
 // 보호된 라우트
@@ -162,6 +163,9 @@ export default function App() {
             {/* [핵심 수정] 팝업 채팅 창 라우트 추가 */}
             {/* Topbar 없이 채팅 화면만 꽉 채우기 위해 Layout 바깥에 둡니다. */}
             <Route path="/popup/:roomId" element={<PopupChatPage />} />
+
+            {/* [추가] 파일 서랍 팝업 라우트 */}
+            <Route path="/files/:roomId" element={<FileDrawerPage />} />
 
 
             {/* ------------------------------------------------------- */}

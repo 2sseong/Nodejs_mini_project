@@ -309,3 +309,18 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
     const result = await executeQuery(sql, binds);
     return result.rows || [];
 }
+
+// 특정 방의 파일 메시지 전체 조회
+export async function getRoomFiles(roomId) {
+    const sql = `
+        SELECT 
+            MSG_ID, SENDER_ID, SENT_AT, FILE_URL, FILE_NAME, MESSAGE_TYPE
+        FROM T_MESSAGE
+        WHERE ROOM_ID = :roomId
+          AND MESSAGE_TYPE = 'FILE'
+        ORDER BY SENT_AT DESC
+    `;
+    // 최신순 정렬
+    const res = await executeQuery(sql, { roomId });
+    return res.rows || [];
+}

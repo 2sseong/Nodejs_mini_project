@@ -1,6 +1,6 @@
 import * as messageService from './message.service.js'; // 서비스를 import
 
-// [추가] 검색 API 핸들러
+// 검색 API 핸들러
 export async function searchRoomMessages(req, res, next) {
     try {
         const { roomId } = req.params;
@@ -15,7 +15,7 @@ export async function searchRoomMessages(req, res, next) {
     }
 }
 
-// [추가] 문맥 이동 API 핸들러
+// 문맥 이동 API 핸들러
 export async function getMessageContext(req, res, next) {
     try {
         const { roomId, msgId } = req.params; // URL 파라미터 확인 필요 (:roomId, :msgId)
@@ -35,6 +35,17 @@ export async function getNewerMessages(req, res, next) {
         const { roomId, msgId } = req.params;
         const messages = await messageService.getNewerMessages({ roomId, msgId });
         res.json({ success: true, data: messages });
+    } catch (e) {
+        next(e);
+    }
+}
+
+// 채팅방 파일 목록 조회 API 핸들러
+export async function getRoomFiles(req, res, next) {
+    try {
+        const { roomId } = req.params;
+        const files = await messageService.getRoomFiles({ roomId });
+        res.json({ success: true, data: files });
     } catch (e) {
         next(e);
     }
