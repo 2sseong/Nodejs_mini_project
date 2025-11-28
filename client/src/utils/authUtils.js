@@ -17,5 +17,6 @@ export const logout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('userNickname');
+    localStorage.removeItem('username');
     // 필요한 경우 추가적인 상태 정리 로직을 포함
 };
