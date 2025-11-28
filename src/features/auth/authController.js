@@ -11,11 +11,11 @@ export async function signup(req, res) {
     if (!email || !password || !nickname) {
         return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
     }
-    
+
     try {
         const newUser = await signupUser({ email, password, nickname });
 
-        res.status(201).json({ 
+        res.status(201).json({
             success: true,
             message: '회원가입이 성공적으로 완료되었습니다. \n5초 후 로그인 화면으로 이동합니다.',
             userId: newUser.userId,
@@ -28,7 +28,7 @@ export async function signup(req, res) {
         if (error.message === 'Email already in use') {
             return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
         }
-        
+
         res.status(500).json({ message: '회원가입 중 서버 오류가 발생했습니다.' });
     }
 }
@@ -51,7 +51,7 @@ export async function login(req, res) {
         res.json({
             success: true,
             token: token,
-            user: { userId: user.USER_ID, nickname: user.NICKNAME }
+            user: { userId: user.USER_ID, nickname: user.NICKNAME, username: user.USERNAME }
         });
 
     } catch (error) {

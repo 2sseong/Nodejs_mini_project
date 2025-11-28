@@ -8,13 +8,13 @@ import { useAuth } from '../hooks/AuthContext';
 export default function LoginPage() {
     const nav = useNavigate()
     const { login: loginAuth } = useAuth();
-    
+
     const [password, setPassword] = useState('');
     const [form, setForm] = useState({ email: '', password: '' })
     const [showPw, setShowPw] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    
+
 
     const onChange = (e) => {
         const { name, value } = e.target
@@ -38,31 +38,32 @@ export default function LoginPage() {
         setLoading(true)
         try {
             // login 함수를 호출하고 응답을 받음
-            const { data } = await login(form) 
+            const { data } = await login(form)
             // 4xx/5xx 에러는 이미 login 함수 내부에서 throw 되었으므로, 
             // 여기에 도달했다면 성공 응답(ok=true)
 
-        if (data.token && data.user) {
+            if (data.token && data.user) {
                 // 1. Local Storage에 인증 정보 저장
-                    localStorage.setItem('authToken', data.token)
-                    localStorage.setItem('userId', data.user.userId)
-                    localStorage.setItem('userNickname', data.user.nickname)
+                localStorage.setItem('authToken', data.token)
+                localStorage.setItem('userId', data.user.userId)
+                localStorage.setItem('userNickname', data.user.nickname)
+                localStorage.setItem('username', data.user.username)
 
                 // 2. 상태 업데이트: useAuth 훅을 통해 전역 인증 상태를 '로그인됨'으로 변경
-                loginAuth(); 
+                loginAuth();
 
                 // 3. 페이지 이동
                 nav('/chat', { replace: true })
-                } else {
-                    // 서버 응답은 성공했지만, 토큰이 없는 이상한 상황 처리
-                    throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
-                }
-            } catch (err) {
-                setError(err.message || '알 수 없는 오류가 발생했습니다.')
-            } finally {
-                setLoading(false)
+            } else {
+                // 서버 응답은 성공했지만, 토큰이 없는 이상한 상황 처리
+                throw new Error("서버 응답에서 유효한 인증 토큰을 받지 못했습니다.")
             }
+        } catch (err) {
+            setError(err.message || '알 수 없는 오류가 발생했습니다.')
+        } finally {
+            setLoading(false)
         }
+    }
 
     return (
         <div className="login-wrap">

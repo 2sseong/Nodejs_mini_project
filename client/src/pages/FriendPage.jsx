@@ -13,7 +13,7 @@ export default function FriendPage() {
     const [userList, setUserList] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { userId, userNickname } = useAuth();
+    const { userId, userNickname, username } = useAuth();
     const [filterType, setFilterType] = useState('ALL'); // 'ALL' | 'ONLINE' | '⭐'
 
     // 소켓 훅에서 온라인 사용자 목록 가져오기
@@ -52,43 +52,34 @@ export default function FriendPage() {
 
             try {
                 const data = await searchAllUsers(searchQuery, myUserId);
-
-                console.log('=== 정렬 디버깅 ===');
-                console.log('myUserId (localStorage):', myUserId, typeof myUserId);
-                console.log('받아온 데이터:', data);
-                console.log('첫 번째 유저 객체의 키:', data[0] ? Object.keys(data[0]) : '데이터 없음');
-                console.log('AuthContext의 userId:', userId);
-                // 🔍 내 정보가 API 응답에 포함되어 있는지 확인
                 const hasMe = data.some(u => String(u.userId) === String(myUserId));
-                console.log('API 응답에 내 정보 포함 여부:', hasMe);
                 let usersWithMe = data;
-                if (!hasMe && userNickname) {
+                // 검색어가 없을 때만 '나'를 추가
+                if (!hasMe && userNickname && !searchQuery.trim()) {
                     const myInfo = {
                         userId: myUserId,
-                        username: localStorage.getItem('username') || '나',
+                        username: username,
                         userNickname: userNickname,
                     };
                     usersWithMe = [myInfo, ...data];
                 }
 
                 // 정렬: 나를 맨 위로 + 나머지는 닉네임 오름차순               
-                const sorted = [...usersWithMe].sort((a,b) => {
+                const sorted = [...usersWithMe].sort((a, b) => {
                     const isAMe = String(a.userId) === String(myUserId);
                     const isBMe = String(b.userId) === String(myUserId);
-               
-                // 1순위: isMe(내가 맨 위)
-                if (isAMe && !isBMe) return -1;
-                if (!isAMe && isBMe) return 1;
 
-                // 2순위: 닉네임 한글 오름차순
-                const nicknameA = a.userNickname || '';
-                const nicknameB = b.userNickname || '';
-                return nicknameA.localeCompare(nicknameB, 'ko', {sensitivity: 'base'});
-            });
+                    // 1순위: isMe(내가 맨 위)
+                    if (isAMe && !isBMe) return -1;
+                    if (!isAMe && isBMe) return 1;
 
-                console.log('정렬 후 첫 번째 유저:', sorted[0]);
-                console.log('==================');
-                setUserList(sorted);                
+                    // 2순위: 닉네임 한글 오름차순
+                    const nicknameA = a.userNickname || '';
+                    const nicknameB = b.userNickname || '';
+                    return nicknameA.localeCompare(nicknameB, 'ko', { sensitivity: 'base' });
+                });
+
+                setUserList(sorted);
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -100,7 +91,7 @@ export default function FriendPage() {
 
     // 렌더링 시 로딩, 에러 상태 처리
     let listContent;
-    
+
     if (myUserId === null || isLoading) {
         listContent = <p className="loading-text">사용자 정보 및 목록을 불러오는 중...</p>;
     } else if (error) {
@@ -108,7 +99,7 @@ export default function FriendPage() {
     } else {
         // FriendList 컴포넌트에 필요한 prps만 전달
         listContent = (
-            <FriendList 
+            <FriendList
                 users={userList} // 불러온 전체 유저 목록
                 myUserId={myUserId} // 로컬 저장소에서 가져온 내 ID
                 searchQuery={searchQuery} // 검색어 상태 전달
@@ -117,7 +108,7 @@ export default function FriendPage() {
             />
         );
     }
-    
+
     return (
         <div className="friend-page">
             <div className="friend-page-header">
@@ -125,8 +116,8 @@ export default function FriendPage() {
                 <p className="page-subtitle">친구를 검색하고 목록을 관리하세요</p>
             </div>
 
-<div className="friend-page-content">
-                
+            <div className="friend-page-content">
+
                 <section className="friend-section list-section">
                     <div className="section-header">
                         <div className="section-icon">👥</div>
@@ -158,8 +149,8 @@ export default function FriendPage() {
                     </div>
                     <div className="section-content">
                         {/* UserSearch 컴포넌트를 이 섹션 안으로 이동 */}
-                        <UserSearch 
-                            onQueryChange={handleQueryChange}             
+                        <UserSearch
+                            onQueryChange={handleQueryChange}
                         />
                         {listContent} {/* 전체 목록/검색 결과 표시 */}
                     </div>

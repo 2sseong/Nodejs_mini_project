@@ -151,7 +151,9 @@ LEFT JOIN T_FRIEND F ON
     (F.USER_ID = U.USER_ID AND F.FRIEND_USER_ID = :userId)
     OR (F.USER_ID = :userId AND F.FRIEND_USER_ID = U.USER_ID)
 WHERE
-    (U.USER_ID LIKE '%' || :query || '%' OR U.USERNAME LIKE '%' || :query || '%')
+    (U.USER_ID LIKE '%' || :query || '%' 
+    OR U.USERNAME LIKE '%' || :query || '%'
+    OR U.NICKNAME LIKE '%' || :query || '%')
     AND U.USER_ID != :userId
 `;
 
