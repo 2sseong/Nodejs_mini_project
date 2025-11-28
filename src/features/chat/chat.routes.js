@@ -8,6 +8,7 @@ const r = Router();
 r.get('/rooms/:roomId/messages/search', messageController.searchRoomMessages);
 r.get('/rooms/:roomId/messages/:msgId/context', messageController.getMessageContext);
 r.get('/rooms/:roomId/messages/:msgId/newer', messageController.getNewerMessages);
+r.get('/rooms/:roomId/files', messageController.getRoomFiles);
 
 // Room 관련 라우트 마운트
 r.use('/', roomRoutes); 

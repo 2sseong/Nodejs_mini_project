@@ -1,14 +1,14 @@
-// src/components/Chatpage/Header/ChatHeader.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import ConfirmModal from '../Modals/ConfirmModal'; // [추가] 모달 import
+import ConfirmModal from '../Modals/ConfirmModal';
 import './ChatHeader.css';
 
 export default function ChatHeader({ 
     title, 
+    memberCount, // [추가] 인원수 props
     onOpenInvite, 
+    onOpenDrawer, // [추가] 서랍 열기 핸들러
     disabled, 
     onLeaveRoom, 
-    // 검색 관련 props
     onSearch,      
     onNextMatch,   
     onPrevMatch,   
@@ -16,19 +16,28 @@ export default function ChatHeader({
     currentMatchIdx 
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false); // [추가] 메뉴 드롭다운 상태
     const [keyword, setKeyword] = useState('');
     const searchInputRef = useRef(null);
 
-    // [변경] 나가기 '모달' 상태와 '로딩' 상태 분리
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
 
-    // 검색 바 열릴 때 input에 포커스
+    // 검색 바 포커스
     useEffect(() => {
         if (isSearchOpen && searchInputRef.current) {
             searchInputRef.current.focus();
         }
     }, [isSearchOpen]);
+
+    // 외부 클릭 시 메뉴 닫기 (간단 구현)
+    useEffect(() => {
+        const handleClickOutside = () => setIsMenuOpen(false);
+        if (isMenuOpen) {
+            window.addEventListener('click', handleClickOutside);
+        }
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, [isMenuOpen]);
 
     const toggleSearch = () => {
         if (isSearchOpen) {
@@ -56,35 +65,23 @@ export default function ChatHeader({
         }
     };
 
-    // 1. 나가기 버튼 클릭 시 -> 모달만 오픈
     const handleLeaveClick = () => {
         if (disabled || isLeaving) return;
         setIsLeaveModalOpen(true);
     };
 
-    // 2. 모달에서 '나가기' 확정 클릭 시 -> 실제 로직 수행
     const handleConfirmLeave = async () => {
-        setIsLeaving(true); // 로딩 시작 (모달 버튼 비활성화)
-
+        setIsLeaving(true);
         try {
-            await onLeaveRoom(); // API 호출
-            
-            // 성공 시: 모달 닫기
+            await onLeaveRoom(); 
             setIsLeaveModalOpen(false);
-            
-            // 성공 알림은 여기서 띄워도 안전함 (이미 상태 업데이트 됨)
-            // 상위 컴포넌트에서 페이지를 닫거나 이동시키므로 alert가 필수는 아님
         } catch (error) {
             console.error('방 나가기 실패:', error);
-            
-            // 실패 시: 로딩 끄고 모달 닫기 (또는 모달 유지하고 에러 표시)
             setIsLeaving(false);
             setIsLeaveModalOpen(false); 
-            
             const errMsg = error.response?.data?.message || '오류가 발생했습니다.';
-            alert(errMsg); // 에러 알림
+            alert(errMsg);
         } finally {
-            // 안전 장치: 컴포넌트가 언마운트 되지 않았다면 로딩 끄기
             setIsLeaving(false);
         }
     };
@@ -93,7 +90,13 @@ export default function ChatHeader({
         <div className="chat-header-container">
             {/* 1. 메인 헤더 */}
             <div className="chat-header-main">
-                <h2>{title || '채팅방'}</h2>
+                {/* [수정] 제목 및 인원수 표시 */}
+                <div className="chat-header-info">
+                    <h2 className="room-title">{title || '채팅방'}</h2>
+                    {memberCount > 0 && (
+                        <span className="member-count">({memberCount})</span>
+                    )}
+                </div>
 
                 <div className="chat-header-buttons">
                     <button 
@@ -105,31 +108,37 @@ export default function ChatHeader({
                         🔍
                     </button>
 
-                    <button
-                        className="invite-user-btn"
-                        onClick={onOpenInvite}
-                        title="인원 초대"
-                        disabled={disabled}
-                    >
-                        + 초대
-                    </button>
+                    {/* [변경] 메뉴 버튼 (기존 초대/나가기 버튼 대체) */}
+                    <div className="menu-container" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                            className="menu-toggle-btn"
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            disabled={disabled}
+                            title="메뉴"
+                        >
+                            ☰
+                        </button>
 
-                    <button
-                        className="leave-room-btn" 
-                        onClick={handleLeaveClick}
-                        title="방 나가기"
-                        disabled={disabled}
-                        style={{ 
-                            cursor: disabled ? 'not-allowed' : 'pointer',
-                            opacity: disabled ? 0.7 : 1
-                        }}
-                    >
-                        나가기
-                    </button>
+                        {/* 드롭다운 메뉴 */}
+                        {isMenuOpen && (
+                            <div className="header-dropdown">
+                                <button onClick={() => { setIsMenuOpen(false); onOpenInvite(); }}>
+                                    + 초대하기
+                                </button>
+                                <button onClick={() => { setIsMenuOpen(false); onOpenDrawer(); }}>
+                                    📁 채팅방 서랍
+                                </button>
+                                <div className="divider"></div>
+                                <button onClick={() => { setIsMenuOpen(false); handleLeaveClick(); }} className="danger-text">
+                                    나가기
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* 2. 하단 검색 바 */}
+            {/* 2. 하단 검색 바 (기존 유지) */}
             {isSearchOpen && (
                 <div className="chat-search-bar">
                     <div className="search-input-wrapper">
@@ -155,13 +164,13 @@ export default function ChatHeader({
                 </div>
             )}
 
-            {/* 3. [추가] 나가기 확인 모달 */}
+            {/* 3. 나가기 확인 모달 (기존 유지) */}
             <ConfirmModal
                 isOpen={isLeaveModalOpen}
                 title="방 나가기"
                 message={`'${title}' 방을 정말 나가시겠습니까? \n나가시면 대화 내용 확인이 불가능할 수 있습니다.`}
                 confirmText="나가기"
-                isDanger={true} // 빨간 버튼
+                isDanger={true}
                 isLoading={isLeaving}
                 onClose={() => !isLeaving && setIsLeaveModalOpen(false)}
                 onConfirm={handleConfirmLeave}
