@@ -7,8 +7,7 @@ import db, { oracledb, executeQuery, executeTransaction, getConnection } from '.
 export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     let conn;
     try {
-        conn = await getConnection(); // autoCommit: false 사용 필요
-        // 1) 방 생성
+        conn = await getConnection(); 
         const roomSql = `
                         INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
                         VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
@@ -21,16 +20,13 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
         const roomRes = await conn.execute(roomSql, roomBinds, { autoCommit: false });
         const roomId = roomRes.outBinds.roomId[0];
 
-        // 2) 생성자 멤버 추가
         const memberSql = `
                         INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
                         VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
                         `;
         await conn.execute(memberSql, { roomId, userId: creatorId }, { autoCommit: false });
 
-        // 3) 커밋
-        await conn.commit();
-
+        await conn.commit(); 
         return { roomId, roomName, roomType: 'GROUP', creatorId };
     } catch (e) {
         if (conn) { try { await conn.rollback(); } catch { } }
@@ -122,7 +118,11 @@ export async function listRoomsByUser({ userId }) {
             r.ROOM_ID,
             r.ROOM_NAME,
             r.ROOM_TYPE,
-            NVL(lm.CONTENT, '대화 내용이 없습니다.') AS LAST_MESSAGE,
+            CASE 
+                WHEN lm.MESSAGE_TYPE = 'FILE' THEN '(파일 전송)'
+                -- [Fix] CLOB 컬럼을 DBMS_LOB.SUBSTR로 감싸서 VARCHAR2로 변환
+                ELSE NVL(DBMS_LOB.SUBSTR(lm.CONTENT, 1000, 1), '대화 내용이 없습니다.') 
+            END AS LAST_MESSAGE,
             NVL(lm.SENT_AT, r.CREATED_AT) AS LAST_MESSAGE_AT,
             (
                 SELECT COUNT(*)
@@ -134,7 +134,6 @@ export async function listRoomsByUser({ userId }) {
                   )
                   AND msg.SENDER_ID != :userId 
             ) AS UNREAD_COUNT,
-            -- [추가됨] N+1 문제 방지를 위한 서브쿼리 (한 번에 조회)
             (
                 SELECT COUNT(*) 
                 FROM T_ROOM_MEMBER mem 
@@ -146,12 +145,13 @@ export async function listRoomsByUser({ userId }) {
                ON rm.ROOM_ID = urs.ROOM_ID 
               AND rm.USER_ID = urs.USER_ID
         LEFT JOIN (
-            SELECT ROOM_ID, CONTENT, SENT_AT
+            SELECT ROOM_ID, CONTENT, SENT_AT, MESSAGE_TYPE
             FROM (
                 SELECT 
                     ROOM_ID, 
                     CONTENT, 
-                    SENT_AT,
+                    SENT_AT, 
+                    MESSAGE_TYPE,
                     ROW_NUMBER() OVER(PARTITION BY ROOM_ID ORDER BY SENT_AT DESC) as rn
                 FROM T_MESSAGE
             )
