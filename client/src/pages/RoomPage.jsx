@@ -10,7 +10,7 @@ import { useChatNotifications } from '../hooks/useChatNotifications';
 import ChatSidebar from '../components/Roompage/Sidebar/ChatSidebar.jsx';
 import CreateRoomModal from '../components/Roompage/Modals/CreateRoomModal.jsx';
 
-export default function ChatPage() {
+export default function RoomPage() {
     const { authLoaded, userId, userNickname } = useAuth();
     
     // 1. 소켓 연결 및 방 목록 관리

@@ -149,7 +149,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     return result.rows || []; 
 }
 
-// ... (나머지 함수들은 기존 코드 유지)
+// 보낸사람의 읽은 시간을 현재로 업데이트
 export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
     const sql = `
         MERGE INTO USERROOMREADSTATUS t

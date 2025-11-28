@@ -128,13 +128,18 @@ export async function listRoomsByUser({ userId }) {
                 SELECT COUNT(*)
                 FROM T_MESSAGE msg
                 WHERE msg.ROOM_ID = r.ROOM_ID
-                  -- [핵심 수정] NUMBER(밀리초) -> DATE 변환 후 비교
                   AND msg.SENT_AT > NVL(
                       TO_DATE('1970-01-01','YYYY-MM-DD') + (urs.LASTREADTIMESTAMP / 86400000), 
                       r.CREATED_AT
                   )
                   AND msg.SENDER_ID != :userId 
-            ) AS UNREAD_COUNT
+            ) AS UNREAD_COUNT,
+            -- [추가됨] N+1 문제 방지를 위한 서브쿼리 (한 번에 조회)
+            (
+                SELECT COUNT(*) 
+                FROM T_ROOM_MEMBER mem 
+                WHERE mem.ROOM_ID = r.ROOM_ID
+            ) AS MEMBER_COUNT
         FROM T_ROOM_MEMBER rm
         JOIN T_CHAT_ROOM r ON rm.ROOM_ID = r.ROOM_ID
         LEFT JOIN USERROOMREADSTATUS urs 
