@@ -33,3 +33,8 @@ export const getMessagesContextApi = (roomId, msgId) => {
 export const getNewerMessagesApi = (roomId, msgId) => {
     return api.get(`/chats/rooms/${roomId}/messages/${msgId}/newer`);
 };
+
+// 채팅방 파일 목록 조회
+export const getRoomFilesApi = (roomId) => {
+    return api.get(`/chats/rooms/${roomId}/files`);
+};

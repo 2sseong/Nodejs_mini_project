@@ -4,7 +4,6 @@ import { useRef, useState, useEffect } from "react";
 
 export default function MessageItem(props) {
 
-    // 1. [핵심] props를 개별적으로 받음 (message 객체 X)
     const {
         msgId,
         mine,
@@ -15,7 +14,7 @@ export default function MessageItem(props) {
         fileUrl,
         fileName,
         unreadCount,
-        onEdit,   // [추가]
+        onEdit,   
         onDelete,
     } = props;
 
@@ -24,19 +23,24 @@ export default function MessageItem(props) {
     const [editContent, setEditContent] = useState(content);
     const bubbleRef = useRef(null);
 
+    // 파일명 확장자를 확인하여 이미지인지 판별하는 함수
+    const isImageFile = (name) => {
+        if (!name) return false;
+        return /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(name);
+    };
+
     // 1. 우클릭 핸들러
     const handleContextMenu = (e) => {
-        if (!mine || messageType === 'FILE') return; // 파일은 수정 불가, 본인 것만 가능
+        if (!mine || messageType === 'FILE') return; 
         e.preventDefault();
         
-        // 버블 기준 상대 위치 계산 (혹은 화면 절대 위치 사용)
-        // 여기서는 간단히 마우스 클릭 위치(pageX, pageY)를 사용합니다.
         setContextMenu({
             x: e.pageX,
             y: e.pageY
         });
     };
-    // 2. 메뉴 닫기 (외부 클릭 감지)
+
+    // 2. 메뉴 닫기
     useEffect(() => {
         const handleClick = () => setContextMenu(null);
         window.addEventListener('click', handleClick);
@@ -46,7 +50,7 @@ export default function MessageItem(props) {
     // 3. 수정/삭제 액션
     const handleClickEdit = () => {
         setIsEditing(true);
-        setEditContent(content); // 초기화
+        setEditContent(content); 
     };
 
     const handleClickDelete = () => {
@@ -71,6 +75,52 @@ export default function MessageItem(props) {
     const renderMessageContent = () => {
         if (messageType === 'FILE') {
             const downloadUrl = fileUrl;
+            
+            // [수정] 이미지 파일인 경우: 미리보기 + 저장 버튼
+            if (isImageFile(fileName)) {
+                return (
+                    <div className="file-message image-type">
+                        {/* 1. 이미지 미리보기 (클릭 시 새 탭 원본 확인) */}
+                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                            <img 
+                                src={downloadUrl} 
+                                alt={fileName} 
+                                style={{ 
+                                    maxWidth: '90%', 
+                                    maxHeight: '80%', 
+                                    borderRadius: '8px',
+                                    display: 'block',
+                                    cursor: 'pointer',
+                                    marginBottom: '6px' // 버튼과 간격
+                                }} 
+                            />
+                        </a>
+                        
+                        {/* 2. 다운로드 버튼 추가 */}
+                        <div style={{ textAlign: 'right' }}>
+                            <a 
+                                href={downloadUrl} 
+                                download={fileName} // 다운로드 속성
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ 
+                                    fontSize: '0.85em', 
+                                    color: mine ? '#fff' : '#666', // 내 메시지는 흰색, 상대방은 회색
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontWeight: 'bold',
+                                }}
+                            >
+                                ⬇ 저장
+                            </a>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 이미지가 아닌 경우 (기존 유지)
             return (
                 <div className="file-message">
                     <a href={downloadUrl} download={fileName} target="_blank" rel="noopener noreferrer">
@@ -80,7 +130,6 @@ export default function MessageItem(props) {
             );
         }
 
-        // [수정] 수정 모드일 때 입력창 표시
         if (isEditing) {
             return (
                 <div className="edit-input-area" onClick={e => e.stopPropagation()}>
@@ -107,16 +156,20 @@ export default function MessageItem(props) {
         <div className={`message-item ${mine ? 'mine' : 'theirs'}`} id={`msg-${msgId}`}>
             {!mine && <div className="sender-nickname">{nickname}</div>}
 
-            {/* 말풍선 영역에 우클릭 이벤트 연결 */}
             <div 
                 className={`message-bubble ${mine ? 'mine' : 'theirs'}`}
                 onContextMenu={handleContextMenu}
                 ref={bubbleRef}
+                // 이미지일 경우 말풍선 스타일 조정 (패딩, 배경 등)
+                style={ 
+                    messageType === 'FILE' && isImageFile(fileName) 
+                    ? { padding: '8px', backgroundColor: mine ? '#007bff' : '#f1f0f0' } 
+                    : {} 
+                } 
             >
                 {renderMessageContent()}
             </div>
 
-            {/* 컨텍스트 메뉴 (수정/삭제 버튼) */}
             {contextMenu && (
                 <div 
                     className="context-menu" 
@@ -127,14 +180,12 @@ export default function MessageItem(props) {
                 </div>
             )}
 
-            {/* 읽음 카운트 */}
             {displayCount && (
                 <span className="unread-count">
                     {displayCount}
                 </span>
             )}
 
-            {/* 전송 시간 */}
             <span className="timestamp">
                 {sentAt ? new Date(sentAt).toLocaleTimeString() : ''}
             </span>
