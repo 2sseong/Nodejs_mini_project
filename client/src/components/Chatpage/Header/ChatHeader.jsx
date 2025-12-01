@@ -49,6 +49,7 @@ export default function ChatHeader({
         }
     };
 
+    // 검색 핸들러
     const handleSearchChange = (e) => {
         setKeyword(e.target.value);
         if (onSearch) onSearch(e.target.value);
