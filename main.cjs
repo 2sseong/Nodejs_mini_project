@@ -56,8 +56,8 @@ function createNotificationWindow() {
     x: width - notifWidth - 20,
     y: height - notifHeight - 20,
     frame: false,
-    transparent: true,
-    resizable: false,
+    transparent: false,
+    resizable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
@@ -103,10 +103,11 @@ function showCustomNotification(data) {
 
 function createWindow () {
   let mainWindow = new BrowserWindow({
+    action: 'auto',
     width: 1000,
     height: 800,
     frame: false,
-    transparent: true, 
+    transparent: false, 
     hasShadow: false,
     resizable: true,
     webPreferences: {
@@ -205,39 +206,57 @@ ipcMain.on('open-chat-window', (event, roomId) => {
     return;
   }
 
-  // 2. 새 창 생성
+  // 2. 새 창 생성 (프레임 제거 설정 적용)
   const win = new BrowserWindow({
     width: 400,
     height: 600,
     minWidth: 300,
     minHeight: 400,
-    title: '채팅방', // 나중에 동적으로 변경 가능
+    title: '채팅방', 
+    frame: false,       // [핵심] 윈도우 프레임 제거
+    transparent: false, // [안정성] 투명 배경으로 인한 흰 화면 방지 (필요 시 true로 변경 후 CSS body 배경색 지정)
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js') // preload 공유
+      preload: path.join(__dirname, 'preload.js') // preload 경로 확인 필수
     }
   });
 
-  // 3. React 라우팅 주소로 로드 (예: /popup/roomId)
-  // 개발 모드 vs 배포 모드 주소 분기
+  // [신규] 서랍(Drawer) 등 새 창을 열 때도 프레임 없이 열리도록 설정
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        frame: false, // 서랍 창 프레임 제거
+        transparent: false,
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: path.join(__dirname, 'preload.js') // 서랍 창에도 preload 적용
+        }
+      }
+    };
+  });
+
+  // 3. React 라우팅 주소로 로드
   const startUrl = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true'
     ? `http://localhost:5173/#/popup/${roomId}`
-    : `file://${path.join(__dirname, '../client/dist/index.html')}#/popup/${roomId}`; // HashRouter 사용 시
+    : `file://${path.join(__dirname, '../client/dist/index.html')}#/popup/${roomId}`;
 
   win.loadURL(startUrl);
 
+  // [디버깅] 흰 화면 원인 파악을 위해 개발자 도구 자동 실행 (해결 후 주석 처리)
   win.webContents.openDevTools({ mode: 'detach' });
 
   // 4. 관리 객체에 저장
   chatWindows[roomId] = win;
-
+  
   // 5. 닫힐 때 관리 객체에서 제거
   win.on('closed', () => {
     delete chatWindows[roomId];
   });
   
-  // (옵션) 메뉴바 없애기
   win.setMenu(null);
 });
 
@@ -268,3 +287,4 @@ ipcMain.handle('get-window-bounds', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   return win ? win.getBounds() : null;
 });
+
