@@ -6,7 +6,6 @@
   background-color: #ffffff;
   border-left: 5px solid #4F46E5; /* 포인트 컬러 (Indigo) */
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* 그림자 좀 더 진하게 */
-  border-radius: 8px;
   padding: 16px;
   cursor: pointer;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;

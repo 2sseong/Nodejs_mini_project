@@ -10,6 +10,7 @@ import MessageList from '../components/Chatpage/Messages/MessageList.jsx';
 import MessageInput from '../components/Chatpage/Input/MessageInput.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import { searchMessagesApi, getMessagesContextApi } from '../api/chatApi';
+import Titlebar from '../components/Titlebar/Titlebar.jsx';
 
 // 스타일 재사용
 import '../styles/PopupChatPage.css'; 
@@ -146,80 +147,79 @@ export default function PopupChatPage() {
     useEffect(() => {
         if (socket && connected && roomId) {
             console.log(`[Popup] Joining room ${roomId}`);
-            selectRoom(roomId); // 소켓에게 "나 이 방 들어왔어"라고 알림 (데이터 로딩 + Join)
+            selectRoom(roomId);
         }
     }, [socket, connected, roomId, selectRoom]);
 
-    // 방 정보 찾기 (헤더 표시용)
-    // rooms 목록이 로드될 때까지 기다리거나, API로 단건 조회할 수도 있음
     const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(roomId));
     const roomName = currentRoom ? currentRoom.ROOM_NAME : '채팅방';
     const memberCount = currentRoom ? currentRoom.MEMBER_COUNT : 0;
 
     const handleOpenDrawer = () => {
-        // 새 창 열기 (경로는 App.jsx에 설정한 path와 일치해야 함)
+        // main.cjs의 setWindowOpenHandler에 의해 프레임 없는 창으로 열림
         window.open(`#/files/${roomId}`, 'FileDrawerWindow', 'width=400,height=600,resizable=yes,scrollbars=yes');
     };
 
     if (!roomId) return <div>잘못된 접근입니다.</div>;
 
     return (
-        <div className="chat-main" style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', backgroundColor: 'white', overflow: 'hidden' }}>
-            {/* 1. 헤더 */}
-            <ChatHeader
-                title={roomName}
-                memberCount={memberCount}
-                onOpenInvite={() => setIsInviteOpen(true)}
-                onOpenDrawer={handleOpenDrawer}
-                disabled={!connected}
-                onLeaveRoom={async () => { // 1. async 함수로 변경
-                    const success = await handleLeaveRoom();
-                    // 3. 성공했을 때만 창을 닫음
-                    if (success) {
-                        window.close(); 
-                    }
-                }}
-                onSearch={handleServerSearch}
-                onPrevMatch={handlePrevMatch}
-                onNextMatch={handleNextMatch}
-                matchCount={searchMatches.length}
-                currentMatchIdx={currentMatchIndex}
-            />
+        <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
+            
+            {/* [추가] 커스텀 타이틀바 적용 */}
+            <Titlebar title={`채팅방 - ${roomName}`} />
 
-            {/* 2. 메시지 리스트 */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <MessageList 
-                messages={messages} 
-                userId={userId}
-                onLoadMore={loadMoreMessages}
-                isLoadingMore={isLoadingMore}
-                hasMoreMessages={hasMoreMessages}
-                isInitialLoad={isInitialLoad}
-                markAsRead={markAsRead}
-                isReadStatusLoaded={isReadStatusLoaded}
-                onEditMessage={editMessage}
-                onDeleteMessage={deleteMessage}
-                scrollToMsgId={scrollToMsgId}
-                loadNewerMessages={loadNewerMessages}
-                hasFutureMessages={hasFutureMessages}
-                isLoadingNewer={isLoadingNewer}
-            />
+            {/* 타이틀바를 제외한 나머지 영역 */}
+            <div className="chat-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+                
+                <ChatHeader
+                    title={roomName}
+                    memberCount={memberCount}
+                    onOpenInvite={() => setIsInviteOpen(true)}
+                    onOpenDrawer={handleOpenDrawer}
+                    disabled={!connected}
+                    onLeaveRoom={async () => {
+                        const success = await handleLeaveRoom();
+                        if (success) window.close(); 
+                    }}
+                    onSearch={handleServerSearch} // (기존 핸들러 연결 확인 필요)
+                    onPrevMatch={handlePrevMatch}
+                    onNextMatch={handleNextMatch}
+                    matchCount={searchMatches.length}
+                    currentMatchIdx={currentMatchIndex}
+                />
+
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    <MessageList 
+                        messages={messages} 
+                        userId={userId}
+                        onLoadMore={loadMoreMessages}
+                        isLoadingMore={isLoadingMore}
+                        hasMoreMessages={hasMoreMessages}
+                        isInitialLoad={isInitialLoad}
+                        markAsRead={markAsRead}
+                        isReadStatusLoaded={isReadStatusLoaded}
+                        onEditMessage={editMessage}
+                        onDeleteMessage={deleteMessage}
+                        scrollToMsgId={scrollToMsgId}
+                        loadNewerMessages={loadNewerMessages}
+                        hasFutureMessages={hasFutureMessages}
+                        isLoadingNewer={isLoadingNewer}
+                    />
+                </div>
+
+                <MessageInput
+                    onSend={(text) => sendMessage({ text })}
+                    onSendFile={handleSendFile}
+                    disabled={!connected}
+                />
+
+                <InviteUserModal
+                    isOpen={isInviteOpen}
+                    onClose={() => setIsInviteOpen(false)}
+                    currentRoomId={roomId}
+                    userId={userId}
+                />
             </div>
-
-            {/* 3. 입력창 */}
-            <MessageInput
-                onSend={(text) => sendMessage({ text })}
-                onSendFile={handleSendFile}
-                disabled={!connected}
-            />
-
-            {/* 초대 모달 */}
-            <InviteUserModal
-                isOpen={isInviteOpen}
-                onClose={() => setIsInviteOpen(false)}
-                currentRoomId={roomId}
-                userId={userId}
-            />
         </div>
     );
 }

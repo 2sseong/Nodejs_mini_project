@@ -14,9 +14,6 @@
   
   position: relative; /* 💡 2. 'fixed'가 아님! (필수) */
   
-  /* 둥근 모서리 적용 */
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
 }
 
 /* 2. 창 드래그 영역 */
@@ -61,10 +58,7 @@
   background-color: #e9ecef;
 }
 
-/* 닫기 버튼 둥근 모서리 및 호버 */
-#close-btn {
-  border-top-right-radius: 12px;
-}
+/* 닫기 버튼 호버 */
 #close-btn:hover {
   background-color: #e81123;
   color: white;
