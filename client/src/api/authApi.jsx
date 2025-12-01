@@ -75,3 +75,60 @@ export async function login(loginData) {
         throw error; 
     }
 }
+
+// 토큰을 헤더에 포함하는 헬퍼 함수
+const getAuthHeaders = () => {
+    // LoginPage.jsx에서 저장한 키 이름인 'authToken'을 사용
+    const token = localStorage.getItem('authToken'); 
+    return {
+        'Authorization': `Bearer ${token}`,
+    };
+};
+
+export async function getMyInfo() {
+    const response = await fetch(`${API_URL}/me`, {
+        headers: getAuthHeaders()
+    });
+    return response.json();
+}
+
+export async function verifyPassword(password) {
+    const response = await fetch(`${API_URL}/verify-password`, {
+        method: 'POST',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+    });
+    if (!response.ok) throw new Error('비밀번호 불일치');
+    return response.json();
+}
+
+export async function updateUserInfo(data) {
+    // data 구조: { nickname, newPassword }
+    const response = await fetch(`${API_URL}/update`, {
+        method: 'PUT',
+        headers: {
+            ...getAuthHeaders(), // Authorization: Bearer ...
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+export async function uploadProfileImage(file) {
+    const formData = new FormData();
+    formData.append('profilePic', file);
+
+    const response = await fetch(`${API_URL}/profile-image`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            // FormData는 Content-Type 헤더를 설정하지 않아야 브라우저가 boundary를 자동 설정함
+        },
+        body: formData
+    });
+    return response.json();
+}

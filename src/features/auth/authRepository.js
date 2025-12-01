@@ -53,3 +53,41 @@ export async function updateLastLogin(userId) {
     // INSERT/UPDATE/DELETE는 executeTransaction을 사용
     await executeTransaction(updateSql, { userId: userId });
 }
+
+
+// ------------------- MyInfoPage 관련 추가 기능 ---------------------------------
+// ID로 사용자 정보 조회 (비밀번호 제외)
+export async function findUserById(userId) {
+    const sql = `
+        SELECT USER_ID, USERNAME, NICKNAME, PROFILE_PIC, CREATED_AT
+        FROM T_USER
+        WHERE USER_ID = :userId
+    `;
+    const result = await executeQuery(sql, { userId });
+    return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+// 비밀번호 해시 조회 (본인 확인용)
+export async function findPasswordHashById(userId) {
+    const sql = `SELECT PASSWORD_HASH FROM T_USER WHERE USER_ID = :userId`;
+    const result = await executeQuery(sql, { userId });
+    return result.rows.length > 0 ? result.rows[0].PASSWORD_HASH : null;
+}
+
+// 프로필 사진 업데이트
+export async function updateProfilePic(userId, filePath) {
+    const sql = `UPDATE T_USER SET PROFILE_PIC = :filePath WHERE USER_ID = :userId`;
+    await executeTransaction(sql, { filePath, userId });
+}
+
+// 사용자 정보(닉네임 등) 수정
+export async function updateUserInfo(userId, nickname) {
+    const sql = `UPDATE T_USER SET NICKNAME = :nickname WHERE USER_ID = :userId`;
+    await executeTransaction(sql, { nickname, userId });
+}
+
+// 비밀번호 변경 함수
+export async function updateUserPassword(userId, passwordHash) {
+    const sql = `UPDATE T_USER SET PASSWORD_HASH = :passwordHash WHERE USER_ID = :userId`;
+    await executeTransaction(sql, { passwordHash, userId });
+}

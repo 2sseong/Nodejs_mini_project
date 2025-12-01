@@ -27,15 +27,22 @@ const app = express()
 const PORT = process.env.PORT || 1337
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
+app.use((req, res, next) => {
+    console.log('요청:', req.method, req.path); // ⭐ 모든 요청 로깅
+    next();
+});
+
 // __dirname (ESM)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const PUBLIC_UPLOADS_DIR = path.join(__dirname, '..','public','uploads');
+const PUBLIC_PROFILE_DIR = path.join(__dirname, '..', 'public', 'profile');
 // 미들웨어
 app.use(cors({ origin: CLIENT_URL, credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use('/uploads', express.static(PUBLIC_UPLOADS_DIR));
+app.use('/profile', express.static(PUBLIC_PROFILE_DIR));
 
 // API 라우터 
 app.use('/api/auth', authRouter)
@@ -43,10 +50,6 @@ app.use('/chats', chatsRouter)
 app.use('/users', searchRouter)
 app.use('/api/friends', friendRoutes)
 
-app.use((req, res, next) => {
-    console.log('요청:', req.method, req.path); // ⭐ 모든 요청 로깅
-    next();
-});
 // 정적 파일
 const publicPath = path.join(__dirname, '../client/dist')
 const oneDay = 60 * 60 * 24 * 1000

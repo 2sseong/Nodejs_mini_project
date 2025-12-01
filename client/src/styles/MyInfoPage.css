@@ -1,0 +1,143 @@
+.my-info-container {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    background-color: #f5f7fa; /* 부드러운 배경색 */
+    height: 100%;
+    min-height: 80vh;
+}
+
+.info-card {
+    background: white;
+    width: 100%;
+    max-width: 500px;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    text-align: center;
+}
+
+.page-title {
+    margin-bottom: 30px;
+    color: #333;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* 프로필 사진 */
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.profile-img-wrapper {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #e0e0e0;
+    margin-bottom: 15px;
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-upload {
+    background: none;
+    border: 1px solid #ccc;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.btn-upload:hover {
+    background: #f0f0f0;
+    border-color: #bbb;
+}
+
+/* 정보 표시 */
+.info-display, .edit-form {
+    text-align: left;
+}
+
+.info-item {
+    margin-bottom: 20px;
+}
+
+.info-item label {
+    display: block;
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+.info-item span {
+    font-size: 1.1rem;
+    color: #333;
+    font-weight: 500;
+}
+
+/* 입력 필드 */
+.input-field {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    margin-bottom: 15px;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+/* 버튼 공통 */
+.btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-primary, .btn-secondary {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-primary {
+    background-color: #4a90e2;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #357abd;
+}
+
+.btn-secondary {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background-color: #d0d0d0;
+}
+
+.verify-section h3, .update-section h3 {
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    color: #333;
+}
