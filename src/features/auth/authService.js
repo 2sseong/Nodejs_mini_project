@@ -101,24 +101,43 @@ export async function verifyPassword(userId, password) {
 
 // 프로필 사진 변경 (기존 파일 삭제 포함)
 export async function updateProfileImage(userId, newFile) {
-    // 1. 기존 파일 정보 조회하여 삭제
+    console.log(`[Service] 프로필 사진 변경 시작. 사용자 ID: ${userId}`);
+
+    // 1. 기존 파일 정보 조회
     const user = await authRepository.findUserById(userId);
+    
     if (user && user.PROFILE_PIC) {
         try {
-            // 경로는 상황에 맞게 조정 (server.js의 __dirname 기준이나 절대경로 활용 권장)
-            // 여기서는 public/profile 폴더가 프로젝트 루트 기준 ../public/profile에 있다고 가정
-            const oldPath = path.resolve('public/profile', path.basename(user.PROFILE_PIC));
-            await fs.unlink(oldPath).catch(err => console.log('Old profile pic delete fail:', err.message));
+            // user.PROFILE_PIC 예시: "/profile/profile-12345.png"
+            const fileName = path.basename(user.PROFILE_PIC); // "profile-12345.png" 추출
+
+            // process.cwd()는 현재 서버가 실행 중인 최상위 폴더 경로입니다.
+            const oldPath = path.join(process.cwd(),'..', 'public', 'profile', fileName);
+            
+            console.log(`[Service] 삭제 시도할 파일 경로: ${oldPath}`);
+
+            // 파일이 실제로 존재하는지 체크 후 삭제
+            await fs.access(oldPath).then(() => {
+                return fs.unlink(oldPath);
+            }).then(() => {
+                console.log(`[Service] 기존 프로필 사진 삭제 성공`);
+            }).catch((err) => {
+                // 파일이 없거나(ENOENT) 권한 문제 등은 로그만 남기고 넘어감
+                console.warn(`[Service] 기존 파일 삭제 실패 (무시됨): ${err.message}`);
+            });
+
         } catch (e) {
-            console.error('File deletion error:', e);
+            console.error('[Service] 파일 삭제 로직 중 예외 발생:', e);
         }
+    } else {
+        console.log('[Service] 기존 프로필 사진이 없어 삭제를 건너뜁니다.');
     }
 
     // 2. DB 업데이트 (웹 접근 경로로 저장)
-    // server.js에서 '/profile' 로 매핑했으므로 웹 경로는 '/profile/파일명'
     const webPath = `/profile/${newFile.filename}`;
     await authRepository.updateProfilePic(userId, webPath);
 
+    console.log(`[Service] DB 업데이트 완료: ${webPath}`);
     return webPath;
 }
 

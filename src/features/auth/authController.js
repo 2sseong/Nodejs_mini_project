@@ -67,6 +67,7 @@ export async function login(req, res) {
     }
 }
 
+
 // ------------------- MyInfoPage 관련 추가 기능 ---------------------------------
 // 내 정보 조회
 export async function getMyInfo(req, res) {
@@ -112,12 +113,6 @@ export async function updateInfo(req, res) {
 
 // 프로필 사진 업로드
 export async function uploadProfile(req, res) {
-    console.log('------------------------------------------------');
-    console.log('[DEBUG] 프로필 업로드 요청 도착');
-    console.log('[DEBUG] 요청 헤더 content-type:', req.headers['content-type']);
-    console.log('[DEBUG] req.file:', req.file); // 여기서 undefined가 뜨는지 확인해야 함
-    console.log('------------------------------------------------');
-
     try {
         if (!req.file) {
             console.error('[ERROR] 파일이 없습니다 (req.file is undefined)');
