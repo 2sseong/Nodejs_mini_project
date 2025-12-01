@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/AuthContext.jsx';
 import UserSearch from '../components/Friend/UserSearch.jsx';
 import FriendList from '../components/Friend/FriendList.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
-import { searchAllUsers } from '../api/friendsApi.jsx';
+import { searchAllUsers, toggleUserPick } from '../api/friendsApi.jsx';
 import '../styles/FriendPage.css';
 
 
@@ -40,6 +40,42 @@ export default function FriendPage() {
     const handleQueryChange = (query) => {
         // 입력이 들어올 때마다 searchQuery 상태 업뎃
         setSearchQuery(query.trim());
+    };
+
+    // 즐겨찾기 토글 처리를 위한 핸들러 함수
+    const handleTogglePick = async (targetUserId, isPick) => {
+        // isPick 상태는 현재 상태이므로, API에는 반대 액션(추가/제거)을 전달해야 함
+        // isAdding: true면 추가 (현재 isPick이 false), false면 제거 (현재 isPick이 true)
+        const isAdding = !isPick;
+
+        try {
+            // 1. API 호출: 백엔드에 즐겨찾기 상태 변경 요청
+            const result = await toggleUserPick(targetUserId, isAdding);
+
+            if (result.success) {
+                // 2. [로컬 상태 업데이트]: API 성공 후 userList 상태를 즉시 업데이트
+                // 사용자 목록을 순회하며 targetUserId와 일치하는 사용자의 isPick 상태만 반전시킴
+                setUserList(prevUsers =>
+                    prevUsers.map(user =>
+                        user.userId === targetUserId
+                            ? { ...user, isPick: isAdding ? 1 : 0 } // isPick 상태 반전
+                            : user
+                    )
+                );
+                // 성공 메시지 처리
+                console.log(result.message);
+
+            } else {
+                // API 실패 메시지 처리
+                console.error("즐겨찾기 토글 실패:", result.message);
+                // [참고]: alert() 대신 Toast나 Modal UI를 사용하는 것이 좋음(보류)
+                alert(`작업 실패: ${result.message}`);
+            }
+
+        } catch (err) {
+            console.error("API 통신 중 오류 발생:", err);
+            alert(`오류가 발생했습니다: ${err.message}`);
+        }
     };
 
     // 4. 데이터 페칭 + 정렬 (검색어 변경 시마다 실행)
@@ -97,14 +133,15 @@ export default function FriendPage() {
     } else if (error) {
         listContent = <p className="error-text">오류: {error}</p>;
     } else {
-        // FriendList 컴포넌트에 필요한 prps만 전달
+        // FriendList 컴포넌트에 필요한 props만 전달
         listContent = (
             <FriendList
-                users={userList} // 불러온 전체 유저 목록
-                myUserId={myUserId} // 로컬 저장소에서 가져온 내 ID
-                searchQuery={searchQuery} // 검색어 상태 전달
+                users={userList}
+                myUserId={myUserId}
+                searchQuery={searchQuery}
                 onlineUsers={onlineUsers}
                 filterType={filterType}
+                onTogglePick={handleTogglePick}
             />
         );
     }

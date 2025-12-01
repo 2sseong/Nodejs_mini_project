@@ -134,26 +134,161 @@ export const createFriendRequest = async (requesterId, recipientId) => {
  * @param {string} query - 검색어
  * @returns {Promise<Array>} - 검색된 사용자 목록 및 친구 상태
  */
+// export const searchUsersByQuery = async (userId, query) => {
+
+//     const sql = `
+// SELECT
+//     U.USER_ID AS userId,
+//     U.USERNAME AS username,
+//     U.NICKNAME AS userNickname,
+//     CASE
+//         WHEN F.STATUS = 'ACCEPTED' THEN 1
+//         WHEN F.STATUS = 'PENDING' THEN 2
+//         ELSE 0
+//     END AS relationshipStatus
+// FROM T_USER U
+// LEFT JOIN T_FRIEND F ON
+//     (F.USER_ID = U.USER_ID AND F.FRIEND_USER_ID = :userId)
+//     OR (F.USER_ID = :userId AND F.FRIEND_USER_ID = U.USER_ID)
+// WHERE
+//     (U.USER_ID LIKE '%' || :query || '%' 
+//     OR U.USERNAME LIKE '%' || :query || '%'
+//     OR U.NICKNAME LIKE '%' || :query || '%')
+//     AND U.USER_ID != :userId
+// `;
+
+//     const binds = { userId: userId, query: query };
+
+//     let connection;
+
+//     try {
+//         connection = await getConnection();
+//         // DB 드라이버에게 결과를 SQL에서 정의한 별칭을 키로 사용하는 객체 배열로 반환하라고 지시
+//         const options = {
+//             outFormat: oracledb.OUT_FORMAT_OBJECT
+//         };
+
+//         // options 객체를 execute 함수의 세 번째 인자로 전달
+//         const result = await connection.execute(sql, binds, options);
+
+//         // 디버깅 코드
+//         console.log("DB 응답 결과:", result.rows);
+
+//         return result.rows;
+//     } catch (error) {
+//         console.error("Repository Error: 사용자 검색 DB 조회 실패:", error);
+//         throw new Error("사용자 검색 DB 조회 중 오류 발생");
+//     } finally {
+//         if (connection) await connection.close()
+//     }
+// };
+
+// 즐겨찾기 ⭐
+export const addUserPick = async (userId, pickUserId) => {
+    // 즐겨찾기 추가 (User_Pick 테이블에 사용자 ID와 대상 사용자 ID를 INSERT)
+    const sql = `
+    INSERT INTO USER_PICK (USER_ID, TARGET_USER_ID)
+    VALUES (:userId, :pickUserId)
+    `;
+
+    const binds = { userId: userId, pickUserId: pickUserId };
+
+    let connection; // DB 커넥션 획득
+
+    try {
+        connection = await getConnection();
+        // const options = { autoCommit: true }; 
+        const result = await connection.execute(sql, binds);
+
+        // 삽입이 성공적으로 1건 되었는지 확인하고 true/false반환
+        return result.rowsAffected === 1;
+    } catch (error) {
+        console.error("Repository Error: 즐겨찾기 추가 DB 실패", error);
+        throw new Error("즐겨찾기 추가 DB 삽입 중 오류 발생");
+    } finally {
+        if (connection) await connection.close();
+    }
+}
+
+// 즐겨찾기 삭제
+export const removeUserPick = async (userId, pickUserId) => {
+    const sql = `
+    DELETE FROM USER_PICK
+    WHERE USER_ID = :userId AND TARGET_USER_ID = :pickUserId
+    `;
+
+    const binds = { userId: userId, pickUserId: pickUserId };
+
+    let connection;
+
+    try {
+        connection = await getConnection();
+        // const options = { autoCommit: true }; 
+        const result = await connection.execute(sql, binds);
+
+        return result.rowsAffected === 1;
+    } catch (error) {
+        console.error("Repository Error: 즐겨찾기 삭제 DB 실패", error);
+        throw new Error("즐겨찾기 삭제 DB 삭제 중 오류 발생");
+    } finally {
+        if (connection) await connection.close();
+    }
+}
+
+// 즐겨찾기 조회
+export const getUserPick = async (userId) => {
+    const sql = `
+    SELECT TARGET_USER_ID
+    FROM USER_PICK
+    WHERE USER_ID = :userId
+    `;
+
+    const binds = { userId: userId };
+
+    let connection;
+
+    try {
+        connection = await getConnection();
+        // const options = { autoCommit: true }; 
+        const result = await connection.execute(sql, binds);
+
+        return result.rows;
+    } catch (error) {
+        console.error("Repository Error: 즐겨찾기 조회 DB 실패", error);
+        throw new Error("즐겨찾기 조회 DB 조회 중 오류 발생");
+    } finally {
+        if (connection) await connection.close();
+    }
+}
+
+/**
+ * !!! 사용자 검색 및 즐겨찾기 상태 조회 (GET /users/search)
+ * @param {string} userId - 현재 로그인된 사용자 ID
+ * @param {string} query - 검색어
+ * @returns {Promise<Array>} - 검색된 사용자 목록 및 즐겨찾기 상태 (isPick)
+ */
 export const searchUsersByQuery = async (userId, query) => {
 
     const sql = `
 SELECT
-    U.USER_ID AS userId,
-    U.USERNAME AS username,
-    U.NICKNAME AS userNickname,
+    U.USER_ID, U.USERNAME, U.NICKNAME,
+    -- 즐겨찾기 상태 조회 (P.USER_ID가 NULL이 아니면 1, 맞으면 0)
     CASE
-        WHEN F.STATUS = 'ACCEPTED' THEN 1
-        WHEN F.STATUS = 'PENDING' THEN 2
-        ELSE 0
-    END AS relationshipStatus
+        WHEN P.USER_ID IS NOT NULL THEN 1 -- 즐겨찾기 됨
+        ELSE 0                           -- 즐겨찾기 안 됨
+    END AS isPick
 FROM T_USER U
-LEFT JOIN T_FRIEND F ON
-    (F.USER_ID = U.USER_ID AND F.FRIEND_USER_ID = :userId)
-    OR (F.USER_ID = :userId AND F.FRIEND_USER_ID = U.USER_ID)
+-- 즐겨찾기 상태 조인을 위한 LEFT JOIN (USER_PICK)
+LEFT JOIN USER_PICK P ON 
+    -- 로그인된 사용자가 (P.USER_ID = :userId) 
+    -- 검색 대상 사용자(U.USER_ID)를 즐겨찾기 했는지 (P.TARGET_USER_ID = U.USER_ID) 확인
+    P.TARGET_USER_ID = U.USER_ID AND P.USER_ID = :userId
 WHERE
+    -- 사용자 ID, 이름, 닉네임으로 검색
     (U.USER_ID LIKE '%' || :query || '%' 
     OR U.USERNAME LIKE '%' || :query || '%'
     OR U.NICKNAME LIKE '%' || :query || '%')
+    -- 본인 제외
     AND U.USER_ID != :userId
 `;
 
@@ -163,17 +298,12 @@ WHERE
 
     try {
         connection = await getConnection();
-        // DB 드라이버에게 결과를 SQL에서 정의한 별칭을 키로 사용하는 객체 배열로 반환하라고 지시
         const options = {
             outFormat: oracledb.OUT_FORMAT_OBJECT
         };
 
-        // options 객체를 execute 함수의 세 번째 인자로 전달
         const result = await connection.execute(sql, binds, options);
-
-        // 디버깅 코드
         console.log("DB 응답 결과:", result.rows);
-
         return result.rows;
     } catch (error) {
         console.error("Repository Error: 사용자 검색 DB 조회 실패:", error);

@@ -1,4 +1,10 @@
 ﻿import * as friendRepository from './friendRepository.js';
+// 1. friendRepository의 함수들을 import합니다. (경로는 사용자 환경에 맞게 수정 필요)
+import {
+    addUserPick,
+    removeUserPick,
+    searchUsersByQuery
+} from './friendRepository.js';
 
 /**
  * 친구 목록 조회 비즈니스 로직
@@ -21,66 +27,85 @@ export const getFriendList = async (userId) => {
 };
 
 /**
- * 친구 추가 요청 비즈니스 로직
- * 1. 자기 자신에게 요청 불가 확인
- * 2. 기존 관계 (친구/요청) 존재 여부 확인
- * 3. 요청 레코드 생성
- * @param {string} requesterId - 요청을 보내는 사용자 ID
- * @param {string} recipientId - 요청을 받는 사용자 ID
- * @returns {Promise<Object>} - 요청 성공/실패 여부
- */
-export const requestFriendship = async (requesterId, recipientId) => {
-    // 1. 자기 자신에게 요청하는지 확인 (비즈니스 로직)
-    if (requesterId === recipientId) {
-        // 클라이언트에게 400 Bad Request에 해당하는 에러를 던짐
-        throw new Error("자기 자신에게는 친구 요청을 보낼 수 없습니다.");
-    }
-
-    // 2. Repository를 통해 기존 관계가 있는지 확인 (DB 로직)
-    const existingRelationship = await friendRepository.findExistingRelationship(requesterId, recipientId);
-
-    if (existingRelationship.length > 0) {
-        const status = existingRelationship[0].STATUS;
-        if (status === 'ACCEPTED') {
-            throw new Error("이미 친구 관계입니다.");
-        }
-        if (status === 'PENDING') {
-            throw new Error("이미 처리되지 않은 친구 요청이 존재합니다.");
-        }
-    }
-
-    // 3. Repository를 통해 새로운 친구 요청 레코드 생성
-    const result = await friendRepository.createFriendRequest(requesterId, recipientId);
-
-    return result;
-};
-
-/**
- * 사용자 검색 비즈니스 로직
- * 1. Repository를 통해 DB에서 사용자를 검색
- * 2. 친구 관계 상태(RELATIONSHIP_STATUS)를 프론트엔드가 사용하기 쉽도록 가공
+ * 사용자 검색 비즈니스 로직 + 즐겨찾기 상태 포함
  * @param {string} userId - 현재 로그인된 사용자 ID
  * @param {string} query - 검색어
- * @returns {Promise<Array>} - 검색된 사용자 목록
+ * @returns {Promise<Array<Object>>} - 검색된 사용자 목록 (isPick 포함)
  */
 export const searchUsers = async (userId, query) => {
-    console.log('====== [SERVICE searchUsers] ======');
-    console.log('userId:', userId);
-    console.log('query(raw):', query);
     const trimmed = (query ?? '').trim();
-    
-    // 1. 검색어 없으면 빈 문자열로 검색 (전체 목록 조회)
-    const rawResults = await friendRepository.searchUsersByQuery(userId, trimmed);
 
-    console.log('rawResults:', rawResults);
+    try {
+        // 1. 검색어 없으면 빈 문자열로 검색 (전체 목록 조회)
+        const rawResults = await searchUsersByQuery(userId, trimmed);
 
-    const formattedResults = rawResults.map(user => {
-        return {
-            userId: user.USERID,
-            username: user.USERNAME,
-            userNickname: user.USERNICKNAME,
+        const formattedResults = rawResults.map(user => {
+            return {
+                userId: user.USER_ID,
+                username: user.USERNAME,
+                userNickname: user.NICKNAME,
+                isPick: user.ISPICK,
+            }
+        });
+
+        return formattedResults;
+    } catch (error) {
+        console.error("Service Error: 사용자 검색 중 DB 오류 발생", error);
+        throw error;
+    }
+};
+
+
+// 즐겨찾기 ⭐
+/**
+ * 즐겨찾기 추가
+ * @param {string} userId - 현재 로그인된 사용자 ID
+ * @param {string} targetUserId - 즐겨찾기 대상 사용자 ID
+ * @returns {Promise<{success: boolean, message: string}>} - 처리 결과
+ */
+export const addPick = async (userId, targetUserId) => {
+    // Repository 함수를 호출하여 DB에 즐겨찾기 레코드를 삽입
+    try {
+        // userId와 targetUserId는 클라이언트(프론트)에서 서버로 보낸 요청을 거쳐
+        // 서비스 계층으로 전달됨(컨트롤러에서 정의)
+        const isSuccess = await addUserPick(userId, targetUserId);
+
+        // Repository 함수는 성공 시 true, 실패 시 false를 반환하도록 가정합니다.
+        if (isSuccess) {
+            return { success: true, message: '즐겨찾기가 성공적으로 추가되었습니다.' };
+        } else {
+            // rowsAffected가 0인 경우 (이론적으로는 일어나기 어려움)
+            return { success: false, message: 'DB 삽입 작업에 실패했습니다.' };
         }
-    })
+    } catch (error) {
+        // DB에서 발생한 오류를 처리 (예: 유니크 제약 조건 위반 등)
+        console.error("Service Error: 즐겨찾기 추가 중 DB 오류 발생", error);
+        throw error; // Controller가 오류를 처리할 수 있도록 다시 던집니다.
+    }
+};
 
-    return formattedResults;
+
+/**
+ * 즐겨찾기 삭제
+ * @param {string} userId - 현재 로그인된 사용자 ID
+ * @param {string} targetUserId - 즐겨찾기 대상 사용자 ID
+ * @returns {Promise<{success: boolean, message: string}>} - 처리 결과
+ */
+export const removePick = async (userId, targetUserId) => {
+
+    // Repository 함수를 호출하여 DB에서 즐겨찾기 레코드를 삭제합니다.
+    try {
+        const isSuccess = await removeUserPick(userId, targetUserId);
+
+        if (isSuccess) {
+            return { success: true, message: '즐겨찾기가 성공적으로 제거되었습니다.' };
+        } else {
+            // isSuccess가 false인 경우: 레코드가 없어서 삭제된 행이 0개인 경우
+            // 이 경우 사용자 입장에서는 '제거 성공'과 동일하게 처리해도 무방합니다.
+            return { success: true, message: '이미 즐겨찾기 상태가 아니었거나 제거되었습니다.' };
+        }
+    } catch (error) {
+        console.error("Service Error: 즐겨찾기 제거 중 DB 오류 발생", error);
+        throw error;
+    }
 };
