@@ -5,7 +5,6 @@
   height: 100%;
   border-radius: 15px; 
   background-color: #ffffff;
-  box-shadow: 15px 15px 30px #bebebe, -15px -15px 30px #ffffff;
   overflow: hidden;
   display: flex;
   flex-direction: column;
