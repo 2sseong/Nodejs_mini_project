@@ -50,48 +50,95 @@ export async function isMember({ roomId, userId }) {
 
 // addMemberTx 수정안 (named bind)
 export async function addMemberTx({ roomId, userId }) {
-    const sql = `
-                INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
-                VALUES (:roomId, :userId, :joinedAt)
-                `;
-    const now = new Date();
-    await executeTransaction(sql, { roomId, userId, joinedAt: now }, { autoCommit: false });
+    let conn;
+    try {
+        conn = await getConnection();
+        const sql = `
+                    INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
+                    VALUES (:roomId, :userId, :joinedAt)
+                    `;
+        const now = new Date();
+        await executeTransaction(sql, { roomId, userId, joinedAt: now }, { autoCommit: false });
+
+        await conn.commit(); 
+    } catch (e) {
+        if (conn) { try { await conn.rollback(); } catch { } }
+    } finally {
+        if (conn) { try { await conn.close(); } catch { } }
+    }
+
     return true;
 }
 
 // --- 멤버 삭제 리포지토리 함수 ---
 export async function deleteMember({ roomId, userId }) {
-    let conn; // 1. conn 변수 선언 (ReferenceError 해결)
+    let conn;
     try {
-        conn = await getConnection(); // 2. 커넥션 획득
-
-        const sql = `
+        conn = await getConnection();
+        
+        // [1] 트랜잭션 수동 시작 (필수)
+        // 쿼리를 여러 번 날려야 하므로 autoCommit: false로 묶어야 안전합니다.
+        
+        // ---------------------------------------------------------
+        // 1. 멤버 삭제
+        // ---------------------------------------------------------
+        const deleteMemberSql = `
             DELETE FROM T_ROOM_MEMBER
             WHERE ROOM_ID = :roomId AND USER_ID = :userId
         `;
-        const binds = {
-            roomId: Number(roomId),
-            userId: userId
+        const deleteResult = await conn.execute(deleteMemberSql, { roomId, userId }, { autoCommit: false });
+        
+        if (deleteResult.rowsAffected === 0) {
+            // 멤버가 없거나 이미 나간 경우 등
+            await conn.rollback();
+            return { success: false, message: "Member not found or already left." };
+        }
+
+        // ---------------------------------------------------------
+        // 2. 남은 멤버 수 확인 (같은 트랜잭션 내에서 조회)
+        // ---------------------------------------------------------
+        const countSql = `
+            SELECT COUNT(*) AS CNT
+            FROM T_ROOM_MEMBER
+            WHERE ROOM_ID = :roomId
+        `;
+        const countResult = await conn.execute(countSql, { roomId });
+        const remainingMembers = countResult.rows[0].CNT; // 혹은 rows[0][0] (설정에 따라 다름)
+
+        let roomDeleted = false;
+
+        // ---------------------------------------------------------
+        // 3. 남은 사람이 0명이면 방 자체를 삭제
+        // ---------------------------------------------------------
+        if (remainingMembers === 0) {
+            console.log(`[INFO] Room ${roomId} is empty. Deleting the room...`);
+            
+            //  여기서 방을 지우면, 설정해둔 ON DELETE CASCADE에 의해
+            //  T_MESSAGE, USERROOMREADSTATUS 데이터도 자동으로 같이 삭제
+            const deleteRoomSql = `DELETE FROM T_CHAT_ROOM WHERE ROOM_ID = :roomId`;
+            await conn.execute(deleteRoomSql, { roomId }, { autoCommit: false });
+            
+            roomDeleted = true;
+        }
+
+        // [4] 최종 커밋 (모든 변경사항 반영)
+        await conn.commit();
+
+        return { 
+            success: true, 
+            roomDeleted: roomDeleted,
+            remainingMembers: remainingMembers 
         };
 
-        const result = await conn.execute(sql, binds, { autoCommit: false });
-
-        await conn.commit(); // 4. 명시적 커밋 실행
-
-        const rowsAffected = result.rowsAffected;
-        console.log(`[DB DELETE RESULT] rowsAffected: ${rowsAffected}`);
-
-        return rowsAffected;
-
     } catch (e) {
-        // 5. 에러 시 롤백
+        // 에러 발생 시 전체 롤백
         if (conn) {
-            console.error("Delete transaction failed, rolling back.");
             try { await conn.rollback(); } catch (rbkErr) { console.error("Rollback error:", rbkErr); }
         }
-        throw e; // 서비스 레이어로 에러 던지기
+        console.error("Error in deleteMember transaction:", e);
+        throw e;
     } finally {
-        // 6. 커넥션 닫기
+        // 커넥션 반납
         if (conn) {
             try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); }
         }

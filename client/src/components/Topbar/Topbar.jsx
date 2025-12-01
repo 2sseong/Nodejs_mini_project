@@ -43,7 +43,7 @@ export default function Topbar() {
                 )}
                 <Link className={`btn ${loc.pathname === '/chat' ? 'active' : ''}`} to="/chat">채팅</Link>
                 <Link className={`btn ${loc.pathname === '/friends' ? 'active' : ''}`} to="/friends">친구</Link>
-                <Link className={`btn ${loc.pathname === '/notifications' ? 'active' : ''}`} to="/notifications">알림</Link>
+                <Link className={`btn ${loc.pathname === '/MyInfo' ? 'active' : ''}`} to="/MyInfo">내 정보</Link>
             </nav>
         </header>
     )
