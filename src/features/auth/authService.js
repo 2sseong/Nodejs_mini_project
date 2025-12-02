@@ -7,33 +7,35 @@ import fs from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import path from 'path';
 
-const saltRounds = 10; 
+const saltRounds = 10;
 
 /**
  * 회원가입 비즈니스 로직
  */
-export async function signupUser({ email, password, nickname }) {
-    
+export async function signupUser({ email, password, nickname, department, position }) {
+
     // 1. 이메일 중복 확인 (Repository 호출)
     const existingUser = await authRepository.findUserByEmail(email);
 
     if (existingUser) {
-        throw new Error('Email already in use'); 
+        throw new Error('Email already in use');
     }
 
     // 2. 비밀번호 해싱
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // 3. 사용자 ID 생성
-    const newUserId = uuidv4(); 
+    const newUserId = uuidv4();
 
     // 4. DB에 삽입 (Repository 호출)
-    const userData = { userId: newUserId, email, hashedPassword, nickname };
+    const userData = { userId: newUserId, email, hashedPassword, nickname, department, position };
     await authRepository.insertUser(userData);
 
     return {
         userId: newUserId,
         nickname: nickname,
+        department: department,
+        position: position,
     };
 }
 
@@ -43,19 +45,19 @@ export async function signupUser({ email, password, nickname }) {
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
 export async function loginUser({ email, password }) {
-    
+
     // 1. 사용자 정보 조회 (Repository 호출)
     const user = await authRepository.findUserByEmail(email);
 
     if (!user) {
-        throw new Error('User not found'); 
+        throw new Error('User not found');
     }
 
     // 2. 비밀번호 비교
     const isMatch = await bcrypt.compare(password, user.PASSWORD_HASH);
 
     if (!isMatch) {
-        throw new Error('Password mismatch'); 
+        throw new Error('Password mismatch');
     }
 
     // 3. 로그인 성공: JWT 토큰 발행
@@ -81,7 +83,7 @@ export async function loginUser({ email, password }) {
 export async function getUserInfo(userId) {
     // 여기서 방금 만드신 repository의 findUserById를 호출합니다.
     const user = await authRepository.findUserById(userId);
-    
+
     // 만약 여기서 "authRepository.findUserById is not a function" 에러가 난다면
     // authRepository.js 저장이 안 되었거나 서버 재시작이 안 된 것입니다.
     if (!user) throw new Error('User not found');
@@ -95,7 +97,7 @@ export async function verifyPassword(userId, password) {
 
     const isMatch = await bcrypt.compare(password, hash);
     if (!isMatch) throw new Error('Password mismatch');
-    
+
     return true;
 }
 
@@ -105,15 +107,15 @@ export async function updateProfileImage(userId, newFile) {
 
     // 1. 기존 파일 정보 조회
     const user = await authRepository.findUserById(userId);
-    
+
     if (user && user.PROFILE_PIC) {
         try {
             // user.PROFILE_PIC 예시: "/profile/profile-12345.png"
             const fileName = path.basename(user.PROFILE_PIC); // "profile-12345.png" 추출
 
             // process.cwd()는 현재 서버가 실행 중인 최상위 폴더 경로입니다.
-            const oldPath = path.join(process.cwd(),'..', 'public', 'profile', fileName);
-            
+            const oldPath = path.join(process.cwd(), '..', 'public', 'profile', fileName);
+
             console.log(`[Service] 삭제 시도할 파일 경로: ${oldPath}`);
 
             // 파일이 실제로 존재하는지 체크 후 삭제
@@ -156,4 +158,30 @@ export async function updateUserInfo(userId, { nickname, newPassword }) {
     }
 
     return { nickname, message: '정보가 수정되었습니다.' };
+}
+
+/**
+ * 팀별 사용자 목록 조회 (그룹핑)
+ */
+export async function getUsersGroupedByTeam() {
+    const users = await authRepository.getUsersByTeam();
+
+    // 부서별로 그룹핑
+    const groupedByTeam = {};
+    users.forEach(user => {
+        const teamName = user.DEPARTMENT;
+        if (!groupedByTeam[teamName]) {
+            groupedByTeam[teamName] = [];
+        }
+        groupedByTeam[teamName].push({
+            userId: user.USER_ID,
+            nickname: user.NICKNAME,
+            email: user.USERNAME,
+            profilePic: user.PROFILE_PIC,
+            position: user.POSITION,
+            department: user.DEPARTMENT
+        });
+    });
+
+    return groupedByTeam;
 }

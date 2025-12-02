@@ -1,18 +1,10 @@
 // C:\Users\oneonly\Documents\GitHub\Nodejs_mini_project\client\src\components\Friend\FriendList.jsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import './FriendList.css';
 
-// 개별 사용자 아이템 컴포넌트 (useState를 안전하게 사용하기 위해 분리)
+// 개별 사용자 아이템 컴포넌트
 function UserItem({ user, myUserId, isOnline, onTogglePick }) {
-    console.log("=== UserItem 렌더링 ===");
-    console.log("전체 user 객체:", user);
-    console.log("user.userId:", user.userId);
-    console.log("user.userNickname:", user.userNickname);
-    console.log("user.username:", user.username);
-    console.log("user.isPick:", user.isPick);
-    console.log("myUserId:", myUserId);
-    console.log("================================");
     const { isMe } = user;
     const isPicked = user.isPick === 1;
 
@@ -31,7 +23,7 @@ function UserItem({ user, myUserId, isOnline, onTogglePick }) {
                 <div className="user-name-row">
                     <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
                     <span className="user-nickname">
-                        {isMe && <span className="me-tag" style={{ marginLeft: '8px', color: '#6fa9e0ff', fontWeight: 'bold' }}>[나] </span>}
+                        {isMe && <span className="me-tag" style={{ marginRight: '8px', color: '#6fa9e0ff', fontWeight: 'bold' }}>[나] </span>}
                         {user.userNickname}
                     </span>
                     {!isMe && (
@@ -44,6 +36,16 @@ function UserItem({ user, myUserId, isOnline, onTogglePick }) {
                         </button>
                     )}
                 </div>
+                {(user.department || user.position) && (
+                    <div className="user-details">
+                        <span className="user-dept-position">
+                            {user.department && user.position
+                                ? `${user.department} / ${user.position}`
+                                : user.department || user.position
+                            }
+                        </span>
+                    </div>
+                )}
                 <span className="user-username">( {user.username} )</span>
             </div>
 
@@ -53,6 +55,34 @@ function UserItem({ user, myUserId, isOnline, onTogglePick }) {
                 </div>
             )}
         </li>
+    );
+}
+
+// 부서별 섹션 컴포넌트
+function DepartmentSection({ department, users, myUserId, onlineUsers, onTogglePick }) {
+    const [isExpanded, setIsExpanded] = useState(true);
+
+    return (
+        <div className="department-section">
+            <div className="department-header" onClick={() => setIsExpanded(!isExpanded)}>
+                <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                <span className="department-name">{department || '미배정'}</span>
+                <span className="user-count">({users.length}명)</span>
+            </div>
+            {isExpanded && (
+                <ul className="user-list">
+                    {users.map((user) => (
+                        <UserItem
+                            key={user.userId}
+                            user={user}
+                            myUserId={myUserId}
+                            isOnline={onlineUsers.includes(String(user.userId))}
+                            onTogglePick={onTogglePick}
+                        />
+                    ))}
+                </ul>
+            )}
+        </div>
     );
 }
 
@@ -91,6 +121,9 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
         ...u,
         isMe: String(u.userId) === String(myUserId),
         isOnline: onlineUsers.includes(String(u.userId)),
+        // department와 position 필드 추가 (대소문자 통일)
+        department: u.DEPARTMENT || u.department,
+        position: u.POSITION || u.position,
     }));
 
     // 2. 필터 타입에 따라 걸러내기
@@ -117,18 +150,55 @@ export default function FriendList({ users, myUserId, searchQuery, onlineUsers =
         }
     }
 
+    // 4. 부서별로 그룹화
+    const groupedByDepartment = {};
+
+    // '나' 자신을 먼저 처리
+    const me = finalFiltered.find(u => u.isMe);
+    const others = finalFiltered.filter(u => !u.isMe);
+
+    // 다른 사용자들을 부서별로 그룹화
+    others.forEach(user => {
+        const dept = user.department || '미배정';
+        if (!groupedByDepartment[dept]) {
+            groupedByDepartment[dept] = [];
+        }
+        groupedByDepartment[dept].push(user);
+    });
+
+    // 부서명 정렬 (한글 오름차순)
+    const sortedDepartments = Object.keys(groupedByDepartment).sort((a, b) =>
+        a.localeCompare(b, 'ko', { sensitivity: 'base' })
+    );
 
     return (
-        <ul className="user-list">
-            {finalFiltered.map((user) => (
-                <UserItem
-                    key={user.userId}
-                    user={user}
+        <div className="friend-list-container">
+            {/* 나 자신을 맨 위에 표시 */}
+            {me && (
+                <div className="my-profile-section">
+                    <ul className="user-list">
+                        <UserItem
+                            key={me.userId}
+                            user={me}
+                            myUserId={myUserId}
+                            isOnline={me.isOnline}
+                            onTogglePick={onTogglePick}
+                        />
+                    </ul>
+                </div>
+            )}
+
+            {/* 부서별로 그룹화된 사용자 목록 */}
+            {sortedDepartments.map(department => (
+                <DepartmentSection
+                    key={department}
+                    department={department}
+                    users={groupedByDepartment[department]}
                     myUserId={myUserId}
-                    isOnline={user.isOnline}
+                    onlineUsers={onlineUsers}
                     onTogglePick={onTogglePick}
                 />
             ))}
-        </ul>
+        </div>
     );
 }

@@ -39,33 +39,6 @@ export const findFriendList = async (userId) => {
     }
 };
 
-// // -- 친구추가요청
-// export const findExistingRelationship = async (userId1, userId2) => {
-//     const sql = `
-//         SELECT STATUS
-//         FROM T_FRIEND
-//         WHERE (USER_ID = :userId1 AND FRIEND_USER_ID = :userId2)
-//            OR (USER_ID = :userId2 AND FRIEND_USER_ID = :userId1)
-//     `;
-
-//     const binds = { userId1, userId2 };
-
-//     let connection;
-
-//     try {
-//         connection = await getConnection();
-//         const result = await connection.execute(sql, binds, {
-//             outFormat: oracledb.OUT_FORMAT_OBJECT
-//         });
-//         return result.rows;
-//     } catch (error) {
-//         console.error("Repository Error: 기존 관계 조회 실패", error);
-//         throw new Error("DB 관계 조회 중 오류 발생");
-//     } finally {
-//         if (connection) await connection.close();
-//     }
-// };
-
 export const createFriendRequest = async (requesterId, recipientId) => {
     // T_FRIEND 테이블에 새로운 요청 레코드를 INSERT
     const sql = `
@@ -209,6 +182,8 @@ SELECT
     U.USER_ID,
     U.USERNAME,
     U.NICKNAME,
+    U.DEPARTMENT,
+    U.POSITION,
     CASE
         WHEN P.USER_ID IS NOT NULL THEN 1 -- 즐겨찾기 됨
         ELSE 0                           -- 즐겨찾기 안 됨

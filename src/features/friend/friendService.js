@@ -44,6 +44,8 @@ export const searchUsers = async (userId, query) => {
                 userId: user.USER_ID,
                 username: user.USERNAME,
                 userNickname: user.NICKNAME,
+                department: user.DEPARTMENT,
+                position: user.POSITION,
                 isPick: user.ISPICK,
             }
         });

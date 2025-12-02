@@ -1,6 +1,6 @@
 // src/features/auth/authRepository.js
 
-import { executeTransaction, executeQuery } from '../../../db/oracle.js'; 
+import { executeTransaction, executeQuery } from '../../../db/oracle.js';
 
 /**
  * 이메일로 사용자를 찾는 함수
@@ -24,15 +24,17 @@ async function findUserByEmail(email) {
 async function insertUser(userData) {
     const insertSql = `
         INSERT INTO T_USER 
-            (USER_ID, USERNAME, PASSWORD_HASH, NICKNAME, CREATED_AT)
+            (USER_ID, USERNAME, PASSWORD_HASH, NICKNAME, CREATED_AT, DEPARTMENT, POSITION)
         VALUES 
-            (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP)
+            (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP, :department, :position)
     `;
-    await executeTransaction(insertSql, { 
-        userId: userData.userId, 
-        email: userData.email, 
-        hash: userData.hashedPassword, 
-        nickname: userData.nickname 
+    await executeTransaction(insertSql, {
+        userId: userData.userId,
+        email: userData.email,
+        hash: userData.hashedPassword,
+        nickname: userData.nickname,
+        department: userData.department,
+        position: userData.position
     });
 }
 
@@ -90,4 +92,25 @@ export async function updateUserInfo(userId, nickname) {
 export async function updateUserPassword(userId, passwordHash) {
     const sql = `UPDATE T_USER SET PASSWORD_HASH = :passwordHash WHERE USER_ID = :userId`;
     await executeTransaction(sql, { passwordHash, userId });
+}
+
+
+/**
+ * 팀별(부서별)로 사용자 목록 조회
+ */
+export async function getUsersByTeam() {
+    const sql = `
+        SELECT 
+            USER_ID,
+            USERNAME,
+            NICKNAME,
+            PROFILE_PIC,
+            DEPARTMENT,
+            POSITION
+        FROM T_USER
+        WHERE DEPARTMENT IS NOT NULL AND DEPARTMENT != '미배정'
+        ORDER BY DEPARTMENT ASC, NICKNAME ASC
+    `;
+    const result = await executeQuery(sql);
+    return result.rows || [];
 }

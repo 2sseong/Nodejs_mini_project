@@ -26,7 +26,9 @@
     text-align: left;
 }
 
-.form-group input {
+/* 입력 필드 (input, select 공통) */
+.form-group input,
+.form-group select {
     width: 100%;
     padding: 12px 16px;
     font-size: 15px;
@@ -37,17 +39,37 @@
     outline: none;
     box-sizing: border-box;
     transition: all 0.2s ease;
+    font-family: inherit;
 }
 
-.form-group input:focus {
+/* Select 특화 스타일 */
+.form-group select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 12px;
+}
+
+/* 포커스 상태 */
+.form-group input:focus,
+.form-group select:focus {
     background: rgba(255, 255, 255, 0.95);
     border-color: #64b5f6;
     box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
 }
 
-.form-group input:disabled {
+/* Select 포커스 상태 */
+.form-group select:focus {
+    background-position: right 12px center;
+}
+
+/* 비활성화 상태 */
+.form-group input:disabled,
+.form-group select:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    background-color: rgba(245, 245, 245, 0.8);
 }
 
 /* 제출 버튼 */
@@ -111,16 +133,21 @@
         font-size: 18px;
         margin-bottom: 24px;
     }
-    
+
     .form-group {
         margin-bottom: 20px;
     }
-    
-    .form-group input {
+
+    .form-group input,
+    .form-group select {
         padding: 11px 14px;
         font-size: 14px;
     }
-    
+
+    .form-group select {
+        padding-right: 12px;
+    }
+
     .submit-btn {
         padding: 13px 20px;
         font-size: 15px;

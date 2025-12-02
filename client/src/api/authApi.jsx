@@ -1,6 +1,6 @@
 // src/api/authApi.js
 
-const API_URL = 'http://localhost:1337/api/auth'; 
+const API_URL = 'http://localhost:1337/api/auth';
 
 // 응답 메세지를 안전하게 파싱함
 async function safeMessage(res) {
@@ -20,7 +20,7 @@ async function safeMessage(res) {
  * @returns {object} 응답 데이터 (success, message, userId 등)
  */
 export async function signup(signupData) {
-    const url = `${API_URL}/signup`; 
+    const url = `${API_URL}/signup`;
 
     const response = await fetch(url, {
         method: 'POST',
@@ -29,7 +29,7 @@ export async function signup(signupData) {
         },
         body: JSON.stringify(signupData),
     });
-    
+
     // 응답 JSON 파싱
     const data = await response.json();
 
@@ -44,7 +44,7 @@ export async function signup(signupData) {
 // 로그인
 export async function login(loginData) {
     const url = `${API_URL}/login`;
-    
+
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -59,10 +59,10 @@ export async function login(loginData) {
             // 오류 발생 시, API 함수가 바로 Error 객체를 던짐
             throw new Error(msg || `로그인 실패 (${response.status})`);
         }
-        
+
         // 성공 응답 JSON 파싱
         const data = await response.json();
-        
+
         // 성공 시 데이터 반환
         return {
             ok: response.ok, // 항상 true
@@ -72,14 +72,14 @@ export async function login(loginData) {
     } catch (error) {
         // 네트워크 오류나 위에서 던진 Error 객체 처리
         // Controller/Page에서 동일하게 catch 블록으로 처리할 수 있도록 에러를 다시 던짐
-        throw error; 
+        throw error;
     }
 }
 
 // 토큰을 헤더에 포함하는 헬퍼 함수
 const getAuthHeaders = () => {
     // LoginPage.jsx에서 저장한 키 이름인 'authToken'을 사용
-    const token = localStorage.getItem('authToken'); 
+    const token = localStorage.getItem('authToken');
     return {
         'Authorization': `Bearer ${token}`,
     };
@@ -130,5 +130,14 @@ export async function uploadProfileImage(file) {
         },
         body: formData
     });
+    return response.json();
+}
+
+/**
+ * 팀별 사용자 목록 조회 (그룹핑됨)
+ * @returns {object} { success, data: { "팀이름": [...users], ... } }
+ */
+export async function getUsersByTeam() {
+    const response = await fetch(`${API_URL}/users/by-team`);
     return response.json();
 }

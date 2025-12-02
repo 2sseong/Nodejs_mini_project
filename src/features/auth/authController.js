@@ -6,20 +6,22 @@ import * as authService from './authService.js';
  * POST /api/auth/signup 요청 처리
  */
 export async function signup(req, res) {
-    const { email, password, nickname } = req.body;
+    const { email, password, nickname, department, position } = req.body;
 
-    if (!email || !password || !nickname) {
+    if (!email || !password || !nickname || !department || !position) {
         return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
     }
 
     try {
-        const newUser = await authService.signupUser({ email, password, nickname });
+        const newUser = await authService.signupUser({ email, password, nickname, department, position });
 
         res.status(201).json({
             success: true,
             message: '회원가입이 성공적으로 완료되었습니다. \n5초 후 로그인 화면으로 이동합니다.',
             userId: newUser.userId,
             nickname: newUser.nickname,
+            department: newUser.department,
+            position: newUser.position,
         });
 
     } catch (error) {
@@ -118,7 +120,7 @@ export async function uploadProfile(req, res) {
             console.error('[ERROR] 파일이 없습니다 (req.file is undefined)');
             return res.status(400).json({ message: '파일이 전송되지 않았습니다.' });
         }
-        
+
         const userId = req.user.userId;
         const webPath = await authService.updateProfileImage(userId, req.file);
         const io = req.app.get('io');
@@ -130,11 +132,24 @@ export async function uploadProfile(req, res) {
             });
             console.log(`[Socket] 프로필 업데이트 이벤트 발송: ${userId}`);
         }
-        
+
         console.log('[SUCCESS] 업로드 완료 경로:', webPath);
         res.json({ success: true, filePath: webPath });
     } catch (error) {
         console.error('[ERROR] 업로드 처리 중 에러:', error);
         res.status(500).json({ message: '업로드 실패' });
+    }
+}
+
+/**
+ * GET /api/auth/users/by-team 팀별 사용자 목록 조회 (그룹핑)
+ */
+export async function getUsersByTeam(req, res) {
+    try {
+        const groupedUsers = await authService.getUsersGroupedByTeam();
+        res.json({ success: true, data: groupedUsers });
+    } catch (error) {
+        console.error('팀별 사용자 조회 에러:', error);
+        res.status(500).json({ message: '사용자 목록 조회 실패' });
     }
 }
