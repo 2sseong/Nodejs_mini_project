@@ -1,31 +1,33 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage } from '../api/authApi';
-import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal'; // ConfirmModal import
+import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal';
 import '../styles/MyInfoPage.css';
+
+// 모듈화된 컴포넌트 import
+import ProfileImageSection from '../components/MyInfo/ProfileImageSection';
+import InfoDisplay from '../components/MyInfo/InfoDisplay';
+import VerifyPasswordForm from '../components/MyInfo/VerifyPasswordForm';
+import EditProfileForm from '../components/MyInfo/EditProfileForm';
 
 export default function MyInfoPage() {
     const [user, setUser] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
     
-    // 입력값 상태
-    const [verifyPwInput, setVerifyPwInput] = useState(''); // 본인 확인용
+    // 상태 값
+    const [verifyPwInput, setVerifyPwInput] = useState('');
     const [nicknameInput, setNicknameInput] = useState('');
-    
-    // [추가] 새 비밀번호 관련 상태
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    // [추가] 모달 상태 관리
+    // 모달 설정
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
         title: '',
         message: '',
         isDanger: false,
-        onConfirm: null // 확인 버튼 클릭 시 실행할 콜백
+        onConfirm: null
     });
-
-    const fileInputRef = useRef(null);
 
     useEffect(() => {
         loadUserInfo();
@@ -43,30 +45,19 @@ export default function MyInfoPage() {
         }
     };
 
-    // [추가] 모달 닫기 핸들러
-    const closeModal = () => {
-        setModalConfig(prev => ({ ...prev, isOpen: false }));
-    };
+    // --- 모달 관련 핸들러 ---
+    const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
 
-    // [추가] 모달 확인 버튼 핸들러 (콜백 실행)
     const handleModalConfirm = () => {
-        if (modalConfig.onConfirm) {
-            modalConfig.onConfirm();
-        }
+        if (modalConfig.onConfirm) modalConfig.onConfirm();
         closeModal();
     };
 
-    // [추가] 모달 열기 헬퍼 함수
     const openModal = (title, message, isDanger = false, onConfirm = null) => {
-        setModalConfig({
-            isOpen: true,
-            title,
-            message,
-            isDanger,
-            onConfirm
-        });
+        setModalConfig({ isOpen: true, title, message, isDanger, onConfirm });
     };
 
+    // --- 이벤트 핸들러 ---
     const handleEditClick = () => {
         setIsEditing(true);
         setIsVerified(false);
@@ -81,73 +72,62 @@ export default function MyInfoPage() {
             setIsVerified(true);
         } catch (err) {
             console.error(err);
-            
             openModal('인증 실패', '비밀번호가 일치하지 않습니다.', true);
         }
     };
 
     const handleSave = async () => {
-        // 유효성 검사
-        if (newPassword && newPassword !== confirmPassword) {
-            
-            openModal('입력 오류', '새 비밀번호가 일치하지 않습니다.', true);
-            return;
+        // 비밀번호 변경 시 유효성 검사
+        if (newPassword) {
+            // 1. 일치 여부 확인
+            if (newPassword !== confirmPassword) {
+                openModal('입력 오류', '새 비밀번호가 일치하지 않습니다.', true);
+                return;
+            }
+
+            // 2. 길이 확인 (4자리 이상)
+            // (공백 입력은 EditProfileForm에서 원천 차단되므로 별도 정규식 검사 제거)
+            if (newPassword.length < 4) {
+                 openModal('입력 오류', '비밀번호는 4자 이상이어야 합니다.', true);
+                 return;
+            }
         }
 
         try {
-            // 변경할 데이터 구성
             const updateData = { 
                 nickname: nicknameInput,
-                newPassword: newPassword || undefined // 비어있으면 전송 안 함
+                newPassword: newPassword || undefined
             };
 
             await updateUserInfo(updateData);
             
-            // [수정] 성공 시 모달을 띄우고, 확인 버튼을 누르면 편집 모드 종료 (콜백 사용)
             openModal('성공', '정보가 수정되었습니다.', false, () => {
                 setIsEditing(false);
                 setIsVerified(false);
                 loadUserInfo();
             });
-
         } catch (err) {
-            
             openModal('수정 실패', err.message, true);
         }
     };
 
-    const handleProfileClick = () => {
-        console.log('[Frontend] 사진 변경 버튼 클릭됨'); // 로그 확인용
-        fileInputRef.current.click();
-    };
-
     const handleFileChange = async (e) => {
-        console.log('[Frontend] 파일 선택 이벤트 발생'); // 로그 확인용
         const file = e.target.files[0];
-        
-        if (!file) {
-            console.log('[Frontend] 파일이 선택되지 않음');
-            return;
-        }
+        if (!file) return;
 
         console.log('[Frontend] 선택된 파일:', file.name, file.size);
 
         try {
             const res = await uploadProfileImage(file);
-            console.log('[Frontend] 서버 응답:', res);
-            
             if (res.success) {
                 setUser(prev => ({ ...prev, PROFILE_PIC: res.filePath }));
             } else {
-                
                 openModal('업로드 실패', res.message, true);
             }
         } catch (err) {
             console.error('[Frontend] 업로드 중 에러:', err);
-            
             openModal('오류', '이미지 업로드 중 오류가 발생했습니다.', true);
         } finally {
-            // 같은 파일을 다시 선택할 수 있도록 input 초기화
             e.target.value = ''; 
         }
     };
@@ -163,103 +143,44 @@ export default function MyInfoPage() {
             <div className="info-card">
                 <h2 className="page-title">내 정보</h2>
 
-                <div className="profile-section">
-                    <div className="profile-img-wrapper">
-                        <img src={profileSrc} alt="Profile" className="profile-img" />
-                    </div>
-                    {/* display: none 이지만 ref로 연결됨 */}
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        style={{ display: 'none' }} 
-                        accept="image/*"
-                        onChange={handleFileChange}
-                    />
-                    <button className="btn-upload" onClick={handleProfileClick}>
-                        사진 변경
-                    </button>
-                </div>
+                {/* 1. 프로필 이미지 섹션 */}
+                <ProfileImageSection 
+                    profileSrc={profileSrc}
+                    onFileChange={handleFileChange}
+                />
 
+                {/* 2. 정보 표시 및 수정 폼 영역 */}
                 {!isEditing ? (
-                    <div className="info-display">
-                        <div className="info-item">
-                            <label>이메일</label>
-                            <span>{user.USERNAME}</span>
-                        </div>
-                        <div className="info-item">
-                            <label>닉네임</label>
-                            <span>{user.NICKNAME}</span>
-                        </div>
-                        <div className="info-item">
-                            <label>가입일</label>
-                            <span>{new Date(user.CREATED_AT).toLocaleDateString()}</span>
-                        </div>
-                        <button className="btn-primary" onClick={handleEditClick}>
-                            내 정보 수정
-                        </button>
-                    </div>
+                    <InfoDisplay 
+                        user={user} 
+                        onEditClick={handleEditClick} 
+                    />
                 ) : (
                     <div className="edit-form">
                         {!isVerified ? (
-                            <div className="verify-section">
-                                <h3>본인 확인</h3>
-                                <p>정보를 수정하려면 현재 비밀번호를 입력하세요.</p>
-                                <input 
-                                    type="password" 
-                                    value={verifyPwInput} 
-                                    onChange={(e) => setVerifyPwInput(e.target.value)}
-                                    placeholder="현재 비밀번호"
-                                    className="input-field"
-                                />
-                                <div className="btn-group">
-                                    <button className="btn-secondary" onClick={() => setIsEditing(false)}>취소</button>
-                                    <button className="btn-primary" onClick={handleVerify}>확인</button>
-                                </div>
-                            </div>
+                            <VerifyPasswordForm
+                                password={verifyPwInput}
+                                onChange={setVerifyPwInput}
+                                onVerify={handleVerify}
+                                onCancel={() => setIsEditing(false)}
+                            />
                         ) : (
-                            <div className="update-section">
-                                <h3>정보 수정</h3>
-                                <div className="info-item">
-                                    <label>닉네임</label>
-                                    <input 
-                                        type="text" 
-                                        value={nicknameInput} 
-                                        onChange={(e) => setNicknameInput(e.target.value)}
-                                        className="input-field"
-                                    />
-                                </div>
-                                <hr style={{margin: '20px 0', border: '0', borderTop: '1px solid #eee'}} />
-                                <div className="info-item">
-                                    <label>새 비밀번호 (변경 시에만 입력)</label>
-                                    <input 
-                                        type="password" 
-                                        value={newPassword} 
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="변경할 비밀번호"
-                                        className="input-field"
-                                    />
-                                </div>
-                                <div className="info-item">
-                                    <label>새 비밀번호 확인</label>
-                                    <input 
-                                        type="password" 
-                                        value={confirmPassword} 
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        placeholder="비밀번호 확인"
-                                        className="input-field"
-                                    />
-                                </div>
-                                <div className="btn-group">
-                                    <button className="btn-secondary" onClick={() => setIsEditing(false)}>취소</button>
-                                    <button className="btn-primary" onClick={handleSave}>저장</button>
-                                </div>
-                            </div>
+                            <EditProfileForm
+                                nickname={nicknameInput}
+                                onNicknameChange={setNicknameInput}
+                                newPassword={newPassword}
+                                onNewPasswordChange={setNewPassword}
+                                confirmPassword={confirmPassword}
+                                onConfirmPasswordChange={setConfirmPassword}
+                                onSave={handleSave}
+                                onCancel={() => setIsEditing(false)}
+                            />
                         )}
                     </div>
                 )}
             </div>
 
-            {/* [추가] ConfirmModal 렌더링 */}
+            {/* 3. 공통 알림 모달 */}
             <ConfirmModal 
                 isOpen={modalConfig.isOpen}
                 onClose={closeModal}
@@ -268,7 +189,7 @@ export default function MyInfoPage() {
                 message={modalConfig.message}
                 isDanger={modalConfig.isDanger}
                 confirmText="확인"
-                cancelText={null} // 알림창 역할이므로 취소 버튼 숨김
+                cancelText={null}
             />
         </div>
     );
