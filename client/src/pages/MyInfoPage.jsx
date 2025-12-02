@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage } from '../api/authApi';
+import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal'; // ConfirmModal import
 import '../styles/MyInfoPage.css';
 
 export default function MyInfoPage() {
@@ -14,6 +15,15 @@ export default function MyInfoPage() {
     // [추가] 새 비밀번호 관련 상태
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // [추가] 모달 상태 관리
+    const [modalConfig, setModalConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        isDanger: false,
+        onConfirm: null // 확인 버튼 클릭 시 실행할 콜백
+    });
 
     const fileInputRef = useRef(null);
 
@@ -33,6 +43,30 @@ export default function MyInfoPage() {
         }
     };
 
+    // [추가] 모달 닫기 핸들러
+    const closeModal = () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+    };
+
+    // [추가] 모달 확인 버튼 핸들러 (콜백 실행)
+    const handleModalConfirm = () => {
+        if (modalConfig.onConfirm) {
+            modalConfig.onConfirm();
+        }
+        closeModal();
+    };
+
+    // [추가] 모달 열기 헬퍼 함수
+    const openModal = (title, message, isDanger = false, onConfirm = null) => {
+        setModalConfig({
+            isOpen: true,
+            title,
+            message,
+            isDanger,
+            onConfirm
+        });
+    };
+
     const handleEditClick = () => {
         setIsEditing(true);
         setIsVerified(false);
@@ -47,14 +81,16 @@ export default function MyInfoPage() {
             setIsVerified(true);
         } catch (err) {
             console.error(err);
-            alert('비밀번호가 일치하지 않습니다.');
+            
+            openModal('인증 실패', '비밀번호가 일치하지 않습니다.', true);
         }
     };
 
     const handleSave = async () => {
         // 유효성 검사
         if (newPassword && newPassword !== confirmPassword) {
-            alert('새 비밀번호가 일치하지 않습니다.');
+            
+            openModal('입력 오류', '새 비밀번호가 일치하지 않습니다.', true);
             return;
         }
 
@@ -66,12 +102,17 @@ export default function MyInfoPage() {
             };
 
             await updateUserInfo(updateData);
-            alert('정보가 수정되었습니다.');
-            setIsEditing(false);
-            setIsVerified(false);
-            loadUserInfo();
+            
+            // [수정] 성공 시 모달을 띄우고, 확인 버튼을 누르면 편집 모드 종료 (콜백 사용)
+            openModal('성공', '정보가 수정되었습니다.', false, () => {
+                setIsEditing(false);
+                setIsVerified(false);
+                loadUserInfo();
+            });
+
         } catch (err) {
-            alert('수정 실패: ' + err.message);
+            
+            openModal('수정 실패', err.message, true);
         }
     };
 
@@ -98,11 +139,13 @@ export default function MyInfoPage() {
             if (res.success) {
                 setUser(prev => ({ ...prev, PROFILE_PIC: res.filePath }));
             } else {
-                alert('업로드 실패: ' + res.message);
+                
+                openModal('업로드 실패', res.message, true);
             }
         } catch (err) {
             console.error('[Frontend] 업로드 중 에러:', err);
-            alert('이미지 업로드 중 오류가 발생했습니다.');
+            
+            openModal('오류', '이미지 업로드 중 오류가 발생했습니다.', true);
         } finally {
             // 같은 파일을 다시 선택할 수 있도록 input 초기화
             e.target.value = ''; 
@@ -215,6 +258,18 @@ export default function MyInfoPage() {
                     </div>
                 )}
             </div>
+
+            {/* [추가] ConfirmModal 렌더링 */}
+            <ConfirmModal 
+                isOpen={modalConfig.isOpen}
+                onClose={closeModal}
+                onConfirm={handleModalConfirm}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                isDanger={modalConfig.isDanger}
+                confirmText="확인"
+                cancelText={null} // 알림창 역할이므로 취소 버튼 숨김
+            />
         </div>
     );
 }
