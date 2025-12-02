@@ -1,6 +1,6 @@
 // src/features/auth/authController.js
 
-import { signupUser, loginUser } from './authService.js';
+import * as authService from './authService.js';
 
 /**
  * POST /api/auth/signup 요청 처리
@@ -13,7 +13,7 @@ export async function signup(req, res) {
     }
 
     try {
-        const newUser = await signupUser({ email, password, nickname });
+        const newUser = await authService.signupUser({ email, password, nickname });
 
         res.status(201).json({
             success: true,
@@ -45,7 +45,7 @@ export async function login(req, res) {
 
     try {
         // 1. Service 함수 호출 (인증, 토큰 발행, DB 업데이트 로직 실행)
-        const { token, user } = await loginUser({ email, password });
+        const { token, user } = await authService.loginUser({ email, password });
 
         // 2. 성공 응답
         res.json({
@@ -64,5 +64,77 @@ export async function login(req, res) {
         }
 
         res.status(500).json({ message: '로그인 중 서버 오류가 발생했습니다.' });
+    }
+}
+
+
+// ------------------- MyInfoPage 관련 추가 기능 ---------------------------------
+// 내 정보 조회
+export async function getMyInfo(req, res) {
+    try {
+        const userId = req.user.userId; // verifyToken 미들웨어에서 설정됨
+        const user = await authService.getUserInfo(userId);
+        res.json({ success: true, data: user });
+    } catch (error) {
+        console.error('내 정보 조회 상세 에러:', error);
+
+        if (error.message === 'User not found') {
+            return res.status(404).json({ message: '사용자를 찾을 수 없습니다. 다시 로그인해 주세요.' });
+        }
+    }
+}
+
+// 비밀번호 확인
+export async function verifyPassword(req, res) {
+    try {
+        const { password } = req.body;
+        const userId = req.user.userId;
+        await authService.verifyPassword(userId, password);
+        res.json({ success: true, message: '확인되었습니다.' });
+    } catch (error) {
+        res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
+    }
+}
+
+// 정보 수정
+export async function updateInfo(req, res) {
+    try {
+        // 클라이언트에서 nickname과 newPassword를 보냄
+        const { nickname, newPassword } = req.body;
+        const userId = req.user.userId;
+
+        const result = await authService.updateUserInfo(userId, { nickname, newPassword });
+        res.json({ success: true, data: result });
+    } catch (error) {
+        console.error('정보 수정 에러:', error);
+        res.status(500).json({ message: '정보 수정 실패' });
+    }
+}
+
+// 프로필 사진 업로드
+export async function uploadProfile(req, res) {
+    try {
+        if (!req.file) {
+            console.error('[ERROR] 파일이 없습니다 (req.file is undefined)');
+            return res.status(400).json({ message: '파일이 전송되지 않았습니다.' });
+        }
+        
+        const userId = req.user.userId;
+        const webPath = await authService.updateProfileImage(userId, req.file);
+        const io = req.app.get('io');
+        if (io) {
+            // 모든 접속자에게 'profile_updated' 이벤트를 쏩니다.
+            io.emit('profile_updated', {
+                userId: userId,
+                profilePic: webPath
+            });
+            console.log(`[Socket] 프로필 업데이트 이벤트 발송: ${userId}`);
+        }
+        
+        console.log('[SUCCESS] 업로드 완료 경로:', webPath);
+        res.json({ success: true, filePath: webPath });
+    } catch (error) {
+        console.error('[ERROR] 업로드 처리 중 에러:', error);
+        res.status(500).json({ message: '업로드 실패' });
     }
 }
