@@ -293,11 +293,29 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         const onEdit = ({ msgId, content }) => setMessages(p => p.map(m => (String(m.MSG_ID) === String(msgId) ? { ...m, CONTENT: content } : m)));
         const onDelete = ({ msgId }) => setMessages(p => p.filter(m => String(m.MSG_ID) !== String(msgId)));
 
+        // 실시간 프로필 업데이트 핸들러
+        const onProfileUpdate = ({ userId: updatedUserId, profilePic }) => {
+            console.log(`[Hook] 프로필 업데이트 감지: ${updatedUserId} -> ${profilePic}`);
+            
+            setMessages(prev => prev.map(msg => {
+                // 메시지 보낸 사람 ID 확인 (대소문자/타입 호환성 고려)
+                const senderId = msg.SENDER_ID || msg.sender_id;
+                
+                // 해당 유저가 보낸 메시지라면 프로필 사진 경로 업데이트
+                if (String(senderId) === String(updatedUserId)) {
+                    // 기존 메시지 객체 유지하면서 PROFILE_PIC만 교체
+                    return { ...msg, PROFILE_PIC: profilePic, profile_pic: profilePic };
+                }
+                return msg;
+            }));
+        };
+
         socket.on('chat:history', onChatHistory);
         socket.on('chat:message', onChatMessage);
         socket.on('chat:read_update', onReadUpdate);
         socket.on('chat:message_updated', onEdit);
         socket.on('chat:message_deleted', onDelete);
+        socket.on('profile_updated', onProfileUpdate);
 
         return () => {
             socket.off('chat:history', onChatHistory);
@@ -305,6 +323,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             socket.off('chat:read_update', onReadUpdate);
             socket.off('chat:message_updated', onEdit);
             socket.off('chat:message_deleted', onDelete);
+            socket.off('profile_updated', onProfileUpdate);
         };
     }, [socket, userId]);
 

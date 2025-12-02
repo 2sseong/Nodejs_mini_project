@@ -121,6 +121,15 @@ export async function uploadProfile(req, res) {
         
         const userId = req.user.userId;
         const webPath = await authService.updateProfileImage(userId, req.file);
+        const io = req.app.get('io');
+        if (io) {
+            // 모든 접속자에게 'profile_updated' 이벤트를 쏩니다.
+            io.emit('profile_updated', {
+                userId: userId,
+                profilePic: webPath
+            });
+            console.log(`[Socket] 프로필 업데이트 이벤트 발송: ${userId}`);
+        }
         
         console.log('[SUCCESS] 업로드 완료 경로:', webPath);
         res.json({ success: true, filePath: webPath });

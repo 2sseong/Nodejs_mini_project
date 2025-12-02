@@ -110,6 +110,7 @@
   
   /* 2줄까지만 표시하고 ... 처리 */
   display: -webkit-box;
+  line-clamp:  2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
