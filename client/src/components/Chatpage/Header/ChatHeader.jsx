@@ -23,6 +23,13 @@ export default function ChatHeader({
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
 
+    // [추가] 에러/알림 모달 상태
+    const [alertModal, setAlertModal] = useState({
+        isOpen: false,
+        title: '',
+        message: ''
+    });
+
     // 검색 바 포커스
     useEffect(() => {
         if (isSearchOpen && searchInputRef.current) {
@@ -71,6 +78,11 @@ export default function ChatHeader({
         setIsLeaveModalOpen(true);
     };
 
+    // [추가] 알림 모달 닫기
+    const closeAlert = () => {
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
+    };
+
     const handleConfirmLeave = async () => {
         setIsLeaving(true);
         try {
@@ -81,7 +93,13 @@ export default function ChatHeader({
             setIsLeaving(false);
             setIsLeaveModalOpen(false); 
             const errMsg = error.response?.data?.message || '오류가 발생했습니다.';
-            alert(errMsg);
+            
+            // [수정] alert 대신 커스텀 모달 사용
+            setAlertModal({
+                isOpen: true,
+                title: '오류 발생',
+                message: errMsg
+            });
         } finally {
             setIsLeaving(false);
         }
@@ -165,7 +183,7 @@ export default function ChatHeader({
                 </div>
             )}
 
-            {/* 3. 나가기 확인 모달 (기존 유지) */}
+            {/* 3. 나가기 확인 모달 (기존 유지 - 질문형) */}
             <ConfirmModal
                 isOpen={isLeaveModalOpen}
                 title="방 나가기"
@@ -175,6 +193,17 @@ export default function ChatHeader({
                 isLoading={isLeaving}
                 onClose={() => !isLeaving && setIsLeaveModalOpen(false)}
                 onConfirm={handleConfirmLeave}
+            />
+
+            {/* [추가] 에러 알림용 모달 (확인형) */}
+            <ConfirmModal
+                isOpen={alertModal.isOpen}
+                onClose={closeAlert}
+                onConfirm={closeAlert}
+                title={alertModal.title}
+                message={alertModal.message}
+                confirmText="확인"
+                cancelText={null} // 취소 버튼 숨김
             />
         </div>
     );

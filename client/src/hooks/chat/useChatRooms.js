@@ -84,7 +84,7 @@ export function useChatRooms(socket, userId, connected) {
         };
 
         const onReadComplete = ({ roomId }) => {
-            console.log(`[Socket] 서버 확정: 방 ${roomId} 읽음 처리 완료`);
+            // (기존) 서버에서 room:read_complete 보낼 때
             setRooms((prev) => 
                 prev.map((r) => 
                     String(r.ROOM_ID) === String(roomId) 
@@ -94,13 +94,27 @@ export function useChatRooms(socket, userId, connected) {
             );
         };
 
+        // [추가] 실시간 읽음 처리 수신 (내가 읽었을 때 목록 카운트 제거용)
+        const onReadUpdate = ({ userId: readerId, roomId }) => {
+            // 읽은 사람이 나(userId)일 경우에만 해당 방의 뱃지를 제거
+            if (String(readerId) === String(userId)) {
+                setRooms((prev) => 
+                    prev.map((r) => 
+                        String(r.ROOM_ID) === String(roomId)
+                            ? { ...r, UNREAD_COUNT: 0 }
+                            : r
+                    )
+                );
+            }
+        };
+
         const onRoomUpdateCount = ({ roomId, memberCount }) => {
             setRooms((prevRooms) => 
                 prevRooms.map((room) => {
                     if (String(room.ROOM_ID) === String(roomId)) {
                         return { 
                             ...room, 
-                            MEMBER_COUNT: memberCount // 서버에서 받은 최신값으로 교체
+                            MEMBER_COUNT: memberCount 
                         };
                     }
                     return room;
@@ -117,7 +131,7 @@ export function useChatRooms(socket, userId, connected) {
                 const targetId = String(msg.ROOM_ID);
                 const index = prevRooms.findIndex(r => String(r.ROOM_ID) === targetId);
 
-                // 목록에 없는 방(새로 초대된 방 등)이면 리프레시 요청 (안전장치)
+                // 목록에 없는 방(새로 초대된 방 등)이면 리프레시 요청
                 if (index === -1) {
                     refreshRooms(); 
                     return prevRooms;
@@ -139,9 +153,9 @@ export function useChatRooms(socket, userId, connected) {
                     targetRoom.UNREAD_COUNT = (targetRoom.UNREAD_COUNT || 0) + 1;
                 }
 
-                // 3. 배열 재정렬: 타겟 방을 맨 앞으로 이동 (O(N))
-                newRooms.splice(index, 1); // 기존 위치에서 제거
-                newRooms.unshift(targetRoom); // 맨 앞에 추가
+                // 3. 배열 재정렬: 타겟 방을 맨 앞으로 이동
+                newRooms.splice(index, 1); 
+                newRooms.unshift(targetRoom); 
 
                 return newRooms;
             });
@@ -153,6 +167,7 @@ export function useChatRooms(socket, userId, connected) {
         socket.on('room:new_created', onNewRoomCreated);
         socket.on('chat:message', onChatMessage); 
         socket.on('room:read_complete', onReadComplete);
+        socket.on('chat:read_update', onReadUpdate);
         socket.on('room:update_count', onRoomUpdateCount);
 
         return () => {
@@ -161,6 +176,7 @@ export function useChatRooms(socket, userId, connected) {
             socket.off('room:new_created', onNewRoomCreated);
             socket.off('chat:message', onChatMessage);
             socket.off('room:read_complete', onReadComplete);
+            socket.off('chat:read_update', onReadUpdate);
             socket.off('room:update_count', onRoomUpdateCount);
         };
     }, [socket, userId, connected, refreshRooms]);

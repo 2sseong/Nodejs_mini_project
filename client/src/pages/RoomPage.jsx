@@ -7,8 +7,8 @@ import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatNotifications } from '../hooks/useChatNotifications';
 
-import ChatSidebar from '../components/Roompage/Sidebar/ChatSidebar.jsx';
-import CreateRoomModal from '../components/Roompage/Modals/CreateRoomModal.jsx';
+import ChatSidebar from '../components/Room/Sidebar/ChatSidebar.jsx';
+import CreateRoomModal from '../components/Room/Modals/CreateRoomModal.jsx';
 
 export default function RoomPage() {
     const { authLoaded, userId, userNickname } = useAuth();
