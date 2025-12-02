@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import './FriendList.css';
 
 // 개별 사용자 아이템 컴포넌트
-function UserItem({ user, myUserId, isOnline, onTogglePick }) {
+function UserItem({ user, isOnline, onTogglePick }) {
     const { isMe } = user;
     const isPicked = user.isPick === 1;
 
