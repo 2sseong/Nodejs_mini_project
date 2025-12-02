@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import './Topbar.css'
-import { useAuth } from '../../hooks/AuthContext'; 
+import { useAuth } from '../../hooks/AuthContext';
 
 export default function Topbar() {
     const loc = useLocation()
     const nav = useNavigate()
 
     // 1. useAuth 훅에서 인증 상태와 로그아웃 함수를 가져옴
-    const { isAuthenticated, userNickname, logout } = useAuth(); 
+    const { isAuthenticated, userNickname, logout } = useAuth();
 
     // 2. 로그아웃 기능 구현 핸들러
     const handleLogout = () => {
@@ -38,9 +38,9 @@ export default function Topbar() {
                     <Link className={`btn ${loc.pathname === '/login' ? 'active' : ''}`} to="/login">로그인</Link>
                 )}
                 {/* 3. 로그인 상태일 때 회원가입 버튼 숨기기 */}
-                {!isAuthenticated && (
+                {/* {!isAuthenticated && (
                     <Link className={`btn ${loc.pathname === '/signup' ? 'active' : ''}`} to="/signup">회원가입</Link>
-                )}
+                )} */}
                 <Link className={`btn ${loc.pathname === '/chat' ? 'active' : ''}`} to="/chat">채팅</Link>
                 <Link className={`btn ${loc.pathname === '/friends' ? 'active' : ''}`} to="/friends">친구</Link>
                 <Link className={`btn ${loc.pathname === '/MyInfo' ? 'active' : ''}`} to="/MyInfo">내 정보</Link>

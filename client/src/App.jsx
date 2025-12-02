@@ -7,10 +7,10 @@ import MyInfoPage from './pages/MyInfoPage.jsx';
 import FriendPage from './pages/FriendPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
 import Titlebar from './components/Titlebar/Titlebar.jsx';
-import NotificationWindowPage from './pages/NotificationWindowPage.jsx'; 
+import NotificationWindowPage from './pages/NotificationWindowPage.jsx';
 import { useAuth } from './hooks/AuthContext.jsx';
-import PopupChatPage from './pages/PopupChatPage.jsx'; 
-import FileDrawerPage from './pages/FileDrawerPage.jsx'; 
+import PopupChatPage from './pages/PopupChatPage.jsx';
+import FileDrawerPage from './pages/FileDrawerPage.jsx';
 import './App.css';
 
 // 보호된 라우트
@@ -41,7 +41,7 @@ export default function App() {
             {/* ------------------------------------------------------- */}
             {/* 1. 독립적인 윈도우 라우트 (MainLayout의 영향을 받지 않음) */}
             {/* ------------------------------------------------------- */}
-            
+
             {/* 알림 창 */}
             <Route path="/notification" element={<NotificationWindowPage />} />
 
@@ -59,7 +59,7 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/chat" replace />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
-                
+
                 <Route path="/chat" element={
                     <ProtectedRoute><RoomPage /></ProtectedRoute>
                 } />
@@ -69,7 +69,7 @@ export default function App() {
                 <Route path="/friends" element={
                     <ProtectedRoute><FriendPage /></ProtectedRoute>
                 } />
-                
+
                 {/* 404 처리 */}
                 <Route path="*" element={<div style={{ padding: 24 }}>404 Not Found</div>} />
             </Route>

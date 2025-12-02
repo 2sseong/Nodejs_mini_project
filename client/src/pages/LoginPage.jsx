@@ -1,6 +1,6 @@
 // src/pages.LoginPage.jsx
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import '../styles/LoginPage.css'
 import { login } from '../api/authApi'
 import { useAuth } from '../hooks/AuthContext';
@@ -112,7 +112,7 @@ export default function LoginPage() {
 
                 <div className="help-row">
                     <a href="#" onClick={(e) => e.preventDefault()}>비밀번호 찾기</a>
-                    <a href="#" onClick={(e) => e.preventDefault()}>회원가입</a>
+                    <Link to="/signup">회원가입</Link>
                 </div>
             </form>
         </div>
