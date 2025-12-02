@@ -5,10 +5,13 @@ const path = require('path');
 const { spawn } = require('child_process');
 require('dotenv').config({path:path.join(__dirname, '.env')});
 
+// [수정 1] 윈도우 투명 창 버그 방지를 위해 하드웨어 가속 끄기 (필수 권장)
+app.disableHardwareAcceleration();
+
 let backendProcess;
 let notificationWindow = null;
 let notifTimeout = null;
-let chatWindows = {};
+let chatWindows = {}; // 채팅창 관리 객체
 
 // 메인 창 관리 배열
 let mainWindows = [];
@@ -16,6 +19,7 @@ let mainWindows = [];
 function startBackendServer() {
   const backendPath = path.join(__dirname, 'src');
 
+  // 윈도우에서는 shell: true가 필요한 경우가 많음
   backendProcess = spawn('node', ['server.js'], {
     cwd: backendPath, 
     shell: true,
@@ -26,9 +30,10 @@ function startBackendServer() {
     // console.log(`[Backend Log]: ${data}`);
     setTimeout(() => {
         if (mainWindows.length === 0) {
-          // 테스트를 위해 두 개의 메인 창을 엽니다.
-          createWindow();
-          createWindow();
+          // [수정 핵심] 테스트를 위해 서로 다른 파티션(세션)을 가진 두 개의 창을 엽니다.
+          // persist: 접두어를 붙이면 앱을 껐다 켜도 로그인 정보가 유지됩니다.
+          createWindow('persist:user1'); 
+          createWindow('persist:user2');
           createNotificationWindow(); // 알림창 미리 생성
         }
     }, 3000);
@@ -56,7 +61,9 @@ function createNotificationWindow() {
     x: width - notifWidth - 20,
     y: height - notifHeight - 20,
     frame: false,
-    transparent: false,
+    transparent: true, 
+    backgroundColor: '#00000000', 
+    hasShadow: false, 
     resizable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -82,13 +89,11 @@ function createNotificationWindow() {
 }
 
 function showCustomNotification(data) {
-  // 창이 없거나 파괴되었다면 재생성
   if (!notificationWindow || notificationWindow.isDestroyed()) {
     console.log('[Main] Notification window missing, recreating...');
     createNotificationWindow();
   }
 
-  // 데이터 전송 및 표시
   console.log('[Main] Showing notification with data:', data);
   notificationWindow.webContents.send('show-notification-data', data);
   notificationWindow.showInactive(); 
@@ -101,7 +106,8 @@ function showCustomNotification(data) {
   }, 5500);
 }
 
-function createWindow () {
+// [수정] partition 매개변수 추가 (기본값: user1)
+function createWindow (partition = 'persist:user1') {
   let mainWindow = new BrowserWindow({
     action: 'auto',
     width: 1000,
@@ -113,13 +119,17 @@ function createWindow () {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true, 
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      // [핵심] 파티션을 지정하여 세션(localStorage, 쿠키 등)을 분리합니다.
+      partition: partition 
     }
   });
   
   mainWindow.loadURL('http://localhost:5173'); 
 
-  // 창이 닫힐 때 배열에서 제거
+  // 창 제목에 유저 구분 표시 (개발 편의용)
+  mainWindow.setTitle(`Chat App - ${partition.split(':')[1]}`);
+
   mainWindow.on('closed', () => {
     mainWindows = mainWindows.filter(win => win !== mainWindow);
     mainWindow = null;
@@ -143,7 +153,6 @@ app.on('activate', () => {
 });
 
 // === IPC 핸들러 ===
-// 각 IPC 메시지를 보낸 웹 콘텐츠가 속한 BrowserWindow를 찾아서 처리
 ipcMain.on('window-minimize', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.minimize();
@@ -161,22 +170,17 @@ ipcMain.on('window-close', (event) => {
   if (win) win.close();
 });
 
-// 알림 요청 수신
 ipcMain.on('req-custom-notification', (event, data) => {
   showCustomNotification(data);
 });
 
-// 알림 닫기 수신
 ipcMain.on('close-notification-window', () => {
   if (notificationWindow && !notificationWindow.isDestroyed()) {
     notificationWindow.hide(); 
   }
 });
 
-// 알림 클릭 수신
 ipcMain.on('notification-clicked', (event, roomId) => {
-  // 알림 클릭 시 어떤 창을 활성화할지 결정해야 합니다.
-  // 여기서는 편의상 첫 번째 메인 창을 활성화하고 방 이동 명령을 보냅니다.
   const targetWindow = mainWindows[0];
   if (targetWindow) {
     if (targetWindow.isMinimized()) targetWindow.restore(); 
@@ -186,9 +190,7 @@ ipcMain.on('notification-clicked', (event, roomId) => {
   }
 });
 
-// 테스트 및 강제 활성화
 ipcMain.on('window-show-focus', (event) => {
-  // 요청을 보낸 창을 활성화
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {
     if (win.isMinimized()) win.restore(); 
@@ -197,82 +199,79 @@ ipcMain.on('window-show-focus', (event) => {
   }
 });
 
-// [추가] 채팅방 창 열기 핸들러
+// [수정] 채팅방 창 열기 핸들러 (세션 및 멀티 윈도우 지원 + DevTools)
 ipcMain.on('open-chat-window', (event, roomId) => {
-  // 1. 이미 열려있는 방이면 그 창을 앞으로 가져옴 (Focus)
-  if (chatWindows[roomId]) {
-    if (chatWindows[roomId].isMinimized()) chatWindows[roomId].restore();
-    chatWindows[roomId].focus();
+  const parentId = event.sender.id;
+  const windowKey = `${parentId}:${roomId}`;
+
+  if (chatWindows[windowKey]) {
+    if (chatWindows[windowKey].isMinimized()) chatWindows[windowKey].restore();
+    chatWindows[windowKey].focus();
     return;
   }
 
-  // 2. 새 창 생성 (프레임 제거 설정 적용)
+  const parentSession = event.sender.session;
+
   const win = new BrowserWindow({
     width: 400,
     height: 600,
     minWidth: 300,
     minHeight: 400,
     title: '채팅방', 
-    frame: false,       // [핵심] 윈도우 프레임 제거
-    transparent: false, // [안정성] 투명 배경으로 인한 흰 화면 방지 (필요 시 true로 변경 후 CSS body 배경색 지정)
+    frame: false,       
+    transparent: false, 
     webPreferences: {
+      session: parentSession,
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js') // preload 경로 확인 필수
+      preload: path.join(__dirname, 'preload.js') 
     }
   });
 
-  // [신규] 서랍(Drawer) 등 새 창을 열 때도 프레임 없이 열리도록 설정
   win.webContents.setWindowOpenHandler(({ url }) => {
     return {
       action: 'allow',
       overrideBrowserWindowOptions: {
-        frame: false, // 서랍 창 프레임 제거
+        frame: false,
         transparent: false,
         autoHideMenuBar: true,
         webPreferences: {
+          session: parentSession,
           nodeIntegration: false,
           contextIsolation: true,
-          preload: path.join(__dirname, 'preload.js') // 서랍 창에도 preload 적용
+          preload: path.join(__dirname, 'preload.js') 
         }
       }
     };
   });
 
-  // 3. React 라우팅 주소로 로드
   const startUrl = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true'
     ? `http://localhost:5173/#/popup/${roomId}`
     : `file://${path.join(__dirname, '../client/dist/index.html')}#/popup/${roomId}`;
 
   win.loadURL(startUrl);
 
-  // [디버깅] 흰 화면 원인 파악을 위해 개발자 도구 자동 실행 (해결 후 주석 처리)
+  // [수정] 채팅방 팝업이 열릴 때 개발자 도구(F12)도 같이 열리도록 설정
+  // mode: 'detach'는 별도 창으로 띄우는 옵션입니다.
   win.webContents.openDevTools({ mode: 'detach' });
 
-  // 4. 관리 객체에 저장
-  chatWindows[roomId] = win;
+  chatWindows[windowKey] = win;
   
-  // 5. 닫힐 때 관리 객체에서 제거
   win.on('closed', () => {
-    delete chatWindows[roomId];
+    delete chatWindows[windowKey];
   });
   
   win.setMenu(null);
 });
 
-
 //-------------------------메인창 크기조절-----------------------------//
-// 💡 [신규 추가] 마우스 이벤트 무시 설정 핸들러
 ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {
-    // ignore: true면 마우스 무시(통과), false면 마우스 감지
-    // options: { forward: true }를 주면 무시하면서 뒤로 전달 (주로 true로 사용)
     win.setIgnoreMouseEvents(ignore, options);
   }
 });
 
-// 프론트엔드에서 계산된 새로운 bounds(x, y, width, height)를 받아서 적용합니다.
 ipcMain.on('resize-window', (event, bounds) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed()) {
@@ -282,9 +281,7 @@ ipcMain.on('resize-window', (event, bounds) => {
   }
 });
 
-// (선택 사항) 현재 창 크기/위치 요청 핸들러
 ipcMain.handle('get-window-bounds', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   return win ? win.getBounds() : null;
 });
-
