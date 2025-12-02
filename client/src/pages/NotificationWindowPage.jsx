@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import NotificationPopup from '../components/Notification/NotificationPopup.jsx';
-import '../components/Notification/NotificationPopup.css'; // CSS도 여기서 불러옵니다
+// import '../components/Notification/NotificationPopup.css'; // CSS도 여기서 불러옵니다
 
 export default function NotificationWindowPage() {
   const [notifications, setNotifications] = useState([]);

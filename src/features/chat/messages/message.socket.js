@@ -1,5 +1,6 @@
 import * as messageService from './message.service.js';
-import * as roomService from '../rooms/room.service.js'; // 방 인원수 확인용
+import * as roomService from '../rooms/room.service.js';
+import * as authService from '../../auth/authService.js'; // [추가] 유저 정보 조회를 위해 import
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,7 +32,7 @@ export default function messageSocket(io, socket) {
                 return socket.emit('chat:history', { messages: [], membersInRoom: 0 });
             }
 
-            // 2. 방 총 멤버 수 조회 (RoomService 사용)
+            // 2. 방 총 멤버 수 조회
             const membersInRoom = await roomService.getRoomMemberCount(roomId);
             // 3. 읽음 수 Map 계산
             const readCountMap = await messageService.getReadCountsForMessages(roomId, messages);
@@ -71,6 +72,9 @@ export default function messageSocket(io, socket) {
                 activeUserIds 
             });
             
+            // [수정] 보낸 사람의 최신 프로필 정보 조회 (DB에서 가져옴)
+            const senderInfo = await authService.getUserInfo(userId);
+
             const membersInRoom = await roomService.getRoomMemberCount(saved.ROOM_ID);
             
             // 접속자가 있어도 '포커스' 전엔 안 읽은 것으로 간주하므로, 보낸 사람(1)만 뺌.
@@ -78,7 +82,9 @@ export default function messageSocket(io, socket) {
           
             const initialMessage = {
                  ...saved, 
-                 NICKNAME: msg.NICKNAME, 
+                 // [수정] DB의 닉네임과 프로필 사진을 우선 사용
+                 NICKNAME: senderInfo.NICKNAME || msg.NICKNAME, 
+                 PROFILE_PIC: senderInfo.PROFILE_PIC, 
                  TEMP_ID: msg.TEMP_ID,
                  unreadCount: calculatedUnreadCount
             };
@@ -123,13 +129,17 @@ export default function messageSocket(io, socket) {
                 activeUserIds
             });
 
+            // [수정] 보낸 사람 정보 조회
+            const senderInfo = await authService.getUserInfo(socketUserId);
+
             // 3. unreadCount 계산
             const membersInRoom = await roomService.getRoomMemberCount(savedMessage.ROOM_ID);
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
 
             const broadcastData = { 
                 ...savedMessage, 
-                NICKNAME: userNickname,
+                NICKNAME: senderInfo.NICKNAME || userNickname,
+                PROFILE_PIC: senderInfo.PROFILE_PIC, // [수정] 프로필 사진 추가
                 unreadCount: calculatedUnreadCount
             };
             
@@ -148,17 +158,15 @@ export default function messageSocket(io, socket) {
             const { roomId, lastReadTimestamp } = payload;
             const currentUserId = socket.data.userId;
 
-            console.log(`[Socket] chat:mark_as_read 요청 받음. User: ${currentUserId}, Room: ${roomId}, TS: ${lastReadTimestamp}`); // [로그 추가 1]
+            // console.log(`[Socket] chat:mark_as_read 요청 받음.`); 
 
             if (!roomId || !lastReadTimestamp || !currentUserId) return;
 
             const isUpdated = await messageService.updateLastReadTimestamp(currentUserId, roomId, lastReadTimestamp);
 
-            console.log(`[Socket] DB 업데이트 결과 (isUpdated):`, isUpdated); // [로그 추가 2 - 여기가 false면 알림 안 감]
-
             // 시간이 갱신되었을 때만 전파 (중복 방지)
             if (isUpdated) {
-                console.log('[Socket] chat:read_update 이벤트 방출!');
+                // console.log('[Socket] chat:read_update 이벤트 방출!');
                 io.to(String(roomId)).emit('chat:read_update', {
                     userId: currentUserId,
                     roomId: roomId,

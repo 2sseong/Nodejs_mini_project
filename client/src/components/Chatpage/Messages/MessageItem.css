@@ -1,58 +1,103 @@
-/* src/components/Chatpage/Messages/MessageItem.css */
+/* client/src/components/Chatpage/Messages/MessageItem.css */
 
-/* --- 공통 레이아웃 --- */
+/* --- 개별 메시지 컨테이너 --- */
 .message-item {
-    margin-bottom: 15px; /* 메시지 간 간격 조금 더 확보 */
     display: flex;
     flex-direction: column;
+    width: 100%;
+    margin-bottom: 10px;
+    position: relative; /* 컨텍스트 메뉴 위치 기준 */
 }
 
+/* --- 닉네임 (상대방) --- */
+.sender-nickname {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+    margin-left: 5px;
+}
+
+/* --- 말풍선 공통 --- */
+.message-bubble {
+    display: inline-block;
+    max-width: 70%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    word-break: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    line-height: 1.5;
+    position: relative;
+}
+
+/* --- 내 메시지 스타일 --- */
 .message-item.mine {
     align-items: flex-end;
 }
 
+.message-bubble.mine {
+    background-color: #007bff; /* 파란색 */
+    color: white;
+    border-bottom-right-radius: 4px; /* 꼬리 효과 */
+}
+
+.message-info.mine {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-right: 6px;
+    justify-content: flex-end;
+}
+
+/* --- 상대방 메시지 스타일 --- */
 .message-item.theirs {
     align-items: flex-start;
 }
 
-/* --- 상대방 메시지 (프로필 + 내용) --- */
 .message-row-theirs {
     display: flex;
+    align-items: flex-end; /* 프로필 사진 하단 정렬 */
+    gap: 8px;
+    max-width: 100%;
+}
+
+.message-bubble.theirs {
+    background-color: #f1f3f5; /* 회색 */
+    color: #212529;
+    border-bottom-left-radius: 4px; /* 꼬리 효과 */
+}
+
+.message-info.theirs {
+    display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: 10px; /* 사진과 말풍선 사이 간격 */
-    max-width: 80%;
+    margin-left: 6px;
+    justify-content: flex-end;
 }
 
-/* [핵심] 프로필 사진 & 이니셜 아바타 공통 스타일 
-   - 두 클래스 모두 같은 크기, 모양, 그림자를 가집니다.
-*/
-.chat-profile-img, 
-.chat-profile-initials {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    margin-top: 0;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
-}
-
-/* 이미지 프로필 */
+/* --- 프로필 사진 --- */
 .chat-profile-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     object-fit: cover;
-    background-color: #fff;
+    background-color: #e9ecef;
+    margin-bottom: 20px; /* 말풍선 위치와 맞추기 위함 */
 }
 
-/* 이니셜 프로필 */
 .chat-profile-initials {
-    background-color: #a0a0a0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #adb5bd;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: 1.1rem;
-    user-select: none;
-    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 20px;
 }
 
 /* --- 메시지 내용 래퍼 --- */
@@ -60,149 +105,101 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    max-width: 100%;
 }
 
-.sender-nickname {
-    margin-bottom: 4px;
-    font-size: 0.85rem;
-    color: #666;
-    font-weight: 600;
-    margin-left: 2px;
-}
-
-/* --- 말풍선 스타일 --- */
-.message-bubble {
-    padding: 10px 14px;
-    border-radius: 16px;
-    position: relative;
-    word-break: break-word;
-    max-width: 100%;
-    font-size: 0.95rem;
-    line-height: 1.5;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* 말풍선에도 살짝 그림자 */
-}
-
-.message-bubble.mine {
-    background-color: #007bff; /* 파란색 */
-    color: white;
-    border-bottom-right-radius: 2px; /* 말꼬리 효과 */
-}
-
-.message-bubble.theirs {
-    background-color: #ffffff; /* 흰색 배경 */
-    border: 1px solid #e0e0e0; /* 연한 테두리 추가 */
-    color: #333;
-    border-top-left-radius: 2px; /* 말꼬리 효과 */
-}
-
-/* 파일 메시지일 때 패딩 조정 */
-.message-bubble.is-file {
-    padding: 8px;
-}
-
-/* --- 메시지 정보 (시간, 읽음 숫자) --- */
-.message-info {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    font-size: 0.7em;
-    min-width: 45px;
-    margin-top: 25px;
-    color: #999;
-}
-
-.message-info.mine {
-    align-items: flex-end;
-    margin-right: 6px;
-}
-
-.message-info.theirs {
-    align-items: flex-start;
-    margin-left: 6px;
+/* --- 시간 및 읽음 확인 --- */
+.timestamp {
+    font-size: 11px;
+    color: #868e96;
+    margin-top: 2px;
+    white-space: nowrap;
 }
 
 .unread-count {
-    color: #ff5b5b;
+    color: #ffc107; /* 노란색 */
+    font-size: 10px;
     font-weight: bold;
     margin-bottom: 2px;
-    font-size: 0.8em;
 }
 
-/* --- 이미지 미리보기 --- */
+/* --- 파일 메시지 --- */
+.file-message a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+    font-weight: 500;
+}
+
+.file-message a:hover {
+    text-decoration: underline;
+}
+
 .image-preview {
     max-width: 200px;
     max-height: 200px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: block;
+    margin-bottom: 6px;
     cursor: pointer;
-    object-fit: cover;
 }
 
 .download-link {
-    font-size: 0.8rem;
+    font-size: 12px;
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: 600;
-    margin-top: 4px;
+    opacity: 0.8;
 }
-
-.download-link.mine { color: #e0e0e0; }
+.download-link.mine { color: white; }
 .download-link.theirs { color: #007bff; }
 
-/* --- 컨텍스트 메뉴 --- */
+/* --- 컨텍스트 메뉴 (우클릭) --- */
 .context-menu {
-    background: white;
-    border: 1px solid #eee;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    border-radius: 8px;
-    overflow: hidden;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     z-index: 1000;
-    display: flex;
-    flex-direction: column;
+    overflow: hidden;
     min-width: 100px;
+    padding: 4px 0;
 }
 
 .context-menu button {
-    background: none;
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
     border: none;
-    padding: 10px 16px;
+    background: none;
     text-align: left;
+    font-size: 14px;
     cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.2s;
+    color: #333;
 }
 
 .context-menu button:hover {
-    background-color: #f7f9fc;
+    background-color: #f8f9fa;
 }
 
-.context-menu .delete-option {
-    color: #ff4d4f;
+.context-menu button.delete-option {
+    color: #dc3545;
 }
 
 /* --- 수정 모드 --- */
 .edit-input-area {
     display: flex;
     flex-direction: column;
-    min-width: 220px;
+    gap: 6px;
+    min-width: 200px;
 }
 
 .edit-input {
-    width: 100%;
-    border: 1px solid #ccc;
-    border-radius: 6px;
     padding: 8px;
-    margin-bottom: 6px;
-    font-family: inherit;
-    font-size: 0.95rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    resize: none;
     outline: none;
-}
-
-.edit-input:focus {
-    border-color: #007bff;
 }
 
 .edit-actions {
@@ -211,14 +208,22 @@
     gap: 6px;
 }
 
-.edit-btn-save, .edit-btn-cancel {
-    padding: 6px 12px;
+.edit-btn-save {
+    background-color: #28a745;
+    color: white;
     border: none;
+    padding: 4px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 12px;
 }
 
-.edit-btn-save { background-color: #007bff; color: white; }
-.edit-btn-cancel { background-color: #e0e0e0; color: #333; }
+.edit-btn-cancel {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}

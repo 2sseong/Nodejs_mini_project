@@ -1,225 +1,263 @@
-// src/components/Chatpage/Messages/MessageList.jsx
-import { useRef, useEffect, useLayoutEffect } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import MessageItem from './MessageItem';
 import './MessageList.css';
 
-function debounce(func, delay) {
-  let timeout;
-  return function(...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), delay);
-  };
-}
+// 날짜 파싱 헬퍼 함수
+const parseDateString = (dateString) => {
+    if (!dateString) return null;
+    let date = new Date(dateString);
+    if (!isNaN(date.getTime())) return date;
+    return null;
+};
+
+const getFormattedDate = (dateString) => {
+    const date = parseDateString(dateString);
+    if (!date) return ''; 
+    return date.toLocaleDateString('ko-KR', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+    });
+};
 
 export default function MessageList({ 
-    messages, // [수정] props 그대로 사용 (useState 제거)
-    userId, 
-    onLoadMore, 
-    isLoadingMore, 
-    hasMoreMessages,
-    isInitialLoad, 
-    markAsRead,
-    isReadStatusLoaded, 
-    onEditMessage,    
-    onDeleteMessage,
-    scrollToMsgId,
-    searchKeyword,
-    loadNewerMessages, 
-    hasFutureMessages, 
-    isLoadingNewer
+    messages, userId, onLoadMore, isLoadingMore, hasMoreMessages,
+    isInitialLoad, markAsRead,
+    onEditMessage, onDeleteMessage, scrollToMsgId, searchKeyword,
+    loadNewerMessages, hasFutureMessages, isLoadingNewer
 }) {
+    const listRef = useRef(null);
+    const [previewMsg, setPreviewMsg] = useState(null); // 미리보기 메시지 상태
+    
+    // 스크롤 상태 관리용 Ref
+    const isAtBottomRef = useRef(true); 
+    const prevMsgLenRef = useRef(messages.length);
+    const prevScrollHeightRef = useRef(0);
+    const isLoadingNewerRef = useRef(false); 
 
-    // [제거됨] 내부 state (messages), socket 관련 useEffect 등 불필요한 로직 삭제
+    // 1. 스크롤 이벤트 핸들러
+    const handleScroll = useCallback(() => {
+        if (!listRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+        
+        // 바닥과의 거리 계산
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // 바닥 감지 (여유값 100px)
+        const isBottom = distanceFromBottom < 100;
+        isAtBottomRef.current = isBottom;
 
-    // [수정 1] 메시지 업데이트 시: 현재 창이 '포커스' 상태일 때만 읽음 처리
-    useEffect(() => {
-        if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
-            // document.hasFocus() 체크 추가
-            if (document.hasFocus()) {
-                const timer = setTimeout(() => {
-                    markAsRead();
-                }, 300);
-                return () => clearTimeout(timer);
-            }
+        // 바닥에 도달하면 미리보기 끄기
+        if (isBottom) {
+            setPreviewMsg(null);
         }
-    }, [messages, markAsRead, isReadStatusLoaded]);
 
-    // [추가] 윈도우 포커스 감지: 창을 클릭하거나 Alt+Tab으로 돌아왔을 때 읽음 처리
-    useEffect(() => {
-        const handleActivity = () => {
-            // 조건: 메시지가 있고, 읽음 상태가 로드되었으며, 현재 창이 포커스된 상태일 때
-            if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
-                if (document.hasFocus()) {
-                    console.log('[MessageList] User active (Focus/Click), marking as read.');
-                    markAsRead();
+        // A. 상단 스크롤 (과거 메시지 로딩)
+        if (scrollTop === 0 && !isLoadingMore && hasMoreMessages) {
+            prevScrollHeightRef.current = scrollHeight; 
+            onLoadMore();
+        }
+
+        // B. 하단 스크롤 (미래 메시지 로딩)
+        // 감도 150px로 설정
+        if (distanceFromBottom < 150 && hasFutureMessages && !isLoadingNewer) {
+            if (!isLoadingNewerRef.current) {
+                isLoadingNewerRef.current = true;
+                if (loadNewerMessages) {
+                    loadNewerMessages().finally(() => {
+                        isLoadingNewerRef.current = false;
+                    });
                 }
             }
-        };
-
-        // 이벤트 리스너 3중 등록 (하나라도 걸리면 읽음 처리)
-        window.addEventListener('focus', handleActivity); // 창 활성화 (Alt+Tab 등)
-        window.addEventListener('click', handleActivity); // 창 내부 클릭
-        document.addEventListener('visibilitychange', handleActivity); // 탭 전환 감지
-
-        return () => {
-            window.removeEventListener('focus', handleActivity);
-            window.removeEventListener('click', handleActivity);
-            document.removeEventListener('visibilitychange', handleActivity);
-        };
-    }, [messages.length, markAsRead, isReadStatusLoaded]);
-
-    const listRef = useRef(null);
-    const prevScrollHeightRef = useRef(null);
-    const isLoadingNewerRef = useRef(false);
-
-    // 2. 스크롤 핸들러 (로그가 잘 찍히던 그 로직 그대로)
-    const handleScroll = () => {
-        if (!listRef.current) return;
-        
-        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-
-        // 이제 여기서 최신 isLoadingMore, hasMoreMessages 값을 참조합니다.
-        if (scrollTop <= 50 && !isLoadingMore && hasMoreMessages) {
-            console.log('Near top, loading more...');
-            prevScrollHeightRef.current = scrollHeight;
-            onLoadMore(); // 최신 소켓이 담긴 onLoadMore가 실행됩니다.
         }
-        // 2. [추가] 아래로 스크롤 (미래 데이터 로드)
-        if (scrollHeight - scrollTop - clientHeight <= 50) {
-            if (hasFutureMessages && !isLoadingNewer) {
-                
-                // [핵심] 로딩 시작 시 플래그 설정 -> useLayoutEffect에서 스크롤 이동 방지
-                isLoadingNewerRef.current = true; 
-                
-                if (loadNewerMessages) loadNewerMessages();
-            }
-        }
-    };
+    }, [isLoadingMore, hasMoreMessages, onLoadMore, hasFutureMessages, isLoadingNewer, loadNewerMessages]);
 
-    // (A) 최신 handleScroll 함수를 항상 ref에 저장해 둡니다.
-    const handleScrollRef = useRef(handleScroll);
-    
-    // (B) 렌더링 될 때마다 ref를 최신 함수로 업데이트합니다.
+    // 바닥 근처인데 미래 메시지가 남아있는 경우 강제 로딩 (ex: 메시지 로드 직후 스크롤이 덜 내려갔을 때)
     useEffect(() => {
-        handleScrollRef.current = handleScroll;
-    });
-
-    // (C) 디바운스 함수는 "한 번만" 생성되지만, 실행될 때는 "ref에 들어있는 최신 함수"를 꺼내 씁니다.
-    const debouncedHandleScroll = useRef(
-        debounce((...args) => {
-            // ref.current를 호출하므로 항상 최신 props/state에 접근 가능!
-            if (handleScrollRef.current) {
-                handleScrollRef.current(...args);
+        if (isAtBottomRef.current && hasFutureMessages && !isLoadingNewer && !isLoadingNewerRef.current) {
+            isLoadingNewerRef.current = true;
+            if (loadNewerMessages) {
+                loadNewerMessages().finally(() => {
+                    isLoadingNewerRef.current = false;
+                });
             }
-        }, 200)
-    ).current;
-  
-    // 3. [핵심 수정] 스크롤 위치 복구 로직
-    // useEffect -> useLayoutEffect로 변경하여 깜빡임 제거
+        }
+    }, [messages, hasFutureMessages, isLoadingNewer, loadNewerMessages]);
+
+
+    // 2. 메시지 변경 시 스크롤 제어 (핵심 로직)
     useLayoutEffect(() => {
         const list = listRef.current;
         if (!list) return;
 
-        const oldScrollHeight = prevScrollHeightRef.current;
+        const currentLen = messages.length;
+        const prevLen = prevMsgLenRef.current;
+        prevMsgLenRef.current = currentLen;
 
-        // [핵심 수정] 아래로 로딩하여 메시지가 추가된 경우, 스크롤을 건드리지 않음
-        // (브라우저가 알아서 현재 위치 유지 -> 새 메시지는 화면 아래에 추가됨 -> 무한 로딩 방지)
-        if (isLoadingNewerRef.current) {
-            isLoadingNewerRef.current = false; // 플래그 초기화
-            return; 
-        }
-        
-        // 처음 로딩이거나, 저장된 높이가 없으면 (맨 아래로)
-        if (isInitialLoad || oldScrollHeight === null) {
+        // 로딩 중 리렌더링 시 처리 (선택적)
+        if (isLoadingNewer) return;
+
+        // A. 초기 로딩: 무조건 바닥
+        if (isInitialLoad) {
             list.scrollTop = list.scrollHeight;
-        } 
-        // 과거 메시지 로딩 후 (스크롤 위치 유지)
-        else {
-            // (새로운 전체 높이) - (이전 전체 높이) = (새로 추가된 메시지들의 높이)
-            // 이만큼 스크롤을 내려줘야 사용자가 보던 위치가 유지됨
-            list.scrollTop = list.scrollHeight - oldScrollHeight;
-            
-            // 복구 후 초기화
-            prevScrollHeightRef.current = null;
+            isAtBottomRef.current = true;
+            return;
         }
-    }, [messages, isInitialLoad]); // 메시지가 갱신될 때마다 실행
 
-    // 4. [추가] 검색된 메시지로 자동 스크롤
-    useEffect(() => {
-        if (scrollToMsgId) {
-            // 메시지 아이템에 id={`msg-${msgId}`}를 부여했다고 가정
-            const element = document.getElementById(`msg-${scrollToMsgId}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // 시각적 강조 효과 (선택사항: 클래스 추가 후 제거)
-                element.classList.add('highlight-flash');
-                setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+        // B. 과거 메시지 불러온 경우 (스크롤 위치 유지)
+        // prevScrollHeightRef가 설정되어 있다면 위로 스크롤 로딩 상황임
+        if (currentLen > prevLen && prevScrollHeightRef.current > 0) {
+            const newScrollHeight = list.scrollHeight;
+            list.scrollTop = newScrollHeight - prevScrollHeightRef.current;
+            prevScrollHeightRef.current = 0;
+            return;
+        }
+
+        // C. 새 메시지가 추가된 경우
+        if (currentLen > prevLen) {
+            // [핵심 수정] 한 번에 여러 메시지가 추가된 경우(Load Newer)는 자동 스크롤 하지 않음
+            // (1개 추가된 경우는 실시간 메시지일 확률이 높음 -> 스냅 동작)
+            if (currentLen - prevLen > 1) {
+                return; 
+            }
+
+            const lastMsg = messages[currentLen - 1];
+            const isMyMsg = String(lastMsg.SENDER_ID || lastMsg.sender_id) === String(userId);
+
+            if (isMyMsg) {
+                // 내가 쓴 글은 무조건 바닥으로
+                list.scrollTop = list.scrollHeight;
+                isAtBottomRef.current = true;
+                setPreviewMsg(null);
             } else {
-                console.log('Target message element not found:', scrollToMsgId);
+                if (isAtBottomRef.current) {
+                    // 바닥에 있었으면 계속 바닥으로 (자동 스크롤)
+                    list.scrollTop = list.scrollHeight;
+                } else {
+                    // 스크롤이 올라가 있었으면 -> 미리보기 표시
+                    setPreviewMsg(lastMsg);
+                }
             }
         }
-    }, [scrollToMsgId]); // scrollToMsgId가 바뀔 때마다 실행
+    }, [messages, isInitialLoad, userId, isLoadingNewer]);
+
+    // 3. 읽음 처리 트리거
+    useEffect(() => {
+        const triggerRead = () => {
+            if (messages.length > 0 && markAsRead && document.hasFocus()) {
+                markAsRead();
+            }
+        };
+
+        triggerRead();
+
+        window.addEventListener('focus', triggerRead);
+        window.addEventListener('click', triggerRead);
+        
+        return () => {
+            window.removeEventListener('focus', triggerRead);
+            window.removeEventListener('click', triggerRead);
+        };
+    }, [messages, markAsRead]); 
+
+    // 4. 검색 등으로 특정 메시지로 이동
+    useEffect(() => {
+        if (scrollToMsgId && listRef.current) {
+            const el = document.getElementById(`msg-${scrollToMsgId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('highlight-flash');
+                setTimeout(() => el.classList.remove('highlight-flash'), 2000);
+                isAtBottomRef.current = false;
+            }
+        }
+    }, [scrollToMsgId]);
+
+    // 5. 미리보기 클릭 시 바닥 이동
+    const handleClickPreview = () => {
+        if (listRef.current) {
+            listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+            setPreviewMsg(null);
+            setTimeout(() => { isAtBottomRef.current = true; }, 300);
+        }
+    };
+
+    // 이미지 로딩 시 스크롤 보정
+    const handleImageLoad = useCallback(() => {
+        if (isAtBottomRef.current && listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+    }, []);
+
+    let lastDate = null;
 
     return (
-        <div 
-            className="message-area" 
-            ref={listRef} 
-            onScroll={debouncedHandleScroll}
-        >
-            {/* 로딩 스피너 */}
-            {isLoadingMore && (
-                <div className="loading-spinner">
-                    <span>Loading...</span>
+        <div className="message-area" ref={listRef} onScroll={handleScroll}>
+            {isLoadingMore && <div className="loading-spinner">Wait...</div>}
+            
+            {!isLoadingMore && !hasMoreMessages && messages.length > 0 && (
+                <div style={{textAlign:'center', fontSize:'12px', color:'#ccc', margin:'10px'}}>
+                    대화의 시작입니다
                 </div>
             )}
 
-            {/* 히스토리 끝 */}
-            {!isLoadingMore && !hasMoreMessages && messages.length > 0 && (
-                <div className="history-end">
-                    <span>대화 내역의 시작입니다.</span>
-                </div>
-            )}
-            
-            {messages.map((m, index) => {
-                const msgId = m.MSG_ID || m.msg_id || m.TEMP_ID;
-                const uniqueKey = msgId ? `${msgId}` : `msg_${index}`;
-                
-                const senderId = m.SENDER_ID || m.sender_id;
-                const nickname = m.NICKNAME || m.nickname;
+            {messages.map((m, i) => {
+                const msgId = m.MSG_ID || m.msg_id || m.TEMP_ID || i;
                 const sentAt = m.SENT_AT || m.sent_at;
-                const content = m.CONTENT || m.content;
-                const messageType = m.MESSAGE_TYPE || m.message_type;
-                const fileUrl = m.FILE_URL || m.file_url;
-                const fileName = m.FILE_NAME || m.file_name;
-                const unreadCount = m.unreadCount;
-                // [필수] 프로필 사진 prop 전달
-                const profilePic = m.PROFILE_PIC || m.profile_pic;
+                const messageDate = getFormattedDate(sentAt);
+                const showDate = messageDate && messageDate !== lastDate;
+                if (showDate) lastDate = messageDate;
+
+                const isMine = String(m.SENDER_ID || m.sender_id) === String(userId);
 
                 return (
-                    <MessageItem
-                        key={uniqueKey} 
-                        msgId={msgId}
-                        mine={String(senderId) === String(userId)} 
-                        nickname={nickname}
-                        profilePic={profilePic} // 전달
-                        sentAt={sentAt}
-                        content={content}
-                        messageType={messageType}
-                        fileUrl={fileUrl}
-                        fileName={fileName}
-                        unreadCount={unreadCount}
-                        onEdit={onEditMessage}     
-                        onDelete={onDeleteMessage}
-                        searchKeyword={searchKeyword}
-                    />
+                    <div key={msgId} className="message-row-container">
+                        {showDate && (
+                            <div className="date-separator">
+                                <span className="date-text">{messageDate}</span>
+                            </div>
+                        )}
+                        <MessageItem
+                            msgId={msgId}
+                            mine={isMine}
+                            nickname={m.NICKNAME || m.nickname}
+                            profilePic={m.PROFILE_PIC || m.profile_pic}
+                            sentAt={sentAt}
+                            content={m.CONTENT || m.content}
+                            messageType={m.MESSAGE_TYPE || m.message_type}
+                            fileUrl={m.FILE_URL || m.file_url}
+                            fileName={m.FILE_NAME || m.file_name}
+                            unreadCount={m.unreadCount}
+                            onEdit={onEditMessage}
+                            onDelete={onDeleteMessage}
+                            onImageLoad={handleImageLoad}
+                            searchKeyword={searchKeyword}
+                        />
+                    </div>
                 );
             })}
+
             {isLoadingNewer && (
-                <div className="loading-spinner-bottom" style={{ textAlign: 'center', padding: '10px' }}>
+                <div className="loading-spinner-bottom">
                     <span>Loading newer messages...</span>
                 </div>
             )}
+
+            {previewMsg && (
+                <div className="floating-preview-bar" onClick={handleClickPreview}>
+                    <div className="preview-info">
+                        <span className="preview-name">
+                            {previewMsg.NICKNAME || previewMsg.nickname || '상대방'}
+                        </span>
+                        <span className="preview-desc">
+                            {previewMsg.MESSAGE_TYPE === 'FILE' 
+                                ? '파일을 보냈습니다.' 
+                                : (previewMsg.CONTENT || previewMsg.content)}
+                        </span>
+                    </div>
+                    <div className="preview-arrow">⬇</div>
+                </div>
+            )}
+            
+            <div style={{ height: 10 }}></div>
         </div>
     );
 }
