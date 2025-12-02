@@ -61,7 +61,7 @@ export async function updateLastLogin(userId) {
 // ID로 사용자 정보 조회 (비밀번호 제외)
 export async function findUserById(userId) {
     const sql = `
-        SELECT USER_ID, USERNAME, NICKNAME, PROFILE_PIC, CREATED_AT
+        SELECT USER_ID, USERNAME, NICKNAME, PROFILE_PIC, CREATED_AT, DEPARTMENT, POSITION
         FROM T_USER
         WHERE USER_ID = :userId
     `;
@@ -83,9 +83,15 @@ export async function updateProfilePic(userId, filePath) {
 }
 
 // 사용자 정보(닉네임 등) 수정
-export async function updateUserInfo(userId, nickname) {
-    const sql = `UPDATE T_USER SET NICKNAME = :nickname WHERE USER_ID = :userId`;
-    await executeTransaction(sql, { nickname, userId });
+export async function updateUserInfo(userId, { nickname, department, position }) {
+    const sql = `
+        UPDATE T_USER 
+        SET NICKNAME = :nickname,
+            DEPARTMENT = :department,
+            POSITION = :position
+        WHERE USER_ID = :userId
+    `;
+    await executeTransaction(sql, { nickname, department, position, userId });
 }
 
 // 비밀번호 변경 함수

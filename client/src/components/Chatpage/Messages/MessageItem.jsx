@@ -203,7 +203,7 @@ export default function MessageItem(props) {
                 </div>
             )}
 
-            {/* [추가] 삭제 확인 모달 */}
+            {/* 삭제 확인 모달 */}
             <ConfirmModal 
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}

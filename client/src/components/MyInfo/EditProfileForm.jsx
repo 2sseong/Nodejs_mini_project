@@ -1,8 +1,13 @@
+// client/src/components/MyInfo/EditProfileForm.jsx
 import React from 'react';
 
 export default function EditProfileForm({
     nickname,
     onNicknameChange,
+    department,          
+    onDepartmentChange,  
+    position,            
+    onPositionChange,    
     newPassword,
     onNewPasswordChange,
     confirmPassword,
@@ -10,10 +15,9 @@ export default function EditProfileForm({
     onSave,
     onCancel
 }) {
-    // [추가] 공백 입력을 실시간으로 차단하는 핸들러
+
     const handlePasswordInput = (e, setter) => {
         const value = e.target.value;
-        // 공백(스페이스, 탭 등)을 모두 제거
         const noSpaceValue = value.replace(/\s/g, '');
         setter(noSpaceValue);
     };
@@ -30,13 +34,34 @@ export default function EditProfileForm({
                     className="input-field"
                 />
             </div>
+            <div className="info-item">
+                <label>부서</label>
+                <input 
+                    type="text" 
+                    value={department} 
+                    onChange={(e) => onDepartmentChange(e.target.value)}
+                    className="input-field"
+                    placeholder="부서를 입력하세요"
+                />
+            </div>
+            <div className="info-item">
+                <label>직급</label>
+                <input 
+                    type="text" 
+                    value={position} 
+                    onChange={(e) => onPositionChange(e.target.value)}
+                    className="input-field"
+                    placeholder="직급을 입력하세요"
+                />
+            </div>
+
             <hr style={{margin: '20px 0', border: '0', borderTop: '1px solid #eee'}} />
+            
             <div className="info-item">
                 <label>새 비밀번호 (변경 시에만 입력)</label>
                 <input 
                     type="password" 
                     value={newPassword} 
-                    // [수정] 공백 차단 핸들러 적용
                     onChange={(e) => handlePasswordInput(e, onNewPasswordChange)}
                     placeholder="변경할 비밀번호 (4자 이상)"
                     className="input-field"
@@ -47,7 +72,6 @@ export default function EditProfileForm({
                 <input 
                     type="password" 
                     value={confirmPassword} 
-                    // [수정] 공백 차단 핸들러 적용
                     onChange={(e) => handlePasswordInput(e, onConfirmPasswordChange)}
                     placeholder="비밀번호 확인"
                     className="input-field"
