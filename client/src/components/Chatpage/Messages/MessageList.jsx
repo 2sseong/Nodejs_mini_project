@@ -1,5 +1,5 @@
 // src/components/Chatpage/Messages/MessageList.jsx
-import { useRef, useEffect, useLayoutEffect } from 'react'; // [변경] useLayoutEffect 추가
+import { useRef, useEffect, useLayoutEffect } from 'react';
 import MessageItem from './MessageItem';
 import './MessageList.css';
 
@@ -13,7 +13,7 @@ function debounce(func, delay) {
 }
 
 export default function MessageList({ 
-    messages, 
+    messages, // [수정] props 그대로 사용 (useState 제거)
     userId, 
     onLoadMore, 
     isLoadingMore, 
@@ -29,6 +29,8 @@ export default function MessageList({
     hasFutureMessages, 
     isLoadingNewer
 }) {
+
+    // [제거됨] 내부 state (messages), socket 관련 useEffect 등 불필요한 로직 삭제
 
     // [수정 1] 메시지 업데이트 시: 현재 창이 '포커스' 상태일 때만 읽음 처리
     useEffect(() => {
@@ -49,7 +51,7 @@ export default function MessageList({
             // 조건: 메시지가 있고, 읽음 상태가 로드되었으며, 현재 창이 포커스된 상태일 때
             if (messages.length > 0 && markAsRead && isReadStatusLoaded) {
                 if (document.hasFocus()) {
-                    console.log('[MessageList] User active (Focus/Click), marking as read.'); // [로그 확인용]
+                    console.log('[MessageList] User active (Focus/Click), marking as read.');
                     markAsRead();
                 }
             }
@@ -191,13 +193,16 @@ export default function MessageList({
                 const fileUrl = m.FILE_URL || m.file_url;
                 const fileName = m.FILE_NAME || m.file_name;
                 const unreadCount = m.unreadCount;
+                // [필수] 프로필 사진 prop 전달
+                const profilePic = m.PROFILE_PIC || m.profile_pic;
 
                 return (
                     <MessageItem
                         key={uniqueKey} 
                         msgId={msgId}
                         mine={String(senderId) === String(userId)} 
-                        nickname={nickname} 
+                        nickname={nickname}
+                        profilePic={profilePic} // 전달
                         sentAt={sentAt}
                         content={content}
                         messageType={messageType}

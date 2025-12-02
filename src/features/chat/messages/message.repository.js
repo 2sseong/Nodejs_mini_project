@@ -11,7 +11,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
                         T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                        T2.NICKNAME
+                        T2.NICKNAME, T2.PROFILE_PIC 
                     FROM T_MESSAGE T1
                     JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
                     WHERE T1.ROOM_ID = :roomId
@@ -246,7 +246,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
                         T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                        T2.NICKNAME
+                        T2.NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1
                     JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
                     WHERE T1.ROOM_ID = :roomId 
@@ -261,7 +261,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
                         T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                        T2.NICKNAME
+                        T2.NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1
                     JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
                     WHERE T1.ROOM_ID = :roomId 
@@ -295,7 +295,7 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
             SELECT 
                 T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
                 T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                T2.NICKNAME
+                T2.NICKNAME, T2.PROFILE_PIC
             FROM T_MESSAGE T1
             JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
             WHERE T1.ROOM_ID = :roomId 
