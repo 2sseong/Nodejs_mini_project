@@ -101,6 +101,9 @@ export const searchAllUsers = async (query = '', userId) => {
  * @returns {Promise<object>} - 서버 응답 (success 및 message 포함)
  */
 export const toggleUserPick = async (targetUserId, isAdding) => {
+    console.log("🚀 toggleUserPick 호출됨");
+    console.log("targetUserId:", targetUserId);
+    console.log("isAdding:", isAdding);
     const requestBody = {
         targetUserId: targetUserId,
         isAdding: isAdding

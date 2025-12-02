@@ -1,13 +1,18 @@
-﻿import * as friendService from './friendService.js';
-import { addPick, removePick, searchUsers as searchUsersService } from './friendService.js';
+﻿import {
+    searchUsers as searchUsersService,
+    addPick as addPickService,
+    removePick as removePickService
+} from './friendService.js';
+import { addPick, removePick, searchUsersByQuery } from './friendRepository.js';
 
 // -- GET /api/friends - 친구 목록 조회
 
 export const getFriendList = async (req, res) => {
-    const currentUserId = req.user.id;
+    const currentUserId = req.user.userId;
 
     try {
         const friends = await searchUsersService(currentUserId, null);
+        console.log("getFriendList에서 받은 friends:", friends);
         return res.status(200).json(friends);
     } catch (error) {
         console.error("친구 목록 조회 중 Controller 오류:", error.message);
@@ -37,9 +42,10 @@ export const searchUsers = async (req, res) => {
 
     try {
         const results = await searchUsersService(userId, query);
+        console.log("컨트롤러에서 받은 results:", results);
         return res.status(200).json(results);
     } catch (error) {
-        console.error("searchUsers 실행 중 오류 발생:", error);
+        console.error("searchUsersService 실행 중 오류 발생:", error);
         return res.status(500).json({ error: "사용자 검색 처리 중 서버 오류가 발생했습니다." });
     }
 };
@@ -53,7 +59,6 @@ export const searchUsers = async (req, res) => {
 export const togglePick = async (req, res) => {
     const userId = req.user.userId;
     const { targetUserId, isAdding } = req.body;
-
     // 3. 유효성 검사
     if (!userId || !targetUserId || typeof isAdding !== 'boolean') {
         return res.status(400).json({
@@ -68,10 +73,10 @@ export const togglePick = async (req, res) => {
         // 4. [토글 로직]: isAdding 값에 따라 Service 함수를 분기하여 호출합니다.
         if (isAdding) {
             // isAdding이 true면, 즐겨찾기 추가 함수 호출
-            result = await addPick(userId, targetUserId);
+            result = await addPickService(userId, targetUserId);
         } else {
             // isAdding이 false면, 즐겨찾기 제거 함수 호출
-            result = await removePick(userId, targetUserId);
+            result = await removePickService(userId, targetUserId);
         }
 
         // 5. 응답 반환: Service에서 받은 결과를 클라이언트에게 JSON 형태로 반환

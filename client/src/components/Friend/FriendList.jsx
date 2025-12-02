@@ -5,6 +5,14 @@ import './FriendList.css';
 
 // 개별 사용자 아이템 컴포넌트 (useState를 안전하게 사용하기 위해 분리)
 function UserItem({ user, myUserId, isOnline, onTogglePick }) {
+    console.log("=== UserItem 렌더링 ===");
+    console.log("전체 user 객체:", user);
+    console.log("user.userId:", user.userId);
+    console.log("user.userNickname:", user.userNickname);
+    console.log("user.username:", user.username);
+    console.log("user.isPick:", user.isPick);
+    console.log("myUserId:", myUserId);
+    console.log("================================");
     const { isMe } = user;
     const isPicked = user.isPick === 1;
 

@@ -1,8 +1,8 @@
 ﻿import * as friendRepository from './friendRepository.js';
 // 1. friendRepository의 함수들을 import합니다. (경로는 사용자 환경에 맞게 수정 필요)
 import {
-    addUserPick,
-    removeUserPick,
+    addPick as addPickRepo, // 서비스 함수랑 이름이 겹침
+    removePick as removePickRepo,
     searchUsersByQuery
 } from './friendRepository.js';
 
@@ -68,7 +68,7 @@ export const addPick = async (userId, targetUserId) => {
     try {
         // userId와 targetUserId는 클라이언트(프론트)에서 서버로 보낸 요청을 거쳐
         // 서비스 계층으로 전달됨(컨트롤러에서 정의)
-        const isSuccess = await addUserPick(userId, targetUserId);
+        const isSuccess = await addPickRepo(userId, targetUserId);
 
         // Repository 함수는 성공 시 true, 실패 시 false를 반환하도록 가정합니다.
         if (isSuccess) {
@@ -95,7 +95,7 @@ export const removePick = async (userId, targetUserId) => {
 
     // Repository 함수를 호출하여 DB에서 즐겨찾기 레코드를 삭제합니다.
     try {
-        const isSuccess = await removeUserPick(userId, targetUserId);
+        const isSuccess = await removePickRepo(userId, targetUserId);
 
         if (isSuccess) {
             return { success: true, message: '즐겨찾기가 성공적으로 제거되었습니다.' };
