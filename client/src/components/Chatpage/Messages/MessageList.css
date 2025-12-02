@@ -1,68 +1,108 @@
 /* client/src/components/Chatpage/Messages/MessageList.css */
 
-/* --- 1. 메시지 목록 영역 --- */
 .message-area {
     flex: 1;
     overflow-y: auto;
-    min-height: 0; 
+    position: relative; /* 자식 absolute/sticky 배치를 위해 필수 */
     padding: 20px;
     display: flex;
     flex-direction: column;
-    scroll-behavior: smooth; 
-    gap: 16px; 
-    /* 배경색 삭제 (투명) */
-    position: relative;
+    gap: 10px;
+    background-color: transparent; 
 }
 
-/* ... 공통 스타일 ... */
-.unread-count { color: #ffc107; font-size: 0.75rem; font-weight: bold; align-self: flex-end; margin-bottom: 5px; }
-.unread-count.mine { margin-right: 5px; }
-.unread-count.theirs { margin-right: 5px; }
+/* 날짜 구분선 */
+.message-row-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
 
-/* ... 메시지 아이템 관련 스타일은 MessageItem.css로 이동되었지만 호환성을 위해 남겨둘 수도 있음 (중복 방지를 위해 여기선 기능성 스타일만) ... */
+.date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    opacity: 0.8;
+}
 
-/* 2. 날짜 구분선 */
-.message-row-container { display: flex; flex-direction: column; width: 100%; }
-.date-separator { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 24px 0 16px 0; width: 100%; opacity: 0.8; }
-.date-separator::before, .date-separator::after { content: ''; flex: 1; height: 1px; background-color: #e0e0e0; }
-.date-text { font-size: 12px; color: #868e96; font-weight: 500; }
+.date-text {
+    font-size: 12px;
+    color: #868e96;
+    background-color: rgba(0,0,0,0.1);
+    padding: 4px 12px;
+    border-radius: 12px;
+}
 
-/* 3. 새 메시지 알림 바 */
-.new-message-preview {
-    position: sticky;
-    bottom: -1px; /* 미세한 틈 제거 */
+/* 로딩 스피너 */
+.loading-spinner, .loading-spinner-bottom {
+    text-align: center;
+    padding: 10px;
+    color: #adb5bd;
+    font-size: 0.9rem;
+}
+
+/* [수정] 미리보기 바 스타일 (이름 변경) */
+.floating-preview-bar {
+    position: sticky; /* 스크롤 영역 내부에서 하단 고정 */
+    bottom: 10px;     /* 바닥에서 10px 띄움 */
     left: 0;
+    right: 0;
+    margin-top: auto; /* flex container 안에서 하단으로 밀어냄 */
     
-    margin-left: -20px; 
-    margin-right: -20px; 
-    margin-bottom: -20px;
-    width: calc(100% + 40px);
-    
-    background-color: transparent;
-    backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(0, 86, 179, 0.2);
-    
-    padding: 12px 20px;
+    background-color: rgba(255, 255, 255, 0.411); /* 가독성을 위해 불투명도 약간 높임 */
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+
+    padding: 10px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    
     cursor: pointer;
-    z-index: 100;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+    z-index: 1000;
     
-    animation: slideUpBar 0.3s ease-out;
+    width: 88%; /* 너무 꽉 차지 않게 */
+    margin-left: auto;
+    margin-right: auto;
+
+    animation: slideUpFade 0.3s ease-out;
 }
 
-.new-message-preview:hover {
-    background-color: rgba(241, 248, 255, 0.5);
+.preview-info {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
 }
 
-.preview-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-.preview-sender { font-size: 12px; font-weight: 700; color: #0056b3; margin-bottom: 2px; }
-.preview-text { font-size: 13px; color: #495057; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preview-arrow { font-size: 18px; color: #007bff; font-weight: bold; animation: bounceBar 1.5s infinite; margin-right: 5px; }
+.preview-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 2px;
+}
 
-@keyframes slideUpBar { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes bounceBar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+.preview-desc {
+    font-size: 13px;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.preview-arrow {
+    font-size: 18px;
+    color: #007bff; /* 화살표 색상 강조 */
+}
+
+@keyframes slideUpFade {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

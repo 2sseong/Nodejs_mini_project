@@ -2,35 +2,12 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react
 import MessageItem from './MessageItem';
 import './MessageList.css';
 
-function debounce(func, delay) {
-    let timeout;
-    return function (...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-}
-
+// 날짜 파싱 헬퍼 함수
 const parseDateString = (dateString) => {
     if (!dateString) return null;
     let date = new Date(dateString);
     if (!isNaN(date.getTime())) return date;
-    try {
-        const parts = dateString.split(' '); 
-        if (parts.length < 1) return null;
-        const datePart = parts[0]; 
-        const timePart = parts[1] || "00:00:00"; 
-        const [yy, mm, dd] = datePart.split('/').map(Number);
-        const timeSubParts = timePart.split(':');
-        const hour = parseInt(timeSubParts[0], 10) || 0;
-        const min = parseInt(timeSubParts[1], 10) || 0;
-        const secStr = timeSubParts[2] || "0";
-        const sec = parseInt(secStr.split('.')[0], 10) || 0;
-        const fullYear = yy < 100 ? 2000 + yy : yy;
-        return new Date(fullYear, mm - 1, dd, hour, min, sec);
-    } catch (e) {
-        console.log('Date parsing error:', e); 
-        return null; }
+    return null;
 };
 
 const getFormattedDate = (dateString) => {
@@ -43,234 +20,244 @@ const getFormattedDate = (dateString) => {
 
 export default function MessageList({ 
     messages, userId, onLoadMore, isLoadingMore, hasMoreMessages,
-    isInitialLoad, markAsRead, isReadStatusLoaded, 
+    isInitialLoad, markAsRead,
     onEditMessage, onDeleteMessage, scrollToMsgId, searchKeyword,
     loadNewerMessages, hasFutureMessages, isLoadingNewer
 }) {
-    const [newMessagePreview, setNewMessagePreview] = useState(null);
-    const isStickToBottomRef = useRef(true); 
-    const lastMessageIdRef = useRef(null);
     const listRef = useRef(null);
-    const prevScrollHeightRef = useRef(null);
-    const isLoadingNewerRef = useRef(false);
+    const [previewMsg, setPreviewMsg] = useState(null); // 미리보기 메시지 상태
+    
+    // 스크롤 상태 관리용 Ref
+    const isAtBottomRef = useRef(true); 
+    const prevMsgLenRef = useRef(messages.length);
+    const prevScrollHeightRef = useRef(0);
+    const isLoadingNewerRef = useRef(false); 
 
-    // 읽음 처리
-    useEffect(() => {
-        const handleActivity = () => {
-            if (messages.length > 0 && markAsRead && isReadStatusLoaded && document.hasFocus()) {
-                markAsRead();
-            }
-        };
-        if (messages.length > 0 && markAsRead && isReadStatusLoaded && document.hasFocus()) {
-            const timer = setTimeout(markAsRead, 300);
-            return () => clearTimeout(timer);
-        }
-        window.addEventListener('focus', handleActivity);
-        window.addEventListener('click', handleActivity);
-        document.addEventListener('visibilitychange', handleActivity);
-        return () => {
-            window.removeEventListener('focus', handleActivity);
-            window.removeEventListener('click', handleActivity);
-            document.removeEventListener('visibilitychange', handleActivity);
-        };
-    }, [messages, markAsRead, isReadStatusLoaded]);
-
-    // [핵심] 스크롤 위치 체크
-    const checkScrollPosition = () => {
+    // 1. 스크롤 이벤트 핸들러
+    const handleScroll = useCallback(() => {
         if (!listRef.current) return;
         const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-        const scrollBottom = scrollHeight - scrollTop - clientHeight;
         
-        // 50px 이내 오차범위로 바닥 감지
-        const isAtBottom = scrollBottom <= 50;
-        isStickToBottomRef.current = isAtBottom;
+        // 바닥과의 거리 계산
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // 바닥 감지 (여유값 100px)
+        const isBottom = distanceFromBottom < 100;
+        isAtBottomRef.current = isBottom;
 
-        // 바닥에 도달하면 미리보기 바 숨김
-        if (isAtBottom && newMessagePreview) {
-            setNewMessagePreview(null);
+        // 바닥에 도달하면 미리보기 끄기
+        if (isBottom) {
+            setPreviewMsg(null);
         }
-    };
 
-    const handleScroll = () => {
-        if (!listRef.current) return;
-        checkScrollPosition(); 
-
-        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-        const scrollBottom = scrollHeight - scrollTop - clientHeight;
-
-        if (scrollTop <= 50 && !isLoadingMore && hasMoreMessages) {
-            prevScrollHeightRef.current = scrollHeight;
+        // A. 상단 스크롤 (과거 메시지 로딩)
+        if (scrollTop === 0 && !isLoadingMore && hasMoreMessages) {
+            prevScrollHeightRef.current = scrollHeight; 
             onLoadMore();
         }
-        if (scrollBottom <= 50 && hasFutureMessages && !isLoadingNewer) {
-            isLoadingNewerRef.current = true; 
-            if (loadNewerMessages) loadNewerMessages();
+
+        // B. 하단 스크롤 (미래 메시지 로딩)
+        // 감도 150px로 설정
+        if (distanceFromBottom < 150 && hasFutureMessages && !isLoadingNewer) {
+            if (!isLoadingNewerRef.current) {
+                isLoadingNewerRef.current = true;
+                if (loadNewerMessages) {
+                    loadNewerMessages().finally(() => {
+                        isLoadingNewerRef.current = false;
+                    });
+                }
+            }
         }
-    };
+    }, [isLoadingMore, hasMoreMessages, onLoadMore, hasFutureMessages, isLoadingNewer, loadNewerMessages]);
 
-    const handleScrollRef = useRef(handleScroll);
-    useEffect(() => { handleScrollRef.current = handleScroll; });
-
-    const debouncedHandleScroll = useRef(
-        debounce((...args) => handleScrollRef.current?.(...args), 200)
-    ).current;
-
-    const onNativeScroll = (e) => {
-        checkScrollPosition();
-        debouncedHandleScroll(e);
-    };
-
-    // [추가] 이미지 로딩 완료 시 스크롤 조정
-    const handleImageLoad = useCallback(() => {
-        if (isStickToBottomRef.current && listRef.current) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
+    // 바닥 근처인데 미래 메시지가 남아있는 경우 강제 로딩 (ex: 메시지 로드 직후 스크롤이 덜 내려갔을 때)
+    useEffect(() => {
+        if (isAtBottomRef.current && hasFutureMessages && !isLoadingNewer && !isLoadingNewerRef.current) {
+            isLoadingNewerRef.current = true;
+            if (loadNewerMessages) {
+                loadNewerMessages().finally(() => {
+                    isLoadingNewerRef.current = false;
+                });
+            }
         }
-    }, []);
-  
-    // 스크롤 제어 로직
+    }, [messages, hasFutureMessages, isLoadingNewer, loadNewerMessages]);
+
+
+    // 2. 메시지 변경 시 스크롤 제어 (핵심 로직)
     useLayoutEffect(() => {
         const list = listRef.current;
         if (!list) return;
 
-        const oldScrollHeight = prevScrollHeightRef.current;
-        
-        if (isLoadingNewerRef.current) {
-            isLoadingNewerRef.current = false;
-            return; 
-        }
-        
-        if (isInitialLoad || oldScrollHeight === null) {
-            list.scrollTop = list.scrollHeight;
-            isStickToBottomRef.current = true;
-        } 
-        else if (oldScrollHeight !== null && list.scrollHeight > oldScrollHeight) {
-             list.scrollTop = list.scrollHeight - oldScrollHeight;
-             prevScrollHeightRef.current = null;
-        }
-        else {
-            const lastMsg = messages[messages.length - 1];
-            const lastMsgId = lastMsg?.MSG_ID || lastMsg?.msg_id || lastMsg?.TEMP_ID;
-            const isNewMessageArrived = lastMessageIdRef.current !== lastMsgId;
+        const currentLen = messages.length;
+        const prevLen = prevMsgLenRef.current;
+        prevMsgLenRef.current = currentLen;
 
-            if (isNewMessageArrived) {
-                if (isStickToBottomRef.current) {
-                    // 바닥에 있으면 자동 스크롤
-                    list.scrollTop = list.scrollHeight;
-                } 
-                else {
-                    const myId = String(userId);
-                    const senderId = String(lastMsg?.SENDER_ID || lastMsg?.sender_id);
-                    
-                    if (senderId === myId) {
-                        // 내가 보낸 메시지는 무조건 바닥으로
-                        list.scrollTop = list.scrollHeight;
-                        isStickToBottomRef.current = true;
-                        setNewMessagePreview(null);
-                    } else {
-                        // 상대방 메시지는 미리보기 띄우기
-                        setNewMessagePreview({
-                            nickname: lastMsg.NICKNAME || lastMsg.nickname || '알 수 없음',
-                            content: lastMsg.CONTENT || lastMsg.content || (lastMsg.file_url ? '파일을 보냈습니다.' : '새로운 메시지'),
-                            profilePic: lastMsg.PROFILE_PIC || lastMsg.profile_pic
-                        });
-                    }
-                }
-                lastMessageIdRef.current = lastMsgId;
+        // 로딩 중 리렌더링 시 처리 (선택적)
+        if (isLoadingNewer) return;
+
+        // A. 초기 로딩: 무조건 바닥
+        if (isInitialLoad) {
+            list.scrollTop = list.scrollHeight;
+            isAtBottomRef.current = true;
+            return;
+        }
+
+        // B. 과거 메시지 불러온 경우 (스크롤 위치 유지)
+        // prevScrollHeightRef가 설정되어 있다면 위로 스크롤 로딩 상황임
+        if (currentLen > prevLen && prevScrollHeightRef.current > 0) {
+            const newScrollHeight = list.scrollHeight;
+            list.scrollTop = newScrollHeight - prevScrollHeightRef.current;
+            prevScrollHeightRef.current = 0;
+            return;
+        }
+
+        // C. 새 메시지가 추가된 경우
+        if (currentLen > prevLen) {
+            // [핵심 수정] 한 번에 여러 메시지가 추가된 경우(Load Newer)는 자동 스크롤 하지 않음
+            // (1개 추가된 경우는 실시간 메시지일 확률이 높음 -> 스냅 동작)
+            if (currentLen - prevLen > 1) {
+                return; 
+            }
+
+            const lastMsg = messages[currentLen - 1];
+            const isMyMsg = String(lastMsg.SENDER_ID || lastMsg.sender_id) === String(userId);
+
+            if (isMyMsg) {
+                // 내가 쓴 글은 무조건 바닥으로
+                list.scrollTop = list.scrollHeight;
+                isAtBottomRef.current = true;
+                setPreviewMsg(null);
             } else {
-                // 메시지 업데이트(수정 등) 시 바닥 유지
-                if (isStickToBottomRef.current) {
+                if (isAtBottomRef.current) {
+                    // 바닥에 있었으면 계속 바닥으로 (자동 스크롤)
                     list.scrollTop = list.scrollHeight;
+                } else {
+                    // 스크롤이 올라가 있었으면 -> 미리보기 표시
+                    setPreviewMsg(lastMsg);
                 }
             }
         }
-    }, [messages, isInitialLoad, userId]);
+    }, [messages, isInitialLoad, userId, isLoadingNewer]);
 
+    // 3. 읽음 처리 트리거
     useEffect(() => {
-        if (scrollToMsgId) {
-            const element = document.getElementById(`msg-${scrollToMsgId}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                element.classList.add('highlight-flash');
-                setTimeout(() => element.classList.remove('highlight-flash'), 2000);
-                isStickToBottomRef.current = false; 
+        const triggerRead = () => {
+            if (messages.length > 0 && markAsRead && document.hasFocus()) {
+                markAsRead();
+            }
+        };
+
+        triggerRead();
+
+        window.addEventListener('focus', triggerRead);
+        window.addEventListener('click', triggerRead);
+        
+        return () => {
+            window.removeEventListener('focus', triggerRead);
+            window.removeEventListener('click', triggerRead);
+        };
+    }, [messages, markAsRead]); 
+
+    // 4. 검색 등으로 특정 메시지로 이동
+    useEffect(() => {
+        if (scrollToMsgId && listRef.current) {
+            const el = document.getElementById(`msg-${scrollToMsgId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('highlight-flash');
+                setTimeout(() => el.classList.remove('highlight-flash'), 2000);
+                isAtBottomRef.current = false;
             }
         }
     }, [scrollToMsgId]);
 
-    const handleScrollToBottom = () => {
+    // 5. 미리보기 클릭 시 바닥 이동
+    const handleClickPreview = () => {
         if (listRef.current) {
             listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-            setNewMessagePreview(null);
-            setTimeout(() => { isStickToBottomRef.current = true; }, 300);
+            setPreviewMsg(null);
+            setTimeout(() => { isAtBottomRef.current = true; }, 300);
         }
     };
+
+    // 이미지 로딩 시 스크롤 보정
+    const handleImageLoad = useCallback(() => {
+        if (isAtBottomRef.current && listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+    }, []);
 
     let lastDate = null;
 
     return (
-        <div className="message-area" ref={listRef} onScroll={onNativeScroll}>
-            {isLoadingMore && <div className="loading-spinner"><span>Loading...</span></div>}
-            {!isLoadingMore && !hasMoreMessages && messages.length > 0 && (
-                <div className="history-end"><span>대화 내역의 시작입니다.</span></div>
-            )}
+        <div className="message-area" ref={listRef} onScroll={handleScroll}>
+            {isLoadingMore && <div className="loading-spinner">Wait...</div>}
             
-            {messages.map((m, index) => {
-                const msgId = m.MSG_ID || m.msg_id || m.TEMP_ID;
-                const uniqueKey = msgId ? `${msgId}` : `msg_${index}`;
-                const senderId = m.SENDER_ID || m.sender_id;
-                const nickname = m.NICKNAME || m.nickname;
-                const sentAt = m.SENT_AT || m.sent_at;
-                const content = m.CONTENT || m.content;
-                const messageType = m.MESSAGE_TYPE || m.message_type;
-                const fileUrl = m.FILE_URL || m.file_url;
-                const fileName = m.FILE_NAME || m.file_name;
-                const unreadCount = m.unreadCount;
-                const profilePic = m.PROFILE_PIC || m.profile_pic;
+            {!isLoadingMore && !hasMoreMessages && messages.length > 0 && (
+                <div style={{textAlign:'center', fontSize:'12px', color:'#ccc', margin:'10px'}}>
+                    대화의 시작입니다
+                </div>
+            )}
 
+            {messages.map((m, i) => {
+                const msgId = m.MSG_ID || m.msg_id || m.TEMP_ID || i;
+                const sentAt = m.SENT_AT || m.sent_at;
                 const messageDate = getFormattedDate(sentAt);
-                const showDateSeparator = messageDate && (messageDate !== lastDate);
-                if (messageDate) lastDate = messageDate;
+                const showDate = messageDate && messageDate !== lastDate;
+                if (showDate) lastDate = messageDate;
+
+                const isMine = String(m.SENDER_ID || m.sender_id) === String(userId);
 
                 return (
-                    <div key={uniqueKey} className="message-row-container">
-                        {showDateSeparator && (
-                            <div className="date-separator"><span className="date-text">{messageDate}</span></div>
+                    <div key={msgId} className="message-row-container">
+                        {showDate && (
+                            <div className="date-separator">
+                                <span className="date-text">{messageDate}</span>
+                            </div>
                         )}
                         <MessageItem
                             msgId={msgId}
-                            mine={String(senderId) === String(userId)} 
-                            nickname={nickname}
-                            profilePic={profilePic}
+                            mine={isMine}
+                            nickname={m.NICKNAME || m.nickname}
+                            profilePic={m.PROFILE_PIC || m.profile_pic}
                             sentAt={sentAt}
-                            content={content}
-                            messageType={messageType}
-                            fileUrl={fileUrl}
-                            fileName={fileName}
-                            unreadCount={unreadCount}
-                            onEdit={onEditMessage}     
+                            content={m.CONTENT || m.content}
+                            messageType={m.MESSAGE_TYPE || m.message_type}
+                            fileUrl={m.FILE_URL || m.file_url}
+                            fileName={m.FILE_NAME || m.file_name}
+                            unreadCount={m.unreadCount}
+                            onEdit={onEditMessage}
                             onDelete={onDeleteMessage}
+                            onImageLoad={handleImageLoad}
                             searchKeyword={searchKeyword}
-                            onImageLoad={handleImageLoad} // 이미지 로딩 콜백 전달
                         />
                     </div>
                 );
             })}
 
             {isLoadingNewer && (
-                <div className="loading-spinner-bottom" style={{ textAlign: 'center', padding: '10px' }}>
+                <div className="loading-spinner-bottom">
                     <span>Loading newer messages...</span>
                 </div>
             )}
 
-            {newMessagePreview && (
-                <div className="new-message-preview" onClick={handleScrollToBottom}>
-                    <div className="preview-content">
-                        <span className="preview-sender">{newMessagePreview.nickname}</span>
-                        <span className="preview-text">{newMessagePreview.content}</span>
+            {previewMsg && (
+                <div className="floating-preview-bar" onClick={handleClickPreview}>
+                    <div className="preview-info">
+                        <span className="preview-name">
+                            {previewMsg.NICKNAME || previewMsg.nickname || '상대방'}
+                        </span>
+                        <span className="preview-desc">
+                            {previewMsg.MESSAGE_TYPE === 'FILE' 
+                                ? '파일을 보냈습니다.' 
+                                : (previewMsg.CONTENT || previewMsg.content)}
+                        </span>
                     </div>
                     <div className="preview-arrow">⬇</div>
                 </div>
             )}
+            
+            <div style={{ height: 10 }}></div>
         </div>
     );
 }
