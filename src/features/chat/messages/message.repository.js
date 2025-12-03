@@ -10,7 +10,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
     let innerSql = `
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 AS SENT_AT,
+                        T1.SENT_AT,
                         T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                         T2.NICKNAME, T2.PROFILE_PIC 
                     FROM T_MESSAGE T1
