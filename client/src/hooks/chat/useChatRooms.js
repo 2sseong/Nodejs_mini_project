@@ -1,4 +1,3 @@
-// client/src/hooks/chat/useChatRooms.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
@@ -70,7 +69,7 @@ export function useChatRooms(socket, userId, connected) {
         };
 
         const onRoomsRefresh = () => {
-            console.log('[Socket] Refreshing rooms...');
+            // console.log('[Socket] Refreshing rooms...');
             refreshRooms();
         };
 
@@ -84,7 +83,6 @@ export function useChatRooms(socket, userId, connected) {
         };
 
         const onReadComplete = ({ roomId }) => {
-            // (기존) 서버에서 room:read_complete 보낼 때
             setRooms((prev) => 
                 prev.map((r) => 
                     String(r.ROOM_ID) === String(roomId) 
@@ -94,8 +92,11 @@ export function useChatRooms(socket, userId, connected) {
             );
         };
 
-        // [추가] 실시간 읽음 처리 수신 (내가 읽었을 때 목록 카운트 제거용)
+        // [핵심] 실시간 읽음 처리 수신 (내가 읽었을 때 목록 카운트 제거용)
         const onReadUpdate = ({ userId: readerId, roomId }) => {
+            // [디버깅] 이 로그가 콘솔에 찍히는지 확인해주세요!
+            console.log(`[useChatRooms] 읽음 업데이트 수신: Room ${roomId}, Reader ${readerId}`);
+
             // 읽은 사람이 나(userId)일 경우에만 해당 방의 뱃지를 제거
             if (String(readerId) === String(userId)) {
                 setRooms((prev) => 
@@ -147,6 +148,7 @@ export function useChatRooms(socket, userId, connected) {
                 
                 // 2. 안 읽은 메시지 카운트 갱신
                 const isMyMessage = String(msg.SENDER_ID) === String(userId);
+                // 현재 내가 선택한 방이 아닐 때만 카운트 증가
                 const isCurrentRoom = targetId === String(currentRoomIdRef.current);
 
                 if (!isMyMessage && !isCurrentRoom) {

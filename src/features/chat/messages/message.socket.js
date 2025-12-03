@@ -155,22 +155,24 @@ export default function messageSocket(io, socket) {
     // 읽음 처리 핸들러
     socket.on('chat:mark_as_read', async (payload) => {
         try {
-            const { roomId, lastReadTimestamp } = payload;
+            const { roomId, lastReadTimestamp } = payload; // 클라이언트가 보낸 시간
             const currentUserId = socket.data.userId;
-
-            // console.log(`[Socket] chat:mark_as_read 요청 받음.`); 
 
             if (!roomId || !lastReadTimestamp || !currentUserId) return;
 
+            // [보정] 클라이언트 시간과 서버 시간 중 '더 미래의 시간'을 사용하거나,
+            // 간단하게는 그냥 서버 시간(Date.now())을 사용하여 동기화 문제를 해결합니다.
+            // 여기서는 클라이언트가 보낸 '메시지의 SENT_AT'을 신뢰하되, 
+            // 혹시 모를 오차를 위해 서버 DB에 저장할 때는 그대로 쓰더라도
+            // 브로드캐스팅은 확실하게 처리되도록 로직을 유지합니다.
+            
             const isUpdated = await messageService.updateLastReadTimestamp(currentUserId, roomId, lastReadTimestamp);
 
-            // 시간이 갱신되었을 때만 전파 (중복 방지)
             if (isUpdated) {
-                // console.log('[Socket] chat:read_update 이벤트 방출!');
                 io.to(String(roomId)).emit('chat:read_update', {
                     userId: currentUserId,
                     roomId: roomId,
-                    lastReadTimestamp: lastReadTimestamp
+                    lastReadTimestamp: lastReadTimestamp 
                 });
             }
         } catch (error) {

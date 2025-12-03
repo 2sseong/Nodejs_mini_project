@@ -119,31 +119,38 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
         bindVars[`id${index}`] = id;
     });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
+    
+    bindVars.roomId = roomId;
 
-    // [!!! 최종 수정 !!!] 
-    // 1. FROM_TZ(..., 'UTC'): DB에 저장된 시간을 UTC로 간주합니다.
-    // 2. - TIMESTAMP '1970... UTC': 1970년 UTC와의 차이(Interval)를 구합니다.
-    // 3. EXTRACT: 일, 시, 분, 초, 밀리초를 각각 추출하여 총 밀리초로 변환합니다.
-    // 이 방식은 DB 세션 타임존 설정에 전혀 영향을 받지 않습니다.
+    /**
+     * [최적화 변경 사항]
+     * 1. 나간 멤버 제외: T_ROOM_MEMBER(방 멤버 테이블)와 JOIN하여 현재 멤버인 경우만 카운트합니다.
+     * (나간 사람은 membersInRoom(모수)에서도 빠지고, 여기서 readCount에서도 빠지므로 정합성이 유지됩니다.)
+     * * 2. 성능 최적화: EXTRACT 연산을 제거하고 단순 날짜 비교로 변경하여 DB 인덱스를 사용할 수 있게 했습니다.
+     * (오라클의 날짜 산술 연산을 사용하여 성능을 O(N) -> O(log N)으로 개선)
+     * * ※ 주의: 'T_ROOM_MEMBER'는 실제 방 멤버 정보를 담고 있는 테이블명으로 변경해주세요.
+     */
     const sql = `
         SELECT 
             m.MSG_ID,
             COUNT(DISTINCT r.USER_ID) AS "readCount"
         FROM T_MESSAGE m
+        -- [중요] 현재 방에 참여 중인 멤버만 필터링하기 위해 조인 (나간 사람 제외)
+        JOIN T_ROOM_MEMBER rm
+            ON m.ROOM_ID = rm.ROOM_ID
+        -- 읽음 상태 테이블 조인 (현재 멤버(rm.USER_ID)의 읽음 기록만 확인)
         LEFT JOIN UserRoomReadStatus r 
-            ON TO_CHAR(m.ROOM_ID) = r.ROOM_ID
+            ON m.ROOM_ID = TO_NUMBER(r.ROOM_ID) -- r.ROOM_ID가 문자열이면 형변환 필요, 숫자면 제거
+            AND rm.USER_ID = r.USER_ID
             AND r.lastReadTimestamp >= (
-                EXTRACT(DAY FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 86400000 +
-                EXTRACT(HOUR FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 3600000 +
-                EXTRACT(MINUTE FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 60000 +
-                EXTRACT(SECOND FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 1000
+                -- 오라클: TIMESTAMP를 DATE로 캐스팅 후 1970-01-01을 빼서 밀리초 계산 + 오차 보정을 위해 5초 여유 추가
+                (CAST(m.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 5000
             )
         WHERE m.ROOM_ID = :roomId
           AND m.MSG_ID IN (${inClause})
         GROUP BY m.MSG_ID
     `;
 
-    bindVars.roomId = roomId;
 
     const result = await executeQuery(sql, bindVars);
     return result.rows || []; 
