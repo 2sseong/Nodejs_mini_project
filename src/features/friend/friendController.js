@@ -29,8 +29,8 @@ export const getFriendList = async (req, res) => {
  * @param {object} res - 응답 객체
  */
 export const searchUsers = async (req, res) => {
-    // 1. URL 쿼리 파라미터에서 검색어(query)와 userId 추출
-    const { query } = req.query; // paramUserId로 쿼리에서 받음
+    // 1. URL 쿼리 파라미터에서 검색어(query)와 deptId 추출
+    const { query, deptId } = req.query; // paramUserId로 쿼리에서 받음
 
     // 2. 로그인 사용자 ID 확정: 프론트엔드에서 보낸 ID를 사용
     const userId = req.user.userId;
@@ -41,7 +41,11 @@ export const searchUsers = async (req, res) => {
     }
 
     try {
-        const results = await searchUsersService(userId, query);
+        // 3. 서비스 함수 호출
+        // deptId가 있으면 parseInt로 변환, 없으면 null (deptId는 숫자로 전달-parseInt)
+        // deptId가 없으면 null로 전달
+        const filterDeptId = deptId ? parseInt(deptId, 10) : null;
+        const results = await searchUsersService(userId, query, filterDeptId);
         console.log("컨트롤러에서 받은 results:", results);
         return res.status(200).json(results);
     } catch (error) {

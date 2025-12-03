@@ -30,9 +30,10 @@ export const getFriendList = async (userId) => {
  * 사용자 검색 비즈니스 로직 + 즐겨찾기 상태 포함
  * @param {string} userId - 현재 로그인된 사용자 ID
  * @param {string} query - 검색어
+ * @param {number|null} deptId - 부서 ID (필터링 조건)
  * @returns {Promise<Array<Object>>} - 검색된 사용자 목록 (isPick 포함)
  */
-export const searchUsers = async (userId, query) => {
+export const searchUsers = async (userId, query, deptId) => {
     const trimmed = (query ?? '').trim();
 
     try {
@@ -44,8 +45,8 @@ export const searchUsers = async (userId, query) => {
                 userId: user.USER_ID,
                 username: user.USERNAME,
                 userNickname: user.NICKNAME,
-                department: user.DEPARTMENT,
-                position: user.POSITION,
+                department: user.DEPT_NAME,
+                position: user.POS_NAME,
                 isPick: user.ISPICK,
             }
         });

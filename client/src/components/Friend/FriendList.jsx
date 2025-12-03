@@ -5,10 +5,14 @@ import './FriendList.css';
 
 // 개별 사용자 아이템 컴포넌트
 function UserItem({ user, isOnline, onTogglePick }) {
+    // user 객체에서 isMe 속성 추출(현재 로그인 사용자 여부)
     const { isMe } = user;
+    // user 객체에서 isPick 속성 추출(즐겨찾기 여부)
     const isPicked = user.isPick === 1;
 
+    // 즐겨찾기 토글 핸들러
     const handlePickClick = () => {
+        // 현재 사용자가 자신이면 즐겨찾기 토글을 할 수 없음
         if (isMe) return;
         onTogglePick(user.userId, isPicked);
     };
