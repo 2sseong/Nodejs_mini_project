@@ -18,11 +18,11 @@ export default function messageSocket(io, socket) {
         const { roomId, beforeMsgId = null, limit = 50 } = payload;
         const currentUserId = socket.data.userId;
 
-        if (!roomId) { 
+        if (!roomId) {
             return socket.emit('chat:history', { messages: [], membersInRoom: 0 });
         }
 
-        socket.join(String(roomId)); 
+        socket.join(String(roomId));
         console.log(`[Socket] User ${userId} joined room channel: ${roomId}`);
         try {
             // 1. 메시지 히스토리 조회
@@ -30,6 +30,24 @@ export default function messageSocket(io, socket) {
 
             if (!messages || messages.length === 0) {
                 return socket.emit('chat:history', { messages: [], membersInRoom: 0 });
+            }
+
+            // [추가] 방 입장 시 가장 최근 메시지 기준으로 읽음 처리 및 브로드캐스트
+            if (messages.length > 0 && !beforeMsgId) {
+                const latestMsg = messages[messages.length - 1];
+                if (latestMsg && latestMsg.SENT_AT) {
+                    const timestamp = new Date(latestMsg.SENT_AT).getTime();
+                    const updated = await messageService.updateLastReadTimestamp(currentUserId, roomId, timestamp);
+
+                    if (updated) {
+                        io.to(String(roomId)).emit('chat:read_update', {
+                            userId: currentUserId,
+                            roomId: roomId,
+                            lastReadTimestamp: timestamp
+                        });
+                        console.log(`[Socket] Room entry read update broadcasted for user ${currentUserId}, ts: ${timestamp}`);
+                    }
+                }
             }
 
             // 2. 방 총 멤버 수 조회
@@ -46,12 +64,12 @@ export default function messageSocket(io, socket) {
                 readCountMap
             });
 
-            socket.emit('chat:history', { 
+            socket.emit('chat:history', {
                 messages: messagesWithUnread,
                 membersInRoom: membersInRoom,
                 memberReadStatus: memberReadStatus
             });
-            
+
         } catch (e) {
             console.error('[socket] chat:get_history error', e);
             socket.emit('chat:history', { messages: [], membersInRoom: 0 });
@@ -66,29 +84,29 @@ export default function messageSocket(io, socket) {
             const activeUserIds = [...new Set(roomSockets.map(s => s.data.userId).filter(id => id))];
 
             // 2. 메시지 저장
-            const saved = await messageService.saveMessage({ 
-                userId, 
-                ...msg, 
-                activeUserIds 
+            const saved = await messageService.saveMessage({
+                userId,
+                ...msg,
+                activeUserIds
             });
-            
+
             // [수정] 보낸 사람의 최신 프로필 정보 조회 (DB에서 가져옴)
             const senderInfo = await authService.getUserInfo(userId);
 
             const membersInRoom = await roomService.getRoomMemberCount(saved.ROOM_ID);
-            
+
             // 접속자가 있어도 '포커스' 전엔 안 읽은 것으로 간주하므로, 보낸 사람(1)만 뺌.
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
-          
+
             const initialMessage = {
-                 ...saved, 
-                 // [수정] DB의 닉네임과 프로필 사진을 우선 사용
-                 NICKNAME: senderInfo.NICKNAME || msg.NICKNAME, 
-                 PROFILE_PIC: senderInfo.PROFILE_PIC, 
-                 TEMP_ID: msg.TEMP_ID,
-                 unreadCount: calculatedUnreadCount
+                ...saved,
+                // [수정] DB의 닉네임과 프로필 사진을 우선 사용
+                NICKNAME: senderInfo.NICKNAME || msg.NICKNAME,
+                PROFILE_PIC: senderInfo.PROFILE_PIC,
+                TEMP_ID: msg.TEMP_ID,
+                unreadCount: calculatedUnreadCount
             };
-            
+
             io.to(String(saved.ROOM_ID)).emit('chat:message', initialMessage);
 
         } catch (e) {
@@ -136,18 +154,18 @@ export default function messageSocket(io, socket) {
             const membersInRoom = await roomService.getRoomMemberCount(savedMessage.ROOM_ID);
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
 
-            const broadcastData = { 
-                ...savedMessage, 
+            const broadcastData = {
+                ...savedMessage,
                 NICKNAME: senderInfo.NICKNAME || userNickname,
                 PROFILE_PIC: senderInfo.PROFILE_PIC, // [수정] 프로필 사진 추가
                 unreadCount: calculatedUnreadCount
             };
-            
+
             callback({ ok: true, message: broadcastData });
             io.to(String(roomId)).emit('chat:message', broadcastData);
 
         } catch (error) {
-            console.error('[SERVER] SEND_FILE Critical Error:', error); 
+            console.error('[SERVER] SEND_FILE Critical Error:', error);
             callback({ ok: false, error: '서버 파일 처리 중 오류 발생' });
         }
     });
@@ -165,14 +183,14 @@ export default function messageSocket(io, socket) {
             // 여기서는 클라이언트가 보낸 '메시지의 SENT_AT'을 신뢰하되, 
             // 혹시 모를 오차를 위해 서버 DB에 저장할 때는 그대로 쓰더라도
             // 브로드캐스팅은 확실하게 처리되도록 로직을 유지합니다.
-            
+
             const isUpdated = await messageService.updateLastReadTimestamp(currentUserId, roomId, lastReadTimestamp);
 
             if (isUpdated) {
                 io.to(String(roomId)).emit('chat:read_update', {
                     userId: currentUserId,
                     roomId: roomId,
-                    lastReadTimestamp: lastReadTimestamp 
+                    lastReadTimestamp: lastReadTimestamp
                 });
             }
         } catch (error) {

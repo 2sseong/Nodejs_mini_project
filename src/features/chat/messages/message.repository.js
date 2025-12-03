@@ -10,7 +10,8 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
     let innerSql = `
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                        (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 AS SENT_AT,
+                        T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                         T2.NICKNAME, T2.PROFILE_PIC 
                     FROM T_MESSAGE T1
                     JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
@@ -36,7 +37,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
                 )
                 ORDER BY SENT_AT ASC, MSG_ID ASC
                 `;
-    
+
     const res = await executeQuery(sql, binds);
     return res.rows || [];
 }
@@ -46,12 +47,12 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
 */
 export async function saveMessageTx(data) {
 
-    const { roomId, senderId, content, messageType, fileUrl, fileName } = data; 
+    const { roomId, senderId, content, messageType, fileUrl, fileName } = data;
     const now = new Date(); // [중요] Node.js의 정확한 현재 시간 (UTC)
 
     let connection;
     try {
-        connection = await db.getConnection(); 
+        connection = await db.getConnection();
 
         const sql = `
                     INSERT INTO T_MESSAGE(
@@ -75,7 +76,7 @@ export async function saveMessageTx(data) {
             outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
             outRoomId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
             outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
-            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 }, 
+            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 },
             outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
             outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 },
             outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 1000 },
@@ -87,26 +88,26 @@ export async function saveMessageTx(data) {
         if (result.rowsAffected === 1 && result.outBinds) {
             const savedRow = {
                 MSG_ID: result.outBinds.outId[0],
-                ROOM_ID: String(result.outBinds.outRoomId[0]), 
+                ROOM_ID: String(result.outBinds.outRoomId[0]),
                 SENDER_ID: result.outBinds.outSenderId[0],
                 CONTENT: result.outBinds.outContent[0],
                 MESSAGE_TYPE: result.outBinds.outMsgType[0],
                 FILE_URL: result.outBinds.outFileUrl[0],
                 FILE_NAME: result.outBinds.outFileName[0],
                 // [핵심] DB 리턴값 대신 정확한 now 객체 사용
-                SENT_AT: now, 
+                SENT_AT: now,
             };
-            return savedRow; 
+            return savedRow;
         } else {
             throw new Error("메시지 저장 실패 (DB)");
         }
 
     } catch (err) {
         console.error("DB 에러 (saveMessageTx):", err);
-        throw err; 
+        throw err;
     } finally {
         if (connection) {
-            await connection.close(); 
+            await connection.close();
         }
     }
 }
@@ -119,7 +120,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
         bindVars[`id${index}`] = id;
     });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
-    
+
     bindVars.roomId = roomId;
 
     /**
@@ -153,7 +154,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
 
 
     const result = await executeQuery(sql, bindVars);
-    return result.rows || []; 
+    return result.rows || [];
 }
 
 // 보낸사람의 읽은 시간을 현재로 업데이트
@@ -170,10 +171,10 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
             VALUES (:userId, :roomId, :ts)
     `;
 
-    const result = await executeTransaction(sql, { 
-        userId, 
-        roomId, 
-        ts: lastReadTimestamp 
+    const result = await executeTransaction(sql, {
+        userId,
+        roomId,
+        ts: lastReadTimestamp
     }, { autoCommit: true });
 
     return result.rowsAffected;
@@ -195,12 +196,12 @@ export async function updateMessageTx({ msgId, senderId, content }) {
         SET CONTENT = :content 
         WHERE MSG_ID = :msgId AND SENDER_ID = :senderId
     `;
-    const result = await executeTransaction(sql, { 
-        msgId, 
-        senderId, 
-        content 
+    const result = await executeTransaction(sql, {
+        msgId,
+        senderId,
+        content
     }, { autoCommit: true });
-    
+
     return result.rowsAffected > 0;
 }
 
@@ -209,11 +210,11 @@ export async function deleteMessageTx({ msgId, senderId }) {
         DELETE FROM T_MESSAGE 
         WHERE MSG_ID = :msgId AND SENDER_ID = :senderId
     `;
-    const result = await executeTransaction(sql, { 
-        msgId, 
-        senderId 
+    const result = await executeTransaction(sql, {
+        msgId,
+        senderId
     }, { autoCommit: true });
-    
+
     return result.rowsAffected > 0;
 }
 
@@ -225,19 +226,19 @@ export async function searchMessages(roomId, keyword) {
           AND (CONTENT LIKE :keyword OR FILE_NAME LIKE :keyword)
         ORDER BY SENT_AT ASC
     `;
-    
+
     const searchPattern = `%${keyword}%`;
-    
-    const result = await executeQuery(sql, { 
-        roomId, 
-        keyword: searchPattern 
+
+    const result = await executeQuery(sql, {
+        roomId,
+        keyword: searchPattern
     });
-    
+
     return result.rows || [];
 }
 
 export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
-    const limitPlusOne = Number(offset) + 1; 
+    const limitPlusOne = Number(offset) + 1;
 
     const binds = {
         roomId,
@@ -252,7 +253,8 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                 SELECT * FROM (
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                        (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 AS SENT_AT,
+                        T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                         T2.NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1
                     JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
@@ -267,7 +269,8 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                 SELECT * FROM (
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                        (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 AS SENT_AT,
+                        T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                         T2.NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1
                     JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
@@ -301,7 +304,8 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
         SELECT * FROM (
             SELECT 
                 T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+                (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 AS SENT_AT,
+                T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                 T2.NICKNAME, T2.PROFILE_PIC
             FROM T_MESSAGE T1
             JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
