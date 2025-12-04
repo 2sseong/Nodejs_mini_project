@@ -1,9 +1,9 @@
 // Electron 메인 프로세스
 
-const { app, BrowserWindow, ipcMain, screen } = require('electron'); 
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
-require('dotenv').config({path:path.join(__dirname, '.env')});
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // [수정 1] 윈도우 투명 창 버그 방지를 위해 하드웨어 가속 끄기 (필수 권장)
 app.disableHardwareAcceleration();
@@ -21,21 +21,21 @@ function startBackendServer() {
 
   // 윈도우에서는 shell: true가 필요한 경우가 많음
   backendProcess = spawn('node', ['server.js'], {
-    cwd: backendPath, 
+    cwd: backendPath,
     shell: true,
-    env: process.env 
-  }); 
-  
+    env: process.env
+  });
+
   backendProcess.stdout.on('data', (data) => {
-    // console.log(`[Backend Log]: ${data}`);
+    console.log(`[Backend Log]: ${data}`);
     setTimeout(() => {
-        if (mainWindows.length === 0) {
-          // [수정 핵심] 테스트를 위해 서로 다른 파티션(세션)을 가진 두 개의 창을 엽니다.
-          // persist: 접두어를 붙이면 앱을 껐다 켜도 로그인 정보가 유지됩니다.
-          createWindow('persist:user1'); 
-          createWindow('persist:user2');
-          createNotificationWindow(); // 알림창 미리 생성
-        }
+      if (mainWindows.length === 0) {
+        // [수정 핵심] 테스트를 위해 서로 다른 파티션(세션)을 가진 두 개의 창을 엽니다.
+        // persist: 접두어를 붙이면 앱을 껐다 켜도 로그인 정보가 유지됩니다.
+        createWindow('persist:user1');
+        createWindow('persist:user2');
+        createNotificationWindow(); // 알림창 미리 생성
+      }
     }, 3000);
   });
 
@@ -44,16 +44,16 @@ function startBackendServer() {
 }
 
 if (process.platform === 'win32') {
-    app.setAppUserModelId('com.nodejs-mini-project.chat-app');
+  app.setAppUserModelId('com.nodejs-mini-project.chat-app');
 }
 
 function createNotificationWindow() {
   const display = screen.getPrimaryDisplay();
   const { width, height } = display.workAreaSize;
-  
+
   const notifWidth = 340;
   // [수정] 알림이 쌓일 수 있도록 높이를 충분히 늘립니다 (예: 500px)
-  const notifHeight = 480; 
+  const notifHeight = 480;
 
   notificationWindow = new BrowserWindow({
     width: notifWidth,
@@ -61,9 +61,9 @@ function createNotificationWindow() {
     x: width - notifWidth - 20,
     y: height - notifHeight - 20,
     frame: false,
-    transparent: true, 
-    backgroundColor: '#00000000', 
-    hasShadow: false, 
+    transparent: true,
+    backgroundColor: '#00000000',
+    hasShadow: false,
     resizable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -75,7 +75,7 @@ function createNotificationWindow() {
     }
   });
 
-  const startUrl = 'http://localhost:5173/#/notification'; 
+  const startUrl = 'http://localhost:5173/#/notification';
   notificationWindow.loadURL(startUrl);
 
   notificationWindow.on('close', (e) => {
@@ -84,7 +84,7 @@ function createNotificationWindow() {
       notificationWindow.hide();
     }
   });
-  
+
   console.log('[Main] Notification window created & hidden');
 }
 
@@ -96,7 +96,7 @@ function showCustomNotification(data) {
 
   console.log('[Main] Showing notification with data:', data);
   notificationWindow.webContents.send('show-notification-data', data);
-  notificationWindow.showInactive(); 
+  notificationWindow.showInactive();
 
   if (notifTimeout) clearTimeout(notifTimeout);
   notifTimeout = setTimeout(() => {
@@ -107,25 +107,25 @@ function showCustomNotification(data) {
 }
 
 // [수정] partition 매개변수 추가 (기본값: user1)
-function createWindow (partition = 'persist:user1') {
+function createWindow(partition = 'persist:user1') {
   let mainWindow = new BrowserWindow({
     action: 'auto',
     width: 1000,
     height: 800,
     frame: false,
-    transparent: false, 
+    transparent: false,
     hasShadow: false,
     resizable: true,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true, 
+      contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       // [핵심] 파티션을 지정하여 세션(localStorage, 쿠키 등)을 분리합니다.
-      partition: partition 
+      partition: partition
     }
   });
-  
-  mainWindow.loadURL('http://localhost:5173'); 
+
+  mainWindow.loadURL('http://localhost:5173');
 
   // 창 제목에 유저 구분 표시 (개발 편의용)
   mainWindow.setTitle(`Chat App - ${partition.split(':')[1]}`);
@@ -140,7 +140,7 @@ function createWindow (partition = 'persist:user1') {
 }
 
 app.whenReady().then(() => {
-  startBackendServer(); 
+  startBackendServer();
 });
 
 app.on('window-all-closed', () => {
@@ -176,16 +176,16 @@ ipcMain.on('req-custom-notification', (event, data) => {
 
 ipcMain.on('close-notification-window', () => {
   if (notificationWindow && !notificationWindow.isDestroyed()) {
-    notificationWindow.hide(); 
+    notificationWindow.hide();
   }
 });
 
 ipcMain.on('notification-clicked', (event, roomId) => {
   const targetWindow = mainWindows[0];
   if (targetWindow) {
-    if (targetWindow.isMinimized()) targetWindow.restore(); 
-    targetWindow.show(); 
-    targetWindow.focus(); 
+    if (targetWindow.isMinimized()) targetWindow.restore();
+    targetWindow.show();
+    targetWindow.focus();
     targetWindow.webContents.send('cmd-select-room', roomId);
   }
 });
@@ -193,9 +193,9 @@ ipcMain.on('notification-clicked', (event, roomId) => {
 ipcMain.on('window-show-focus', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {
-    if (win.isMinimized()) win.restore(); 
-    win.show(); 
-    win.focus(); 
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
   }
 });
 
@@ -217,14 +217,14 @@ ipcMain.on('open-chat-window', (event, roomId) => {
     height: 600,
     minWidth: 300,
     minHeight: 400,
-    title: '채팅방', 
-    frame: false,       
-    transparent: false, 
+    title: '채팅방',
+    frame: false,
+    transparent: false,
     webPreferences: {
       session: parentSession,
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js') 
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
@@ -239,7 +239,7 @@ ipcMain.on('open-chat-window', (event, roomId) => {
           session: parentSession,
           nodeIntegration: false,
           contextIsolation: true,
-          preload: path.join(__dirname, 'preload.js') 
+          preload: path.join(__dirname, 'preload.js')
         }
       }
     };
@@ -256,11 +256,11 @@ ipcMain.on('open-chat-window', (event, roomId) => {
   win.webContents.openDevTools({ mode: 'detach' });
 
   chatWindows[windowKey] = win;
-  
+
   win.on('closed', () => {
     delete chatWindows[windowKey];
   });
-  
+
   win.setMenu(null);
 });
 

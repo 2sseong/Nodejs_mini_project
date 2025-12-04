@@ -20,6 +20,7 @@ async function findUserByEmail(email) {
 
 /**
  * 새로운 사용자 정보를 DB에 삽입하는 함수
+ * (주의: userData.department, userData.position에는 이제 ID값이 들어와야 함)
  */
 async function insertUser(userData) {
     const insertSql = `
@@ -52,18 +53,29 @@ export async function updateLastLogin(userId) {
         SET LAST_LOGIN = CURRENT_TIMESTAMP
         WHERE USER_ID = :userId
     `;
-    // INSERT/UPDATE/DELETE는 executeTransaction을 사용
     await executeTransaction(updateSql, { userId: userId });
 }
 
 
 // ------------------- MyInfoPage 관련 추가 기능 ---------------------------------
-// ID로 사용자 정보 조회 (비밀번호 제외)
+
+/**
+ * ID로 사용자 정보 조회 (비밀번호 제외)
+ */
 export async function findUserById(userId) {
     const sql = `
-        SELECT USER_ID, USERNAME, NICKNAME, PROFILE_PIC, CREATED_AT
-        FROM T_USER
-        WHERE USER_ID = :userId
+        SELECT 
+            U.USER_ID, 
+            U.USERNAME, 
+            U.NICKNAME, 
+            U.PROFILE_PIC, 
+            U.CREATED_AT, 
+            D.DEPT_NAME AS DEPARTMENT, 
+            P.POS_NAME AS POSITION
+        FROM T_USER U
+        LEFT JOIN DEPARTMENT D ON U.DEPT_ID = D.DEPT_ID
+        LEFT JOIN POSITION P ON U.POS_ID = P.POS_ID
+        WHERE U.USER_ID = :userId
     `;
     const result = await executeQuery(sql, { userId });
     return result.rows.length > 0 ? result.rows[0] : null;
@@ -82,10 +94,19 @@ export async function updateProfilePic(userId, filePath) {
     await executeTransaction(sql, { filePath, userId });
 }
 
-// 사용자 정보(닉네임 등) 수정
-export async function updateUserInfo(userId, nickname) {
-    const sql = `UPDATE T_USER SET NICKNAME = :nickname WHERE USER_ID = :userId`;
-    await executeTransaction(sql, { nickname, userId });
+/**
+ * 사용자 정보(닉네임, 부서, 직급) 수정
+ */
+export async function updateUserInfo(userId, { nickname, department, position }) {
+    const sql = `
+        UPDATE T_USER 
+        SET NICKNAME = :nickname,
+            DEPT_ID = :department,
+            POS_ID = :position
+        WHERE USER_ID = :userId
+    `;
+    // department와 position 파라미터에는 프론트엔드에서 보낸 ID값이 들어있어야 합니다.
+    await executeTransaction(sql, { nickname, department, position, userId });
 }
 
 // 비밀번호 변경 함수

@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import './MessageItem.css';
+import ConfirmModal from '../Modals/ConfirmModal'; // [추가] 모달 컴포넌트 import
 
 // [수정] 백엔드 포트 5000으로 설정 (server.js 포트와 일치해야 함)
 const API_BASE_URL = 'http://localhost:1337'; 
@@ -18,12 +19,16 @@ export default function MessageItem(props) {
         unreadCount,
         onEdit,    
         onDelete,
-        onImageLoad // [추가] 이미지 로딩 완료 콜백
+        onImageLoad 
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(content);
+    
+    // [추가] 삭제 확인 모달 상태
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
     const bubbleRef = useRef(null);
 
     // 이미지 파일 판별
@@ -53,10 +58,16 @@ export default function MessageItem(props) {
         setEditContent(content); 
     };
 
+    // [수정] 삭제 버튼 클릭 시 모달 열기
     const handleClickDelete = () => {
-        if (window.confirm('정말 이 메시지를 삭제하시겠습니까?')) {
-            onDelete(msgId);
-        }
+        setIsDeleteModalOpen(true);
+        // window.confirm 제거됨
+    };
+
+    // [추가] 모달에서 '삭제' 확인 클릭 시 호출
+    const handleConfirmDelete = () => {
+        onDelete(msgId);
+        setIsDeleteModalOpen(false);
     };
 
     const handleSaveEdit = () => {
@@ -191,6 +202,17 @@ export default function MessageItem(props) {
                     <button className="delete-option" onClick={handleClickDelete}>삭제</button>
                 </div>
             )}
+
+            {/* 삭제 확인 모달 */}
+            <ConfirmModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="메시지 삭제"
+                message="정말 이 메시지를 삭제하시겠습니까?"
+                confirmText="삭제"
+                isDanger={true}
+            />
         </div>
     );
 }

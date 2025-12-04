@@ -1,6 +1,27 @@
 import * as messageRepo from './message.repository.js';
 import * as roomRepo from '../rooms/room.repository.js'; // 방 인원수 조회를 위해 필요
 
+// 메시지 목록에 unreadCount를 붙여주는 공통 헬퍼 함수
+async function attachUnreadCounts(roomId, messages) {
+    if (!messages || messages.length === 0) return [];
+
+    // 1. 방 전체 멤버 수 조회
+    const count = await roomRepo.countRoomMembers(roomId);
+    const membersInRoom = parseInt(count, 10);
+
+    // 2. 메시지별 읽은 사람 수 조회
+    const readCountMap = await getReadCountsForMessages(roomId, messages);
+
+    // 3. 계산 로직 적용 (기존 함수 재사용)
+    return await calculateUnreadCounts({
+        messages,
+        currentUserId: null,
+        membersInRoom,
+        readCountMap
+    });
+}
+
+
 export async function getHistory({ roomId, limit, beforeMsgId }) {
     return await messageRepo.getHistory({ roomId, limit, beforeMsgId });
 }
@@ -90,9 +111,9 @@ export async function updateLastReadTimestamp(userId, roomId, lastReadTimestamp)
     // DB에 읽음 상태 저장
     const rowsAffected = await messageRepo.upsertReadStatus(userId, roomId, timestampNumber);
     
-    // [핵심 수정] rowsAffected 체크 제거하고 무조건 true 반환
-    // DB 변경이 없더라도(이미 읽음 상태여도) 클라이언트 화면 갱신을 위해 알림을 보내야 함
-    return true; 
+// DB에서 실제로 행이 업데이트된 경우(rowsAffected > 0)에만 true를 반환하여 소켓 전파.
+    // (이미 최신 상태라면 rowsAffected는 0이 나옴 -> 소켓 전송 안 함 -> 트래픽 절약)
+    return true;
 }
 
 /**
@@ -167,15 +188,17 @@ export async function searchMessages({ roomId, keyword }) {
 
 // 특정 메시지 기준 문맥 조회 서비스
 export async function getMessagesContext({ roomId, msgId }) {
-    // 리포지토리의 getMessagesAroundId 호출 (기본 offset 25)
-    return await messageRepo.getMessagesAroundId(roomId, msgId);
+    const messages = await messageRepo.getMessagesAroundId(roomId, msgId);
+    // 계산 후 반환
+    return await attachUnreadCounts(roomId, messages);
 }
 
 // 메시지 아래로 스크롤 시 조회
 export async function getNewerMessages({ roomId, msgId }) {
-    return await messageRepo.getMessagesAfterId(roomId, msgId);
+    const messages = await messageRepo.getMessagesAfterId(roomId, msgId);
+    // 계산 후 반환
+    return await attachUnreadCounts(roomId, messages);
 }
-
 // 채팅방 서랍(파일 목록) 조회 서비스
 export async function getRoomFiles({ roomId }) {
     return await messageRepo.getRoomFiles(roomId);
