@@ -27,15 +27,15 @@ async function insertUser(userData) {
         INSERT INTO T_USER 
             (USER_ID, USERNAME, PASSWORD_HASH, NICKNAME, CREATED_AT, DEPT_ID, POS_ID)
         VALUES 
-            (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP, :department, :position)
+            (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP, :deptId, :posId)
     `;
     await executeTransaction(insertSql, {
         userId: userData.userId,
         email: userData.email,
         hash: userData.hashedPassword,
         nickname: userData.nickname,
-        department: userData.department, // DEPT_ID 값
-        position: userData.position      // POS_ID 값
+        deptId: userData.deptId,
+        posId: userData.posId
     });
 }
 
@@ -122,17 +122,55 @@ export async function updateUserPassword(userId, passwordHash) {
 export async function getUsersByTeam() {
     const sql = `
         SELECT 
-            U.USER_ID,
-            U.USERNAME,
-            U.NICKNAME,
-            U.PROFILE_PIC,
+            USER_ID,
+            USERNAME,
+            NICKNAME,
+            PROFILE_PIC,
             D.DEPT_NAME AS DEPARTMENT,
             P.POS_NAME AS POSITION
-        FROM T_USER U
-        LEFT JOIN DEPARTMENT D ON U.DEPT_ID = D.DEPT_ID
-        LEFT JOIN POSITION P ON U.POS_ID = P.POS_ID
-        WHERE U.DEPT_ID IS NOT NULL
-        ORDER BY D.DEPT_NAME ASC, U.NICKNAME ASC
+        FROM T_USER
+        JOIN DEPARTMENT D ON U.DEPT_ID = D.DEPT_ID  -- 💡 부서 테이블 JOIN
+        JOIN POSITION P ON U.POS_ID = P.POS_ID      -- 💡 직급 테이블 JOIN
+        WHERE D.DEPT_NAME IS NOT NULL
+        ORDER BY D.DEPT_NAME ASC, NICKNAME ASC
+    `;
+    const result = await executeQuery(sql);
+    return result.rows || [];
+}
+
+/**
+ * 부서 목록 조회
+ * @returns {Promise<Array>} - 부서 ID, 코드, 이름 목록
+ */
+export async function findAllDepartments() {
+    const sql = `
+        SELECT 
+            DEPT_ID, 
+            DEPT_CODE, 
+            DEPT_NAME 
+        FROM 
+            DEPARTMENT
+        ORDER BY 
+            DEPT_ID ASC
+    `;
+    const result = await executeQuery(sql);
+    return result.rows || [];
+}
+
+/**
+ * 직급 목록 조회
+ * @returns {Promise<Array>} - 직급 ID, 이름, 레벨 목록
+ */
+export async function findAllPositions() {
+    const sql = `
+        SELECT 
+            POS_ID, 
+            POS_NAME, 
+            POS_LEVEL
+        FROM 
+            POSITION
+        ORDER BY 
+            POS_LEVEL ASC, POS_ID ASC
     `;
     const result = await executeQuery(sql);
     return result.rows || [];

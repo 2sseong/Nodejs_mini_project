@@ -11,7 +11,7 @@ import { initialize as initOracleDB } from '../db/oracle.js'
 import authRouter from './features/auth/authRoutes.js'
 import chatsRouter from './features/chat/chat.routes.js'
 import searchRouter from './features/search/search.routes.js'
-import friendRoutes from './features/friend/friendRoutes.js'
+import userRoutes from './features/user/userRoutes.js'
 import initSocket from './socket.js'
 
 console.log('🔥 server.js loaded');
@@ -66,7 +66,7 @@ app.get('/profile/*', (req, res) => {
 app.use('/api/auth', authRouter)
 app.use('/chats', chatsRouter)
 app.use('/users', searchRouter)
-app.use('/api/friends', friendRoutes)
+app.use('/api/users', userRoutes)
 
 // 프론트엔드 빌드 파일
 const publicPath = path.join(__dirname, '../client/dist')
@@ -79,12 +79,12 @@ async function start() {
         console.log('Oracle DB Connection Pool established successfully.');
 
         const httpServer = http.createServer(app);
-        
+
         // 1. 소켓 생성
-        const io = initSocket(httpServer); 
+        const io = initSocket(httpServer);
 
         // Express 앱 어디서든 io를 쓸 수 있게 저장
-        app.set('io', io); 
+        app.set('io', io);
 
         httpServer.listen(PORT, () => {
             console.log(`Server running on http://localhost:${PORT}`);

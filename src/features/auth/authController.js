@@ -6,22 +6,25 @@ import * as authService from './authService.js';
  * POST /api/auth/signup 요청 처리
  */
 export async function signup(req, res) {
-    const { email, password, nickname, department, position } = req.body;
+    const { email, password, nickname, deptId, posId } = req.body;
 
-    if (!email || !password || !nickname || !department || !position) {
+    // 필수 입력값 검증
+    if (!email || !password || !nickname || !deptId || !posId) {
         return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
     }
 
     try {
-        const newUser = await authService.signupUser({ email, password, nickname, department, position });
+        // 서비스로 전달
+        const newUser = await authService.signupUser({ email, password, nickname, deptId, posId });
 
+        // 성공 응답
         res.status(201).json({
             success: true,
             message: '회원가입이 성공적으로 완료되었습니다. \n5초 후 로그인 화면으로 이동합니다.',
             userId: newUser.userId,
             nickname: newUser.nickname,
-            department: newUser.department,
-            position: newUser.position,
+            deptId: newUser.deptId,
+            posId: newUser.posId,
         });
 
     } catch (error) {
@@ -156,5 +159,37 @@ export async function getUsersByTeam(req, res) {
     } catch (error) {
         console.error('팀별 사용자 조회 에러:', error);
         res.status(500).json({ message: '사용자 목록 조회 실패' });
+    }
+}
+
+/**
+ * 부서 목록 조회 API 핸들러
+ * GET /api/auth/departments
+ */
+export async function getDepartments(req, res) {
+    try {
+        // Service에서 매핑된 데이터를 받아옴
+        const departments = await authService.getAllDepartments();
+
+        res.json({ success: true, data: departments });
+    } catch (error) {
+        console.error('부서 목록 조회 에러:', error);
+        res.status(500).json({ message: '부서 목록 조회 실패' });
+    }
+}
+
+/**
+ * 직급 목록 조회 API 핸들러
+ * GET /api/auth/positions
+ */
+export async function getPositions(req, res) {
+    try {
+        // Service에서 매핑된 데이터를 받아옴
+        const positions = await authService.getAllPositions();
+
+        res.json({ success: true, data: positions });
+    } catch (error) {
+        console.error('직급 목록 조회 에러:', error);
+        res.status(500).json({ message: '직급 목록 조회 실패' });
     }
 }

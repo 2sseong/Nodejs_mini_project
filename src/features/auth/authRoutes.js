@@ -9,15 +9,15 @@ import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const UPLOAD_DIR = path.join(__dirname, '..','..','..', 'public', 'profile');
+const UPLOAD_DIR = path.join(__dirname, '..', '..', '..', 'public', 'profile');
 
 // Multer 설정
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         console.log('[Multer] 파일 저장 경로 확인:', UPLOAD_DIR); // 디버깅 로그
-        
+
         // 폴더가 없으면 생성
-        if (!fs.existsSync(UPLOAD_DIR)){
+        if (!fs.existsSync(UPLOAD_DIR)) {
             console.log('[Multer] 폴더가 없어 생성합니다.');
             fs.mkdirSync(UPLOAD_DIR, { recursive: true });
         }
@@ -54,6 +54,8 @@ authRouter.post('/login', authController.login);
 
 // /api/auth/signup 경로를 authController의 signup 함수와 연결
 authRouter.post('/signup', authController.signup);
+authRouter.get('/departments', authController.getDepartments);
+authRouter.get('/positions', authController.getPositions);
 
 authRouter.get('/me', verifyToken, authController.getMyInfo);
 authRouter.post('/verify-password', verifyToken, authController.verifyPassword);

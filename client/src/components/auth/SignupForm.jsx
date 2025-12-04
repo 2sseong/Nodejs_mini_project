@@ -2,152 +2,252 @@
 
 // src/components/auth/SignupForm.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SignupForm.css';
-import { signup } from '../../api/authApi.jsx';
+import { signup, getDepartments, getPositions } from '../../api/authApi.jsx';
 
 function SignupForm() {
-    // 폼 입력 필드 상태 관리 (이전과 동일)
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [nickname, setNickname] = useState('');
-    const [department, setDepartment] = useState('');
-    const [position, setPosition] = useState('');
-
-    // UI 피드백을 위한 상태 (이전과 동일)
+    // UI 피드백을 위한 상태
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [message, setMessage] = useState(null);
     const navigate = useNavigate();
 
-    // 부서 선택지
-    const departments = [
-        '경영지원팀',
-        'OLP1팀',
-        'OLP2팀',
-        'OLP3팀',
-        'OLP4팀',
-        'SI팀'
-    ];
+    // 목록 데이터 상태
+    const [deptList, setDeptList] = useState([]);
+    const [posList, setPosList] = useState([]);
 
-    // const history = useHistory();
+    // 입력 폼 상태
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        nickname: '',
+        deptId: '', // ID로 저장
+        posId: ''   // ID로 저장
+    });
 
+    // 모달 상태
+    const [modal, setModal] = useState({
+        show: false,
+        type: '', // 'success' or 'error'
+        message: ''
+    });
+
+    // 컴포넌트 마운트 시 부서/직급 목록 가져오기
+    useEffect(() => {
+        const fetchOptions = async () => {
+            try {
+                //서버 API 호출을 통해 부서 목록과 직급 목록을 가져옴.
+                const depts = await getDepartments();
+                const positions = await getPositions();
+                // 가져온 데이터를 상태에 저장
+                setDeptList(depts);
+                setPosList(positions);
+
+                // 목록의 첫 번째 값을 기본값으로 설정
+                if (depts.length > 0) setFormData(prev => ({ ...prev, deptId: depts[0].deptId }));
+                if (positions.length > 0) setFormData(prev => ({ ...prev, posId: positions[0].posId }));
+            } catch (error) {
+                console.error("부서/직급 정보를 불러오는데 실패했습니다.", error);
+                showModal('error', '부서/직급 정보를 불러오는데 실패했습니다.');
+            }
+        };
+        fetchOptions();
+    }, []);
+
+    // 모달 표시 함수
+    const showModal = (type, message) => {
+        setModal({ show: true, type, message });
+    };
+
+    // 모달 닫기 함수
+    const closeModal = () => {
+        setModal({ show: false, type: '', message: '' });
+    };
+
+    // 폼 입력값을 상태(state)에 반영
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    // 폼 제출 시 API 호출
     const handleSubmit = async (e) => {
-
         e.preventDefault();
-        setError(null);
-        setMessage(null);
 
-        if (!email || !password || !confirmPassword || !nickname || !department || !position) {
-            setError('모든 필드를 입력해야 합니다.');
+        // formData에서 값 추출
+        const { email, password, confirmPassword, nickname, deptId, posId } = formData;
+
+        // 유효성 검사
+        if (!email || !password || !confirmPassword || !nickname || !deptId || !posId) {
+            showModal('error', '모든 필드를 입력해야 합니다.');
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('비밀번호와 비밀번호 확인이 일치하지 않습니다.');
+            showModal('error', '비밀번호와 비밀번호 확인이 일치하지 않습니다.');
             return;
         }
 
         setLoading(true);
 
         try {
-            const { ok, data } = await signup({ email, password, nickname, department, position }); // <-- 함수 호출
+            const { ok, data } = await signup({
+                email,
+                password,
+                nickname,
+                deptId: Number(deptId),
+                posId: Number(posId)
+            });
 
             if (ok) {
-                // 1. 성공 메시지 표시
-                setMessage(data.message || '가입 완료');
-                setError(null); // 에러메세지 초기화
+                // 성공 메시지 표시
+                showModal('success', data.message || '회원가입이 완료되었습니다.\n10초 후 로그인 화면으로 이동합니다.');
 
-                // 2. 입력 필드 초기화 (선택 사항, 깔끔하게 보이기 위해)
-                setEmail('');
-                setPassword('');
-                setConfirmPassword('');
-                setNickname('');
-                setDepartment('');
-                setPosition('');
+                // 입력 필드 초기화
+                setFormData({
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    nickname: '',
+                    deptId: deptList.length > 0 ? deptList[0].deptId : '',
+                    posId: posList.length > 0 ? posList[0].posId : ''
+                });
 
-                // 3. 로그인 페이지로 이동
+                // 10초 후 로그인 페이지로 이동
                 setTimeout(() => {
-                    navigate('/login'); // 로그인 페이지로 이동
-                }, 5000); // 5초 후 이동하여 사용자에게 성공 메시지를 보여줄 시간을 줌
+                    navigate('/login');
+                }, 5000);
             } else {
                 // 백엔드에서 받은 오류 메시지를 사용
-                setError(data.message || '가입 실패');
+                showModal('error', data.message || '가입 실패');
             }
         } catch (err) {
             console.error('API 호출 중 실제 오류:', err);
             // 네트워크 오류 등 예외 처리
-            setError('서버 연결 오류');
+            showModal('error', '서버 연결 오류가 발생했습니다.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="signup-form"> {/* (2) 클래스명을 사용하여 스타일 적용 */}
+        <div className="signup-form">
             <h3>회원 정보 입력</h3>
-
-            {error && <p className="error-message">{error}</p>}
-            {message && <p className="success-message">{message}</p>}
-
 
             <form onSubmit={handleSubmit}>
                 {/* 1. 이메일 입력 필드 */}
                 <div className="form-group">
                     <label htmlFor="email">이메일</label>
-                    <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading} />
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
                 </div>
 
                 {/* 2. 닉네임 입력 필드 */}
                 <div className="form-group">
                     <label htmlFor="nickname">이름</label>
-                    <input type="text" id="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} required disabled={loading} />
+                    <input
+                        type="text"
+                        id="nickname"
+                        name="nickname"
+                        value={formData.nickname}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
                 </div>
 
-                {/* 3. 부서 선택 */}
+                {/* 3. 부서 선택(드롭다운) */}
                 <div className="form-group">
-                    <label htmlFor="department">부서</label>
-                    <select id="department" value={department} onChange={(e) => setDepartment(e.target.value)} required disabled={loading}>
-                        <option value="">부서를 선택해주세요</option>
-                        {departments.map((department) => (
-                            <option key={department} value={department}>
-                                {department}
+                    <label htmlFor="deptId">부서</label>
+                    <select
+                        id="deptId"
+                        name="deptId"
+                        value={formData.deptId}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    >
+                        <option value="" disabled>부서를 선택해주세요</option>
+                        {deptList.map((dept) => (
+                            <option key={dept.deptId} value={dept.deptId.toString()}>
+                                {dept.deptName}
                             </option>
                         ))}
                     </select>
                 </div>
 
-                {/* 4. 직급 선택 */}
+                {/* 4. 직급 선택 드롭다운 */}
                 <div className="form-group">
-                    <label htmlFor="position">직급</label>
-                    <input
-                        type="text"
-                        id="position"
-                        value={position} onChange={(e) => setPosition(e.target.value)}
-                        placeholder="직급을 입력해주세요"
-                        required disabled={loading} />
+                    <label htmlFor="posId">직급</label>
+                    <select
+                        id="posId"
+                        name="posId"
+                        value={formData.posId}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    >
+                        <option value="" disabled>직급을 선택해주세요</option>
+                        {posList.map((pos) => (
+                            <option key={pos.posId} value={pos.posId.toString()}>
+                                {pos.posName}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* 5. 비밀번호 입력 필드 */}
                 <div className="form-group">
                     <label htmlFor="password">비밀번호</label>
-                    <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={loading} />
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
                 </div>
 
                 {/* 6. 비밀번호 확인 입력 필드 */}
                 <div className="form-group">
                     <label htmlFor="confirmPassword">비밀번호 확인</label>
-                    <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} />
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
                 </div>
-
 
                 {/* 제출 버튼 */}
                 <button type="submit" disabled={loading} className="submit-btn">
                     {loading ? '가입 중...' : '회원가입'}
                 </button>
             </form>
+
+            {/* 모달 */}
+            {modal.show && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className={`modal-content ${modal.type}`} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-icon">
+                            {modal.type === 'success' ? '✓' : '✕'}
+                        </div>
+                        <p className="modal-message">{modal.message}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

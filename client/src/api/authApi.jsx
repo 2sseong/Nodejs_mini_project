@@ -141,3 +141,25 @@ export async function getUsersByTeam() {
     const response = await fetch(`${API_URL}/users/by-team`);
     return response.json();
 }
+
+/**
+ * 부서 목록 조회
+ * @returns {Promise<Array>} - 부서 목록 ({ deptId, deptCode, deptName })
+ */
+export async function getDepartments() {
+    const response = await fetch(`${API_URL}/departments`);
+    if (!response.ok) throw new Error('부서 목록을 불러올 수 없습니다.');
+    const data = await response.json();
+    return data.data || [];
+}
+
+/**
+ * 직급 목록 조회
+ * @returns {Promise<Array>} - 직급 목록 ({ posId, posName, posLevel })
+ */
+export async function getPositions() {
+    const response = await fetch(`${API_URL}/positions`);
+    if (!response.ok) throw new Error('직급 목록을 불러올 수 없습니다.');
+    const data = await response.json();
+    return data.data || [];
+}

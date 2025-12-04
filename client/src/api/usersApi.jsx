@@ -1,16 +1,9 @@
 ﻿import axios from 'axios';
 
-// 백엔드 API 기본 URL (server.js의 포트: 1337에 맞게 설정)
+// 백엔드 API 기본 URL
 const api = axios.create({
     baseURL: '/api',
 });
-
-// -- Mock 데이터 (아직 구현되지 않은 기능에만 사용)
-const mockReceivedRequests = [
-    { id: 1, requesterId: "dongdong", requesterName: "동동이", status: "PENDING" },
-    { id: 2, requesterId: "mangmang", requesterName: "망망이", status: "PENDING" },
-];
-
 
 // 요청 인터셉터: 모든 요청에 자동으로 토큰 추가 (JWT 토큰 검증)
 api.interceptors.request.use(
@@ -29,43 +22,16 @@ api.interceptors.request.use(
     }
 );
 
-// ==========================================================
-// ✅ 구현 완료된 기능 (실제 API 연동)
-// ==========================================================
-
-// 1. 내 친구 목록 조회 API (GET /api/friends)
-export const fetchFriendList = async () => {
-    console.log("실제 API: 내 친구 목록 조회 요청");
-    try {
-        const response = await api.get(`/friends`);
-        return response.data;
-    } catch (error) {
-        console.error("API Error: 친구 목록 조회 실패", error);
-        throw new Error("친구 목록을 가져오는 데 실패했습니다.");
-    }
-};
-
-// ==========================================================
-// ❌ 미구현 기능 (Mock 데이터 유지)
-// ==========================================================
-
-// 3. 받은 친구 요청 목록 조회 API (GET /api/v1/friends/requests/received)
-export const fetchReceivedRequests = () => {
-    console.log("Mock API: 받은 친구 요청 목록 조회");
-    return Promise.resolve(mockReceivedRequests);
-};
-
-// 4. 친구 요청 수락 API (PATCH /api/v1/friends/requests/:id)
-export const acceptFriendRequest = (requestId) => {
-    console.log(`Mock API: 요청 ID ${requestId} 수락 처리`);
-    return Promise.resolve({ success: true, message: "요청이 수락되었습니다." });
-};
-
-// 사용자 검색 함수 
+/**
+ * 사용자 검색 API
+ * @param {string} query - 검색어
+ * @param {string} userId - 사용자 ID (사용하지 않지만 호환성 유지)
+ * @returns {Promise<Array>} - 검색된 사용자 목록
+ */
 export const searchAllUsers = async (query = '', userId) => {
     console.log("🔍 searchAllUsers 호출됨! query:", query);
     try {
-        const response = await api.get('/friends/search', {
+        const response = await api.get('/users/search', {
             params: {
                 query: query,
             }
@@ -90,10 +56,6 @@ export const searchAllUsers = async (query = '', userId) => {
     }
 };
 
-// **********************************************
-// * 즐겨찾기 토글 API 함수 추가
-// **********************************************
-
 /**
  * 즐겨찾기 상태를 토글하는 API 호출 함수
  * @param {string} targetUserId - 즐겨찾기 대상 ID (클릭된 사용자)
@@ -110,7 +72,7 @@ export const toggleUserPick = async (targetUserId, isAdding) => {
     };
 
     try {
-        const response = await api.post('/friends/pick', requestBody);
+        const response = await api.post('/users/pick', requestBody);
         return response.data;
     } catch (error) {
         const errorMessage = error.response?.data?.message || '즐겨찾기 토글 중 알 수 없는 오류 발생';

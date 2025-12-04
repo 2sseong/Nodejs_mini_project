@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import FriendRequestList from '../components/Friend/FriendRequestList';
 import { useAuth } from '../hooks/AuthContext.jsx';
-import UserSearch from '../components/Friend/UserSearch.jsx';
-import FriendList from '../components/Friend/FriendList.jsx';
+import UserSearch from '../components/User/UserSearch.jsx';
+import UserList from '../components/User/UserList.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
-import { searchAllUsers, toggleUserPick } from '../api/friendsApi.jsx';
-import '../styles/FriendPage.css';
+import { searchAllUsers, toggleUserPick } from '../api/usersApi.jsx';
+import '../styles/UserPage.css';
 
 
-export default function FriendPage() {
+export default function UserPage() {
     // 1. 유저 목록 상태 관리
     const [userList, setUserList] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -133,9 +132,9 @@ export default function FriendPage() {
     } else if (error) {
         listContent = <p className="error-text">오류: {error}</p>;
     } else {
-        // FriendList 컴포넌트에 필요한 props만 전달
+        // UserList 컴포넌트에 필요한 props만 전달
         listContent = (
-            <FriendList
+            <UserList
                 users={userList}
                 myUserId={myUserId}
                 searchQuery={searchQuery}
@@ -149,8 +148,8 @@ export default function FriendPage() {
     return (
         <div className="friend-page">
             <div className="friend-page-header">
-                <h1 className="page-title">친구 관리</h1>
-                <p className="page-subtitle">친구를 검색하고 목록을 관리하세요</p>
+                <h1 className="page-title">사용자 관리</h1>
+                <p className="page-subtitle">사용자를 검색하고 목록을 관리하세요</p>
             </div>
 
             <div className="friend-page-content">
@@ -190,16 +189,6 @@ export default function FriendPage() {
                             onQueryChange={handleQueryChange}
                         />
                         {listContent} {/* 전체 목록/검색 결과 표시 */}
-                    </div>
-                </section>
-
-                <section className="friend-section request-section">
-                    <div className="section-header">
-                        <div className="section-icon">📬</div>
-                        <h2 className="section-title">친구 요청</h2>
-                    </div>
-                    <div className="section-content">
-                        <FriendRequestList />
                     </div>
                 </section>
             </div>

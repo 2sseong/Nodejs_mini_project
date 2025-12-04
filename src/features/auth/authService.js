@@ -12,7 +12,7 @@ const saltRounds = 10;
 /**
  * 회원가입 비즈니스 로직
  */
-export async function signupUser({ email, password, nickname, department, position }) {
+export async function signupUser({ email, password, nickname, deptId, posId }) {
 
     // 1. 이메일 중복 확인 (Repository 호출)
     const existingUser = await authRepository.findUserByEmail(email);
@@ -28,14 +28,14 @@ export async function signupUser({ email, password, nickname, department, positi
     const newUserId = uuidv4();
 
     // 4. DB에 삽입 (Repository 호출)
-    const userData = { userId: newUserId, email, hashedPassword, nickname, department, position };
+    const userData = { userId: newUserId, email, hashedPassword, nickname, deptId, posId };
     await authRepository.insertUser(userData);
 
     return {
         userId: newUserId,
         nickname: nickname,
-        department: department,
-        position: position,
+        deptId: deptId,
+        posId: posId,
     };
 }
 
@@ -167,12 +167,18 @@ export async function getUsersGroupedByTeam() {
     const users = await authRepository.getUsersByTeam();
 
     // 부서별로 그룹핑
+    // 빈 배열을 만듦
     const groupedByTeam = {};
+    // users배열을 순회하면서 각 user객체를 처리
     users.forEach(user => {
+        // 현재 user의 department 값을 가져와서 teamName에 저장
         const teamName = user.DEPARTMENT;
+        // department 값이 없으면 빈 배열을 생성
         if (!groupedByTeam[teamName]) {
             groupedByTeam[teamName] = [];
         }
+        // (그룹핑된 배열에 user객체를 추가)
+        // user객체의 정보를 추출하여 groupedByTeam 객체에 추가
         groupedByTeam[teamName].push({
             userId: user.USER_ID,
             nickname: user.NICKNAME,
@@ -182,6 +188,36 @@ export async function getUsersGroupedByTeam() {
             department: user.DEPARTMENT
         });
     });
-
+    // 최종적으로 팀별로 묶인 사용자 목록 객체를 반환
     return groupedByTeam;
+}
+
+/**
+ * 모든 부서 목록 가져오기
+ */
+export async function getAllDepartments() {
+    const rawDepartments = await authRepository.findAllDepartments();
+
+    const formatted = rawDepartments.map(d => ({
+        deptId: d.DEPT_ID,
+        deptCode: d.DEPT_CODE,
+        deptName: d.DEPT_NAME,
+    }));
+
+    return formatted;
+}
+
+/**
+ * 모든 직급 목록 가져오기
+ */
+export async function getAllPositions() {
+    const rawPositions = await authRepository.findAllPositions();
+
+    const formatted = rawPositions.map(p => ({
+        posId: p.POS_ID,
+        posName: p.POS_NAME,
+        posLevel: p.POS_LEVEL,
+    }));
+
+    return formatted;
 }
