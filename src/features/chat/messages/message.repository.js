@@ -7,10 +7,14 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
         limit: Number(limit)
     };
 
+    /* [핵심 수정] 
+       DB에 저장된 KST 시간에서 9시간(32,400,000ms)을 빼서 UTC로 가져옵니다.
+       그래야 Node.js의 현재 시간(UTC)과 비교할 때 "과거"로 인식되어 정상 처리됩니다.
+    */
     let innerSql = `
         SELECT 
             T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-            T1.SENT_AT, -- [수정] 복잡한 연산 제거 (자동 변환 사용)
+            (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 32400000 AS SENT_AT,
             T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
             T2.NICKNAME, T2.PROFILE_PIC 
         FROM T_MESSAGE T1
@@ -48,6 +52,9 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
 export async function saveMessageTx(data) {
     const { roomId, senderId, content, messageType, fileUrl, fileName } = data;
 
+    // [중요] Node.js 시간을 기준으로 저장하고, 이 시간을 그대로 반환해야 함
+    const now = new Date();
+
     let connection;
     try {
         connection = await getDBConnection();
@@ -56,24 +63,25 @@ export async function saveMessageTx(data) {
             INSERT INTO T_MESSAGE(
                 ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
             ) VALUES (
-                :roomId, :senderId, :content, :messageType, :fileUrl, :fileName, SYSDATE
+                :roomId, :senderId, :content, :messageType, :fileUrl, :fileName, :sentAt
             )
             RETURNING 
-                MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
+                MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME
             INTO 
-                :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName, :outSentAt
+                :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName
         `;
 
         const binds = {
             roomId, senderId, content, messageType, fileUrl, fileName,
+            sentAt: now, // Node.js 시간 바인딩
             outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
             outRoomId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
             outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
             outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
             outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
             outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-            outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
+            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+            // outSentAt 제거: DB에서 돌아오는 시간은 타임존 문제로 사용하지 않음
         };
 
         const result = await connection.execute(sql, binds, { autoCommit: true });
@@ -87,7 +95,7 @@ export async function saveMessageTx(data) {
                 MESSAGE_TYPE: result.outBinds.outMsgType[0],
                 FILE_URL: result.outBinds.outFileUrl[0],
                 FILE_NAME: result.outBinds.outFileName[0],
-                SENT_AT: result.outBinds.outSentAt[0]
+                SENT_AT: now // [핵심] DB 리턴값이 아닌 원래 now 객체를 반환하여 실시간성 보장
             };
         } else {
             throw new Error("메시지 저장 실패");
@@ -107,14 +115,11 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     messageIds.forEach((id, index) => { bindVars[`id${index}`] = id; });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
-    /**
-     * [최적화 변경 사항]
-     * 1. 나간 멤버 제외: T_ROOM_MEMBER(방 멤버 테이블)와 JOIN하여 현재 멤버인 경우만 카운트합니다.
-     * (나간 사람은 membersInRoom(모수)에서도 빠지고, 여기서 readCount에서도 빠지므로 정합성이 유지됩니다.)
-     * * 2. 성능 최적화: EXTRACT 연산을 제거하고 단순 날짜 비교로 변경하여 DB 인덱스를 사용할 수 있게 했습니다.
-     * (오라클의 날짜 산술 연산을 사용하여 성능을 O(N) -> O(log N)으로 개선)
-     * * ※ 주의: 'T_ROOM_MEMBER'는 실제 방 멤버 정보를 담고 있는 테이블명으로 변경해주세요.
-     */
+    /* [수정] 
+       이제 SENT_AT과 lastReadTimestamp 모두 Node.js 기준 시간이므로 
+       9시간 차감(- 32402000)을 제거하고, 
+       네트워크/처리 지연을 고려한 2초(- 2000) 여유만 둡니다.
+    */
     const sql = `
         SELECT 
             m.MSG_ID,
@@ -145,13 +150,16 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
     let connection;
     try {
         connection = await getDBConnection();
-        let timestampToUse = lastReadTimestamp;
 
-        if (!timestampToUse) timestampToUse = Date.now();
+        // 클라이언트나 서비스에서 넘겨준 타임스탬프를 그대로 사용
+        // (없으면 Node 현재 시간)
+        const ts = lastReadTimestamp || Date.now();
 
         const sql = `
             MERGE INTO USERROOMREADSTATUS target
-            USING (SELECT :userId AS U_ID, :roomId AS R_ID, :ts AS TS FROM DUAL) source
+            USING (
+                SELECT :userId AS U_ID, :roomId AS R_ID, :ts AS TS FROM DUAL
+            ) source
             ON (target.USER_ID = source.U_ID AND target.ROOM_ID = source.R_ID)
             WHEN MATCHED THEN
                 UPDATE SET target.LASTREADTIMESTAMP = GREATEST(NVL(target.LASTREADTIMESTAMP, 0), source.TS)
@@ -161,7 +169,7 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
         `;
 
         const result = await connection.execute(sql, {
-            userId, roomId, ts: timestampToUse
+            userId, roomId, ts
         }, { autoCommit: true });
 
         return result.rowsAffected;
@@ -213,7 +221,9 @@ export async function deleteMessageTx({ msgId, senderId }) {
 
 export async function searchMessages(roomId, keyword) {
     const sql = `
-        SELECT m.MSG_ID, m.CONTENT, m.SENT_AT, u.NICKNAME, u.PROFILE_PIC
+        SELECT m.MSG_ID, m.CONTENT, 
+               (CAST(m.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 32400000 AS SENT_AT,
+               u.NICKNAME, u.PROFILE_PIC
         FROM T_MESSAGE m
         JOIN T_USER u ON m.SENDER_ID = u.USER_ID
         WHERE m.ROOM_ID = :roomId 
@@ -240,7 +250,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                 SELECT * FROM (
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT,
+                        (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 32400000 AS SENT_AT,
                         T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                         T2.NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1
@@ -256,7 +266,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                 SELECT * FROM (
                     SELECT 
                         T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT,
+                        (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 32400000 AS SENT_AT,
                         T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                         T2.NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1
@@ -291,7 +301,7 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
         SELECT * FROM (
             SELECT 
                 T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                T1.SENT_AT,
+                (CAST(T1.SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 32400000 AS SENT_AT,
                 T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
                 T2.NICKNAME, T2.PROFILE_PIC
             FROM T_MESSAGE T1
@@ -312,7 +322,9 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
 export async function getRoomFiles(roomId) {
     const sql = `
         SELECT 
-            MSG_ID, SENDER_ID, SENT_AT, FILE_URL, FILE_NAME, MESSAGE_TYPE
+            MSG_ID, SENDER_ID, 
+            (CAST(SENT_AT AS DATE) - DATE '1970-01-01') * 86400000 - 32400000 AS SENT_AT,
+            FILE_URL, FILE_NAME, MESSAGE_TYPE
         FROM T_MESSAGE
         WHERE ROOM_ID = :roomId
           AND MESSAGE_TYPE = 'FILE'

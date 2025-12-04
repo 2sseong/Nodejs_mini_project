@@ -29,7 +29,14 @@ export default function messageSocket(io, socket) {
             const messages = await messageService.getHistory({ roomId, beforeMsgId, limit });
 
             if (!messages || messages.length === 0) {
-                return socket.emit('chat:history', { messages: [], membersInRoom: 0 });
+                // 메시지가 없어도 멤버들의 읽음 상태는 조회해서 보내줘야 함 (초기화 위해)
+                const memberReadStatus = await messageService.getMemberReadStatus(roomId);
+                const membersInRoom = await roomService.getRoomMemberCount(roomId); // 인원수도 갱신
+                return socket.emit('chat:history', {
+                    messages: [],
+                    membersInRoom: membersInRoom || 0, // 인원수
+                    memberReadStatus: memberReadStatus || {} // 읽음 상태
+                });
             }
 
             // [추가] 방 입장 시 가장 최근 메시지 기준으로 읽음 처리 및 브로드캐스트
@@ -92,14 +99,14 @@ export default function messageSocket(io, socket) {
 
             // [수정] 보낸 사람의 최신 프로필 정보 조회 (DB에서 가져옴)
             const senderInfo = await authService.getUserInfo(userId);
-
             const membersInRoom = await roomService.getRoomMemberCount(saved.ROOM_ID);
-
             // 접속자가 있어도 '포커스' 전엔 안 읽은 것으로 간주하므로, 보낸 사람(1)만 뺌.
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
+            const sentAtNum = saved.SENT_AT instanceof Date ? saved.SENT_AT.getTime() : new Date(saved.SENT_AT).getTime();
 
             const initialMessage = {
                 ...saved,
+                SENT_AT: sentAtNum,
                 // [수정] DB의 닉네임과 프로필 사진을 우선 사용
                 NICKNAME: senderInfo.NICKNAME || msg.NICKNAME,
                 PROFILE_PIC: senderInfo.PROFILE_PIC,
@@ -153,9 +160,11 @@ export default function messageSocket(io, socket) {
             // 3. unreadCount 계산
             const membersInRoom = await roomService.getRoomMemberCount(savedMessage.ROOM_ID);
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
+            const sentAtNum = savedMessage.SENT_AT instanceof Date ? savedMessage.SENT_AT.getTime() : new Date(savedMessage.SENT_AT).getTime();
 
             const broadcastData = {
                 ...savedMessage,
+                SENT_AT: sentAtNum,
                 NICKNAME: senderInfo.NICKNAME || userNickname,
                 PROFILE_PIC: senderInfo.PROFILE_PIC, // [수정] 프로필 사진 추가
                 unreadCount: calculatedUnreadCount
