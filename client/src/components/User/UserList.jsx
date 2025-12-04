@@ -1,7 +1,7 @@
 // C:\Users\oneonly\Documents\GitHub\Nodejs_mini_project\client\src\components\Friend\FriendList.jsx
 
 import React, { useState } from 'react';
-import './FriendList.css';
+import './UserList.css';
 
 // 개별 사용자 아이템 컴포넌트
 function UserItem({ user, isOnline, onTogglePick }) {
@@ -99,7 +99,7 @@ function DepartmentSection({ department, users, myUserId, onlineUsers, onToggleP
  * @param {string} filterType - 'ALL' | 'ONLINE' | 'PICK'
  * @param {Function} onTogglePick - 즐겨찾기 토글 핸들러 함수
  */
-export default function FriendList({ users, myUserId, searchQuery, onlineUsers = [], filterType = 'ALL', onTogglePick }) {
+export default function UserList({ users, myUserId, searchQuery, onlineUsers = [], filterType = 'ALL', onTogglePick }) {
 
     // 0. 전체 유저 자체가 없을 때 (검색 결과 0)
     if (!users || users.length === 0) {

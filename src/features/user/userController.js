@@ -2,8 +2,8 @@
     searchUsers as searchUsersService,
     addPick as addPickService,
     removePick as removePickService
-} from './friendService.js';
-import { addPick, removePick, searchUsersByQuery } from './friendRepository.js';
+} from './userService.js';
+import { addPick, removePick, searchUsersByQuery } from './userRepository.js';
 
 // -- GET /api/friends - 친구 목록 조회
 

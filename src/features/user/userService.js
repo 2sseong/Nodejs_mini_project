@@ -1,10 +1,10 @@
-﻿import * as friendRepository from './friendRepository.js';
+﻿import * as userRepository from './userRepository.js';
 // 1. friendRepository의 함수들을 import합니다. (경로는 사용자 환경에 맞게 수정 필요)
 import {
     addPick as addPickRepo, // 서비스 함수랑 이름이 겹침
     removePick as removePickRepo,
     searchUsersByQuery
-} from './friendRepository.js';
+} from './userRepository.js';
 
 /**
  * 친구 목록 조회 비즈니스 로직
