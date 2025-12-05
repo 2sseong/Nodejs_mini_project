@@ -29,8 +29,8 @@ export async function getHistory({ roomId, limit, beforeMsgId }) {
 // 텍스트 메시지 저장
 export async function saveMessage({ userId, ROOM_ID, CONTENT, activeUserIds = [] }) {
     const savedRow = await messageRepo.saveMessageTx({
-        roomId: ROOM_ID, 
-        senderId: userId, 
+        roomId: ROOM_ID,
+        senderId: userId,
         content: CONTENT,
         messageType: 'TEXT',
         fileUrl: null,
@@ -40,7 +40,7 @@ export async function saveMessage({ userId, ROOM_ID, CONTENT, activeUserIds = []
     // 변경: 상대방은 클라이언트에서 'focus' 시점에 명시적으로 요청하도록 변경함.
     if (savedRow.SENT_AT) {
         const timestamp = new Date(savedRow.SENT_AT).getTime();
-        
+
         // activeUserIds 대신 [userId]만 처리
         await messageRepo.upsertReadStatus(userId, ROOM_ID, timestamp);
     }
@@ -53,12 +53,12 @@ export async function saveFileMessage({ roomId, userId, fileName, fileURL, mimeT
     const savedRow = await messageRepo.saveMessageTx({
         roomId: roomId,
         senderId: userId,
-        content: null, 
-        messageType: 'FILE', 
+        content: null,
+        messageType: 'FILE',
         fileUrl: fileURL,
         fileName: fileName
     });
-    
+
     // [변경] 보낸 사람(userId)만 읽음 처리
     if (savedRow.SENT_AT) {
         const timestamp = new Date(savedRow.SENT_AT).getTime();
@@ -73,7 +73,7 @@ export async function getReadCountsForMessages(roomId, messages) {
     if (!messages || messages.length === 0) return {};
 
     const msgIds = messages.map(m => m.MSG_ID || m.TEMP_ID);
-    
+
     const rows = await messageRepo.countReadStatusByMessageIds(roomId, msgIds);
 
     const readCountMap = {};
@@ -105,13 +105,13 @@ export async function updateLastReadTimestamp(userId, roomId, lastReadTimestamp)
 
     if (isNaN(timestampNumber)) {
         console.error("Invalid timestamp received (NaN):", lastReadTimestamp);
-        return; 
+        return;
     }
 
     // DB에 읽음 상태 저장
     const rowsAffected = await messageRepo.upsertReadStatus(userId, roomId, timestampNumber);
-    
-// DB에서 실제로 행이 업데이트된 경우(rowsAffected > 0)에만 true를 반환하여 소켓 전파.
+
+    // DB에서 실제로 행이 업데이트된 경우(rowsAffected > 0)에만 true를 반환하여 소켓 전파.
     // (이미 최신 상태라면 rowsAffected는 0이 나옴 -> 소켓 전송 안 함 -> 트래픽 절약)
     return true;
 }
@@ -121,15 +121,15 @@ export async function updateLastReadTimestamp(userId, roomId, lastReadTimestamp)
  */
 export async function calculateUnreadCounts({ messages, currentUserId, membersInRoom, readCountMap }) {
     if (!messages || messages.length === 0) return [];
-    
+
     const messagesWithUnread = messages.map(msg => {
         const readCount = readCountMap[msg.MSG_ID] || 0;
         const unread = membersInRoom - readCount;
-        const calculatedUnreadCount = Math.max(0, unread); 
-        
+        const calculatedUnreadCount = Math.max(0, unread);
+
         return {
             ...msg,
-            unreadCount: calculatedUnreadCount 
+            unreadCount: calculatedUnreadCount
         };
     });
 
@@ -144,7 +144,7 @@ export async function calculateInitialUnreadCount(roomId) {
     // 1. 멤버 수 조회 (Room Repo 호출)
     const count = await roomRepo.countRoomMembers(roomId);
     const membersInRoom = parseInt(count, 10);
-    
+
     // 2. 초기 안 읽음 수 계산 (총 인원 - 1명)
     return Math.max(0, membersInRoom - 1);
 }
@@ -152,20 +152,20 @@ export async function calculateInitialUnreadCount(roomId) {
 // 방 멤버들의 읽음 상태를 Map 형태로 반환
 export async function getMemberReadStatus(roomId) {
     const rows = await messageRepo.getRoomReadStatus(roomId);
-    
+
     const statusMap = {};
     rows.forEach(row => {
         const userId = row.USER_ID || row.user_id || row.UserId;
-        const ts = row.lastReadTimestamp || 
-                   row.LASTREADTIMESTAMP || 
-                   row.LAST_READ_TIMESTAMP || 
-                   row.last_read_timestamp;
-                   
+        const ts = row.lastReadTimestamp ||
+            row.LASTREADTIMESTAMP ||
+            row.LAST_READ_TIMESTAMP ||
+            row.last_read_timestamp;
+
         if (userId && ts) {
             statusMap[userId] = Number(ts);
         }
     });
-    
+
     console.log(`[Service] Loaded ReadMap for Room ${roomId}:`, Object.keys(statusMap).length, 'users');
     return statusMap;
 }

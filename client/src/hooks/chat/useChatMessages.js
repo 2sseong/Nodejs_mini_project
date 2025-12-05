@@ -130,7 +130,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
                 Object.keys(readMap).forEach(memberId => {
                     const lastRead = readMap[memberId];
                     // 이 멤버가 읽은 시간(lastRead)이 메시지 시간(msgTs)보다 크면 읽은 것임
-                    if (lastRead >= msgTs - 5000) {
+                    if (lastRead + 32400000 >= msgTs - 5000) {
                         readBy.push(String(memberId).trim());
                     }
                 });
@@ -157,7 +157,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             if (!msg) return;
             setIsInitialLoad(false);
             if (hasFutureMessagesRef.current) return;
-            if (String(msg.SENDER_ID) === String(userId) && msg.TEMP_ID) {
+            if (String(msg.SENDER_ID || msg.sender_id) === String(userId) && msg.TEMP_ID) {
                 setMessages(prev => prev.map(m => m.TEMP_ID === msg.TEMP_ID ? msg : m));
                 return;
             }
@@ -174,36 +174,34 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             const { userId: rId, lastReadTimestamp } = data;
             const ts = typeof lastReadTimestamp === 'number' ? lastReadTimestamp : new Date(lastReadTimestamp).getTime();
 
-            // ID 정규화 (공백 제거 + 소문자 변환)
             const readerId = String(rId).trim().toLowerCase();
-
-            // Ref 갱신 (키도 소문자로)
             readStatusMapRef.current[readerId] = Math.max(readStatusMapRef.current[readerId] || 0, ts);
 
             setMessages(prev => prev.map(msg => {
                 if (msg.unreadCount <= 0) return msg;
 
-                const senderId = String(msg.SENDER_ID).trim().toLowerCase();
+                // [★ 핵심 수정] SENDER_ID가 없으면 sender_id 사용 (대소문자 호환)
+                const rawSenderId = msg.SENDER_ID || msg.sender_id;
+                if (!rawSenderId) return msg; // ID가 없으면 안전하게 리턴
 
-                // [★ 핵심 방어 로직] 
-                // 내가 보낸 메시지(Sender)를 내가 읽었다는 신호(Reader)가 오면,
-                // 이는 "자문자답"이므로 안 읽은 수(unreadCount)를 줄이면 안 됩니다.
-                // (서버에서는 내 메시지에 대해 나를 제외하고 카운트하므로, 여기서 줄이면 중복 차감이 됨)
+                const senderId = String(rawSenderId).trim().toLowerCase();
+
+                // 자문자답 방지: 보낸 사람과 읽은 사람이 같으면 무시
                 if (senderId === readerId) return msg;
 
-                // [중복 방지] 이미 읽은 목록에 있는 경우 -> 무시
-                // readBy 배열의 요소들도 비교할 때 소문자로 변환하여 확인
+                // 이미 읽음 목록에 있으면 무시
                 const readBy = (msg.readBy || []).map(id => String(id).trim().toLowerCase());
                 if (readBy.includes(readerId)) return msg;
 
                 const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
 
-                // [실시간 처리] 60초 오차 범위 내 처리
-                if (msgTs <= ts + 60000) {
+                // [★ 핵심 수정] 실시간 업데이트 비교 시에도 9시간 보정 필요
+                // lastReadTimestamp(UTC) + 9h vs msgTs(KST)
+                if (msgTs <= ts + 32400000 + 60000) {
                     return {
                         ...msg,
                         unreadCount: Math.max(0, msg.unreadCount - 1),
-                        readBy: [...(msg.readBy || []), rId] // 원본 ID 추가 (화면 표시용)
+                        readBy: [...(msg.readBy || []), rId]
                     };
                 }
                 return msg;

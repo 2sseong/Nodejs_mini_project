@@ -12,7 +12,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
                 EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
                 EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
                 EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-            ) - 32400000 AS SENT_AT, 
+            ) AS SENT_AT, 
             T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
             T2.NICKNAME, T2.PROFILE_PIC 
         FROM T_MESSAGE T1
@@ -60,11 +60,11 @@ export async function saveMessageTx(data) {
         const result = await connection.execute(sql, binds, { autoCommit: true });
 
         if (result.rowsAffected === 1) {
-            const dbTime = result.outBinds.outSentAt[0];
+            const dbTime = result.outBinds.outSentAt[0]; // Date 객체 (Node.js 타임존 반영됨)
 
-            // [★ 중요] getHistory와 기준을 맞추기 위해 9시간을 뺍니다.
-            // 안 뺴면 보낸 직후엔 KST, 새로고침하면 UTC가 되어 시간이 널뛰기하고 실시간 읽음이 무시됩니다.
-            const syncedTime = new Date(dbTime.getTime() - 32400000);
+            // [★ 수정] dbTime은 이미 JS Date 객체이므로 .getTime()은 정확한 UTC Timestamp를 반환합니다.
+            // 여기서 9시간을 빼면(-32400000) 시간이 과거로 왜곡되어 전송되므로 제거합니다.
+            const syncedTime = dbTime;
 
             return {
                 MSG_ID: result.outBinds.outId[0],
@@ -74,19 +74,24 @@ export async function saveMessageTx(data) {
                 MESSAGE_TYPE: result.outBinds.outMsgType[0],
                 FILE_URL: result.outBinds.outFileUrl[0],
                 FILE_NAME: result.outBinds.outFileName[0],
-                SENT_AT: syncedTime // 이제 getHistory와 시간이 일치합니다 (UTC)
+                SENT_AT: syncedTime
             };
         } else { throw new Error("메시지 저장 실패"); }
     } catch (err) { throw err; } finally { if (connection) await connection.close(); }
 }
 
-// 3. 읽은 수 카운트 (★ 수정: row 변수명 에러 해결 ★)
+// 3. 읽은 수 카운트 (★ 수정: NUMTODSINTERVAL 정밀도 문제 해결을 위해 DATE 연산으로 변경 ★)
 export async function countReadStatusByMessageIds(roomId, messageIds) {
     if (!messageIds || messageIds.length === 0) return [];
     const bindVars = { roomId };
     messageIds.forEach((id, index) => { bindVars[`id${index}`] = id; });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
+    // [수정] NUMTODSINTERVAL은 일수가 커지면(1970년부터 약 2만일) 기본 정밀도(2자리)를 초과해 에러가 발생할 수 있습니다.
+    // 따라서 DATE 산술 연산(1일 = 1)을 사용하여 안전하게 비교합니다.
+    // (r.lastReadTimestamp / 86400000) = 1970년 이후 경과한 일수(Day)
+    // + (9 / 24) = 9시간 (KST 보정)
+    // + (2 / 86400) = 2초 (여유 버퍼)
     const sql = `
         SELECT 
             m.MSG_ID,
@@ -96,10 +101,10 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
         LEFT JOIN UserRoomReadStatus r 
             ON m.ROOM_ID = TO_NUMBER(r.ROOM_ID) AND rm.USER_ID = r.USER_ID
             AND m.SENT_AT <= (
-                TIMESTAMP '1970-01-01 00:00:00' 
-                + NUMTODSINTERVAL((r.lastReadTimestamp / 1000), 'SECOND') 
-                + INTERVAL '9' HOUR 
-                + NUMTODSINTERVAL(2, 'SECOND')
+                TO_DATE('1970-01-01', 'YYYY-MM-DD') 
+                + (r.lastReadTimestamp / 86400000) 
+                + (9 / 24) 
+                + (2 / 86400)
             )
         WHERE m.ROOM_ID = :roomId AND m.MSG_ID IN (${inClause})
         GROUP BY m.MSG_ID
@@ -119,7 +124,13 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
     try {
         connection = await getDBConnection();
         const ts = lastReadTimestamp || Date.now();
-        const sql = `MERGE INTO USERROOMREADSTATUS target USING (SELECT :userId AS U_ID, :roomId AS R_ID, :ts AS TS FROM DUAL) source ON (target.USER_ID = source.U_ID AND target.ROOM_ID = source.R_ID) WHEN MATCHED THEN UPDATE SET target.LASTREADTIMESTAMP = GREATEST(NVL(target.LASTREADTIMESTAMP, 0), source.TS) WHEN NOT MATCHED THEN INSERT (USER_ID, ROOM_ID, LASTREADTIMESTAMP) VALUES (source.U_ID, source.R_ID, source.TS)`;
+        const sql = `
+        MERGE INTO USERROOMREADSTATUS target 
+        USING (SELECT :userId AS U_ID, :roomId AS R_ID, :ts AS TS FROM DUAL) source 
+        ON (target.USER_ID = source.U_ID AND target.ROOM_ID = source.R_ID) 
+        WHEN MATCHED THEN UPDATE SET target.LASTREADTIMESTAMP = GREATEST(NVL(target.LASTREADTIMESTAMP, 0), source.TS) 
+        WHEN NOT MATCHED THEN INSERT (USER_ID, ROOM_ID, LASTREADTIMESTAMP) VALUES (source.U_ID, source.R_ID, source.TS)
+        `;
         const result = await connection.execute(sql, { userId, roomId, ts }, { autoCommit: true });
         return result.rowsAffected;
     } catch (err) { throw err; } finally { if (connection) await connection.close(); }
@@ -140,7 +151,7 @@ export async function searchMessages(roomId, keyword) {
             EXTRACT(HOUR FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) - 32400000 AS SENT_AT,
+        ) AS SENT_AT,
         u.NICKNAME, u.PROFILE_PIC 
         FROM T_MESSAGE m JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
         WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID DESC
@@ -160,7 +171,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
             EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) - 32400000 AS SENT_AT
+        ) AS SENT_AT
     `;
 
     const sql = `
@@ -199,7 +210,7 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
             EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) - 32400000 AS SENT_AT
+        ) AS SENT_AT
     `;
 
     const sql = `
@@ -224,7 +235,7 @@ export async function getRoomFiles(roomId) {
             EXTRACT(HOUR FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) - 32400000 AS SENT_AT, 
+        ) AS SENT_AT, 
         SENDER_ID 
         FROM T_MESSAGE WHERE ROOM_ID=:roomId AND MESSAGE_TYPE='FILE' ORDER BY MSG_ID DESC
     `;
