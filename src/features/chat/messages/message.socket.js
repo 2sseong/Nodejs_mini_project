@@ -1,12 +1,11 @@
 import * as messageService from './message.service.js';
 import * as roomService from '../rooms/room.service.js';
-import * as authService from '../../auth/authService.js'; // [추가] 유저 정보 조회를 위해 import
+import * as authService from '../../auth/authService.js';
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 
-// ES 모듈 경로 설정
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOAD_DIR = path.join(__dirname, '..', '..', '..', '..', 'public', 'uploads');
@@ -25,21 +24,18 @@ export default function messageSocket(io, socket) {
         socket.join(String(roomId));
         console.log(`[Socket] User ${userId} joined room channel: ${roomId}`);
         try {
-            // 1. 메시지 히스토리 조회
             const messages = await messageService.getHistory({ roomId, beforeMsgId, limit });
 
             if (!messages || messages.length === 0) {
-                // 메시지가 없어도 멤버들의 읽음 상태는 조회해서 보내줘야 함 (초기화 위해)
                 const memberReadStatus = await messageService.getMemberReadStatus(roomId);
-                const membersInRoom = await roomService.getRoomMemberCount(roomId); // 인원수도 갱신
+                const membersInRoom = await roomService.getRoomMemberCount(roomId);
                 return socket.emit('chat:history', {
                     messages: [],
-                    membersInRoom: membersInRoom || 0, // 인원수
-                    memberReadStatus: memberReadStatus || {} // 읽음 상태
+                    membersInRoom: membersInRoom || 0,
+                    memberReadStatus: memberReadStatus || {}
                 });
             }
 
-            // [추가] 방 입장 시 가장 최근 메시지 기준으로 읽음 처리 및 브로드캐스트
             if (messages.length > 0 && !beforeMsgId) {
                 const latestMsg = messages[messages.length - 1];
                 if (latestMsg && latestMsg.SENT_AT) {
@@ -57,13 +53,9 @@ export default function messageSocket(io, socket) {
                 }
             }
 
-            // 2. 방 총 멤버 수 조회
             const membersInRoom = await roomService.getRoomMemberCount(roomId);
-            // 3. 읽음 수 Map 계산
             const readCountMap = await messageService.getReadCountsForMessages(roomId, messages);
-            // 4. 멤버별 읽음 상태 Map 조회
             const memberReadStatus = await messageService.getMemberReadStatus(roomId);
-            // 5. unreadCount 결합
             const messagesWithUnread = await messageService.calculateUnreadCounts({
                 messages,
                 currentUserId,
@@ -83,31 +75,25 @@ export default function messageSocket(io, socket) {
         }
     });
 
-    // 일반 메시지 전송
     socket.on('chat:message', async (msg) => {
         try {
-            // 1. 활성 사용자 ID 목록 조회
             const roomSockets = await io.in(String(msg.ROOM_ID)).fetchSockets();
             const activeUserIds = [...new Set(roomSockets.map(s => s.data.userId).filter(id => id))];
 
-            // 2. 메시지 저장
             const saved = await messageService.saveMessage({
                 userId,
                 ...msg,
                 activeUserIds
             });
 
-            // [수정] 보낸 사람의 최신 프로필 정보 조회 (DB에서 가져옴)
             const senderInfo = await authService.getUserInfo(userId);
             const membersInRoom = await roomService.getRoomMemberCount(saved.ROOM_ID);
-            // 접속자가 있어도 '포커스' 전엔 안 읽은 것으로 간주하므로, 보낸 사람(1)만 뺌.
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
             const sentAtNum = saved.SENT_AT instanceof Date ? saved.SENT_AT.getTime() : new Date(saved.SENT_AT).getTime();
 
             const initialMessage = {
                 ...saved,
                 SENT_AT: sentAtNum,
-                // [수정] DB의 닉네임과 프로필 사진을 우선 사용
                 NICKNAME: senderInfo.NICKNAME || msg.NICKNAME,
                 PROFILE_PIC: senderInfo.PROFILE_PIC,
                 TEMP_ID: msg.TEMP_ID,
@@ -122,7 +108,6 @@ export default function messageSocket(io, socket) {
         }
     });
 
-    // 파일 전송 핸들러
     socket.on('SEND_FILE', async (data, callback) => {
         const { roomId, fileName, mimeType, fileData, userNickname } = data;
         const socketUserId = socket.data.userId;
@@ -140,11 +125,9 @@ export default function messageSocket(io, socket) {
 
             const fileURL = `/uploads/${uniqueFileName}`;
 
-            // 1. 활성 사용자 조회
             const roomSockets = await io.in(String(roomId)).fetchSockets();
             const activeUserIds = [...new Set(roomSockets.map(s => s.data.userId).filter(id => id))];
 
-            // 2. DB 저장
             const savedMessage = await messageService.saveFileMessage({
                 roomId,
                 userId: socketUserId,
@@ -154,10 +137,8 @@ export default function messageSocket(io, socket) {
                 activeUserIds
             });
 
-            // [수정] 보낸 사람 정보 조회
             const senderInfo = await authService.getUserInfo(socketUserId);
 
-            // 3. unreadCount 계산
             const membersInRoom = await roomService.getRoomMemberCount(savedMessage.ROOM_ID);
             const calculatedUnreadCount = Math.max(0, membersInRoom - 1);
             const sentAtNum = savedMessage.SENT_AT instanceof Date ? savedMessage.SENT_AT.getTime() : new Date(savedMessage.SENT_AT).getTime();
@@ -166,7 +147,7 @@ export default function messageSocket(io, socket) {
                 ...savedMessage,
                 SENT_AT: sentAtNum,
                 NICKNAME: senderInfo.NICKNAME || userNickname,
-                PROFILE_PIC: senderInfo.PROFILE_PIC, // [수정] 프로필 사진 추가
+                PROFILE_PIC: senderInfo.PROFILE_PIC,
                 unreadCount: calculatedUnreadCount
             };
 
@@ -182,20 +163,18 @@ export default function messageSocket(io, socket) {
     // 읽음 처리 핸들러
     socket.on('chat:mark_as_read', async (payload) => {
         try {
-            const { roomId, lastReadTimestamp } = payload; // 클라이언트가 보낸 시간
+            const { roomId, lastReadTimestamp } = payload;
             const currentUserId = socket.data.userId;
+
+            console.log('[Socket] chat:mark_as_read received:', { roomId, lastReadTimestamp, userId: currentUserId });
 
             if (!roomId || !lastReadTimestamp || !currentUserId) return;
 
-            // [보정] 클라이언트 시간과 서버 시간 중 '더 미래의 시간'을 사용하거나,
-            // 간단하게는 그냥 서버 시간(Date.now())을 사용하여 동기화 문제를 해결합니다.
-            // 여기서는 클라이언트가 보낸 '메시지의 SENT_AT'을 신뢰하되, 
-            // 혹시 모를 오차를 위해 서버 DB에 저장할 때는 그대로 쓰더라도
-            // 브로드캐스팅은 확실하게 처리되도록 로직을 유지합니다.
-
             const isUpdated = await messageService.updateLastReadTimestamp(currentUserId, roomId, lastReadTimestamp);
+            console.log('[Socket] updateLastReadTimestamp result:', isUpdated);
 
             if (isUpdated) {
+                console.log('[Socket] Broadcasting chat:read_update to room:', roomId);
                 io.to(String(roomId)).emit('chat:read_update', {
                     userId: currentUserId,
                     roomId: roomId,
@@ -207,7 +186,6 @@ export default function messageSocket(io, socket) {
         }
     });
 
-    // 메시지 수정
     socket.on('chat:edit', async (payload) => {
         const { roomId, msgId, content } = payload;
         if (!roomId || !msgId || !content) return;
@@ -222,7 +200,6 @@ export default function messageSocket(io, socket) {
         }
     });
 
-    // 메시지 삭제
     socket.on('chat:delete', async (payload) => {
         const { roomId, msgId } = payload;
         if (!roomId || !msgId) return;
