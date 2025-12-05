@@ -12,7 +12,7 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
                 EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
                 EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
                 EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-            ) AS SENT_AT, 
+            ) - 32400000 AS SENT_AT, 
             T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
             T2.NICKNAME, T2.PROFILE_PIC 
         FROM T_MESSAGE T1
@@ -151,7 +151,7 @@ export async function searchMessages(roomId, keyword) {
             EXTRACT(HOUR FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) AS SENT_AT,
+        ) - 32400000 AS SENT_AT,
         u.NICKNAME, u.PROFILE_PIC 
         FROM T_MESSAGE m JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
         WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID DESC
@@ -171,7 +171,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
             EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) AS SENT_AT
+        ) - 32400000 AS SENT_AT
     `;
 
     const sql = `
@@ -210,7 +210,7 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
             EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) AS SENT_AT
+        ) - 32400000 AS SENT_AT
     `;
 
     const sql = `
@@ -235,7 +235,7 @@ export async function getRoomFiles(roomId) {
             EXTRACT(HOUR FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
             EXTRACT(MINUTE FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
-        ) AS SENT_AT, 
+        ) - 32400000 AS SENT_AT, 
         SENDER_ID 
         FROM T_MESSAGE WHERE ROOM_ID=:roomId AND MESSAGE_TYPE='FILE' ORDER BY MSG_ID DESC
     `;
