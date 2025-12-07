@@ -7,7 +7,7 @@ import db, { oracledb, executeQuery, executeTransaction, getConnection } from '.
 export async function createRoomWithCreatorTx({ roomName, creatorId }) {
     let conn;
     try {
-        conn = await getConnection(); 
+        conn = await getConnection();
         const roomSql = `
                         INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
                         VALUES (:roomName, 'GROUP', CURRENT_TIMESTAMP)
@@ -26,7 +26,7 @@ export async function createRoomWithCreatorTx({ roomName, creatorId }) {
                         `;
         await conn.execute(memberSql, { roomId, userId: creatorId }, { autoCommit: false });
 
-        await conn.commit(); 
+        await conn.commit();
         return { roomId, roomName, roomType: 'GROUP', creatorId };
     } catch (e) {
         if (conn) { try { await conn.rollback(); } catch { } }
@@ -60,7 +60,7 @@ export async function addMemberTx({ roomId, userId }) {
         const now = new Date();
         await executeTransaction(sql, { roomId, userId, joinedAt: now }, { autoCommit: false });
 
-        await conn.commit(); 
+        await conn.commit();
     } catch (e) {
         if (conn) { try { await conn.rollback(); } catch { } }
     } finally {
@@ -75,10 +75,10 @@ export async function deleteMember({ roomId, userId }) {
     let conn;
     try {
         conn = await getConnection();
-        
+
         // [1] 트랜잭션 수동 시작 (필수)
         // 쿼리를 여러 번 날려야 하므로 autoCommit: false로 묶어야 안전합니다.
-        
+
         // ---------------------------------------------------------
         // 1. 멤버 삭제
         // ---------------------------------------------------------
@@ -87,7 +87,7 @@ export async function deleteMember({ roomId, userId }) {
             WHERE ROOM_ID = :roomId AND USER_ID = :userId
         `;
         const deleteResult = await conn.execute(deleteMemberSql, { roomId, userId }, { autoCommit: false });
-        
+
         if (deleteResult.rowsAffected === 0) {
             // 멤버가 없거나 이미 나간 경우 등
             await conn.rollback();
@@ -112,22 +112,22 @@ export async function deleteMember({ roomId, userId }) {
         // ---------------------------------------------------------
         if (remainingMembers === 0) {
             console.log(`[INFO] Room ${roomId} is empty. Deleting the room...`);
-            
+
             //  여기서 방을 지우면, 설정해둔 ON DELETE CASCADE에 의해
             //  T_MESSAGE, USERROOMREADSTATUS 데이터도 자동으로 같이 삭제
             const deleteRoomSql = `DELETE FROM T_CHAT_ROOM WHERE ROOM_ID = :roomId`;
             await conn.execute(deleteRoomSql, { roomId }, { autoCommit: false });
-            
+
             roomDeleted = true;
         }
 
         // [4] 최종 커밋 (모든 변경사항 반영)
         await conn.commit();
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             roomDeleted: roomDeleted,
-            remainingMembers: remainingMembers 
+            remainingMembers: remainingMembers
         };
 
     } catch (e) {
@@ -153,7 +153,7 @@ export async function countRoomMembers(roomId) {
         FROM T_ROOM_MEMBER 
         WHERE ROOM_ID = :roomId
     `;
-    
+
     // db.execute -> executeQuery 로 변경
     const result = await executeQuery(sql, { roomId });
     return result.rows[0]?.cnt || result.rows[0]?.CNT || 0;
@@ -176,7 +176,7 @@ export async function listRoomsByUser({ userId }) {
                 FROM T_MESSAGE msg
                 WHERE msg.ROOM_ID = r.ROOM_ID
                   AND msg.SENT_AT > NVL(
-                      TO_DATE('1970-01-01','YYYY-MM-DD') + (urs.LASTREADTIMESTAMP / 86400000), 
+                      TO_DATE('1970-01-01','YYYY-MM-DD') + (urs.LASTREADTIMESTAMP / 86400000) + (9/24), 
                       r.CREATED_AT
                   )
                   AND msg.SENDER_ID != :userId 
@@ -207,7 +207,7 @@ export async function listRoomsByUser({ userId }) {
         WHERE rm.USER_ID = :userId
         ORDER BY LAST_MESSAGE_AT DESC
     `;
-    
+
     const res = await executeQuery(sql, { userId });
     return res.rows || [];
 }
@@ -234,6 +234,6 @@ export async function updateLastReadAt({ roomId, userId }) {
             INSERT (USER_ID, ROOM_ID, LASTREADTIMESTAMP)
             VALUES (s.U_ID, s.R_ID, s.NOW)
     `;
-    
+
     await executeTransaction(sql, { roomId, userId });
 }

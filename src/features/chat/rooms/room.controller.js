@@ -20,12 +20,12 @@ export async function inviteUser(req, res, next) {
     try {
         // req.body에서 필요한 정보 추출
         // (프론트에서 inviterId를 안 보내면 req.user.userId 사용)
-        const { roomId, inviteeId, inviterId } = req.body; 
+        const { roomId, inviteeId, inviterId } = req.body;
         const requesterId = inviterId || req.user?.userId;
 
-        await roomService.inviteUserToRoom({ 
-            roomId, 
-            inviteeId, 
+        await roomService.inviteUserToRoom({
+            roomId,
+            inviteeId,
             requesterId
         });
 
@@ -35,10 +35,10 @@ export async function inviteUser(req, res, next) {
         // 2. [수정됨] 방에 있는 기존 멤버들에게 실시간 인원수 업데이트 (Gateway 사용)
         const memberCount = await roomService.getRoomMemberCount(roomId);
         socketGateway.notifyRoomMemberCount(roomId, memberCount);
-        
+
         res.status(200).json({ success: true, message: '사용자를 성공적으로 초대했습니다.' });
-    } catch (e) { 
-        next(e); 
+    } catch (e) {
+        next(e);
     }
 }
 
