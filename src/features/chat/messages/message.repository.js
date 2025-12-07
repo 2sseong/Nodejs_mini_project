@@ -1,326 +1,263 @@
-import db, { oracledb, executeQuery, executeTransaction, getConnection } from '../../../../db/oracle.js';
+import db, { oracledb, executeQuery, executeTransaction, getConnection as getDBConnection } from '../../../../db/oracle.js';
 
-// getHistory 함수
+// 1. 메시지 목록 조회
 export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
-    const binds = {
-        roomId: roomId,
-        limit: Number(limit)
-    };
+    const binds = { roomId: Number(roomId), limit: Number(limit) };
 
     let innerSql = `
-                    SELECT 
-                        T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                        T2.NICKNAME, T2.PROFILE_PIC 
-                    FROM T_MESSAGE T1
-                    JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-                    WHERE T1.ROOM_ID = :roomId
-                    `;
+        SELECT 
+            T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
+            (
+                EXTRACT(DAY FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+                EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+                EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+                EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+            ) - 32400000 AS SENT_AT, 
+            T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
+            T2.NICKNAME, T2.PROFILE_PIC 
+        FROM T_MESSAGE T1
+        JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+        WHERE T1.ROOM_ID = :roomId
+    `;
 
     if (beforeMsgId) {
         innerSql += ` AND T1.MSG_ID < :beforeMsgId `;
         binds.beforeMsgId = Number(beforeMsgId);
     }
 
-    const midSql = `
-                SELECT * FROM (
-                    ${innerSql}
-                    ORDER BY T1.MSG_ID DESC
-                )
-                WHERE ROWNUM <= :limit
-                `;
+    const midSql = `SELECT * FROM (${innerSql} ORDER BY T1.MSG_ID DESC) WHERE ROWNUM <= :limit`;
+    const sql = `SELECT * FROM (${midSql}) ORDER BY SENT_AT ASC, MSG_ID ASC`;
 
-    const sql = `
-                SELECT * FROM (
-                    ${midSql}
-                )
-                ORDER BY SENT_AT ASC, MSG_ID ASC
-                `;
-    
     const res = await executeQuery(sql, binds);
     return res.rows || [];
 }
 
-/**
- * 일반 메시지 또는 파일 메시지를 T_MESSAGE 테이블에 저장합니다.
-*/
+// 2. 메시지 저장
 export async function saveMessageTx(data) {
-
-    const { roomId, senderId, content, messageType, fileUrl, fileName } = data; 
-    const now = new Date(); // [중요] Node.js의 정확한 현재 시간 (UTC)
+    const { roomId, senderId, content, messageType, fileUrl, fileName } = data;
+    const now = new Date();
 
     let connection;
     try {
-        connection = await db.getConnection(); 
-
+        connection = await getDBConnection();
         const sql = `
-                    INSERT INTO T_MESSAGE(
-                        ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
-                    ) VALUES (
-                        :roomId, :senderId, :content, :messageType, :fileUrl, :fileName, :sentAt)
-                    RETURNING
-                        MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
-                    INTO
-                        :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName, :outSentAt
-                    `;
-
+            INSERT INTO T_MESSAGE(ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT) 
+            VALUES (:roomId, :senderId, :content, :messageType, :fileUrl, :fileName, :sentAt)
+            RETURNING MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT
+            INTO :outId, :outRoomId, :outSenderId, :outContent, :outMsgType, :outFileUrl, :outFileName, :outSentAt
+        `;
         const binds = {
-            roomId: roomId,
-            senderId: senderId,
-            content: content,
-            messageType: messageType,
-            fileUrl: fileUrl,
-            fileName: fileName,
-            sentAt: now,
+            roomId, senderId, content, messageType, fileUrl, fileName, sentAt: now,
             outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
             outRoomId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-            outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
-            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 }, 
-            outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
-            outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 },
-            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 1000 },
+            outSenderId: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outFileUrl: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outFileName: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
             outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
         };
-
         const result = await connection.execute(sql, binds, { autoCommit: true });
 
-        if (result.rowsAffected === 1 && result.outBinds) {
-            const savedRow = {
+        if (result.rowsAffected === 1) {
+            const dbTime = result.outBinds.outSentAt[0];
+            return {
                 MSG_ID: result.outBinds.outId[0],
-                ROOM_ID: String(result.outBinds.outRoomId[0]), 
+                ROOM_ID: String(result.outBinds.outRoomId[0]),
                 SENDER_ID: result.outBinds.outSenderId[0],
                 CONTENT: result.outBinds.outContent[0],
                 MESSAGE_TYPE: result.outBinds.outMsgType[0],
                 FILE_URL: result.outBinds.outFileUrl[0],
                 FILE_NAME: result.outBinds.outFileName[0],
-                // [핵심] DB 리턴값 대신 정확한 now 객체 사용
-                SENT_AT: now, 
+                SENT_AT: dbTime
             };
-            return savedRow; 
         } else {
-            throw new Error("메시지 저장 실패 (DB)");
+            throw new Error("메시지 저장 실패");
         }
-
     } catch (err) {
-        console.error("DB 에러 (saveMessageTx):", err);
-        throw err; 
+        throw err;
     } finally {
-        if (connection) {
-            await connection.close(); 
-        }
+        if (connection) await connection.close();
     }
 }
 
+// 3. 읽은 수 카운트
 export async function countReadStatusByMessageIds(roomId, messageIds) {
     if (!messageIds || messageIds.length === 0) return [];
 
-    const bindVars = {};
-    messageIds.forEach((id, index) => {
-        bindVars[`id${index}`] = id;
-    });
+    const numericRoomId = Number(roomId);
+    const bindVars = { roomId: numericRoomId };
+    messageIds.forEach((id, index) => { bindVars[`id${index}`] = id; });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
-    // [!!! 최종 수정 !!!] 
-    // 1. FROM_TZ(..., 'UTC'): DB에 저장된 시간을 UTC로 간주합니다.
-    // 2. - TIMESTAMP '1970... UTC': 1970년 UTC와의 차이(Interval)를 구합니다.
-    // 3. EXTRACT: 일, 시, 분, 초, 밀리초를 각각 추출하여 총 밀리초로 변환합니다.
-    // 이 방식은 DB 세션 타임존 설정에 전혀 영향을 받지 않습니다.
     const sql = `
         SELECT 
             m.MSG_ID,
             COUNT(DISTINCT r.USER_ID) AS "readCount"
         FROM T_MESSAGE m
+        JOIN T_ROOM_MEMBER rm ON m.ROOM_ID = rm.ROOM_ID
         LEFT JOIN UserRoomReadStatus r 
-            ON TO_CHAR(m.ROOM_ID) = r.ROOM_ID
-            AND r.lastReadTimestamp >= (
-                EXTRACT(DAY FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 86400000 +
-                EXTRACT(HOUR FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 3600000 +
-                EXTRACT(MINUTE FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 60000 +
-                EXTRACT(SECOND FROM (FROM_TZ(CAST(m.SENT_AT AS TIMESTAMP), 'UTC') - TIMESTAMP '1970-01-01 00:00:00 UTC')) * 1000
+            ON m.ROOM_ID = r.ROOM_ID AND rm.USER_ID = r.USER_ID
+            AND m.SENT_AT <= (
+                TO_DATE('1970-01-01', 'YYYY-MM-DD') 
+                + (r.LASTREADTIMESTAMP / 86400000) 
+                + (9 / 24) 
+                + (2 / 86400)
             )
-        WHERE m.ROOM_ID = :roomId
-          AND m.MSG_ID IN (${inClause})
+        WHERE m.ROOM_ID = :roomId AND m.MSG_ID IN (${inClause})
         GROUP BY m.MSG_ID
     `;
-
-    bindVars.roomId = roomId;
-
     const result = await executeQuery(sql, bindVars);
-    return result.rows || []; 
+
+    return result.rows.map(row => ({
+        MSG_ID: row.MSG_ID,
+        readCount: row.readCount || 0
+    }));
 }
 
-// 보낸사람의 읽은 시간을 현재로 업데이트
+// 4. 읽음 시간 업데이트 (항상 업데이트, 브로드캐스트 여부 반환)
 export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
-    const sql = `
-        MERGE INTO USERROOMREADSTATUS t
-        USING (SELECT :userId AS U_ID, :roomId AS R_ID FROM DUAL) s
-        ON (t.USER_ID = s.U_ID AND t.ROOM_ID = s.R_ID)
-        WHEN MATCHED THEN
-            UPDATE SET t.lastReadTimestamp = :ts
-            WHERE t.lastReadTimestamp < :ts
-        WHEN NOT MATCHED THEN
-            INSERT (USER_ID, ROOM_ID, lastReadTimestamp)
-            VALUES (:userId, :roomId, :ts)
-    `;
-
-    const result = await executeTransaction(sql, { 
-        userId, 
-        roomId, 
-        ts: lastReadTimestamp 
-    }, { autoCommit: true });
-
-    return result.rowsAffected;
-}
-
-export async function getRoomReadStatus(roomId) {
-    const sql = `
-        SELECT USER_ID, LASTREADTIMESTAMP
-        FROM UserRoomReadStatus
-        WHERE ROOM_ID = :roomId
-    `;
-    const result = await executeQuery(sql, { roomId });
-    return result.rows || [];
-}
-
-export async function updateMessageTx({ msgId, senderId, content }) {
-    const sql = `
-        UPDATE T_MESSAGE 
-        SET CONTENT = :content 
-        WHERE MSG_ID = :msgId AND SENDER_ID = :senderId
-    `;
-    const result = await executeTransaction(sql, { 
-        msgId, 
-        senderId, 
-        content 
-    }, { autoCommit: true });
-    
-    return result.rowsAffected > 0;
-}
-
-export async function deleteMessageTx({ msgId, senderId }) {
-    const sql = `
-        DELETE FROM T_MESSAGE 
-        WHERE MSG_ID = :msgId AND SENDER_ID = :senderId
-    `;
-    const result = await executeTransaction(sql, { 
-        msgId, 
-        senderId 
-    }, { autoCommit: true });
-    
-    return result.rowsAffected > 0;
-}
-
-export async function searchMessages(roomId, keyword) {
-    const sql = `
-        SELECT MSG_ID, CONTENT, SENT_AT
-        FROM T_MESSAGE
-        WHERE ROOM_ID = :roomId
-          AND (CONTENT LIKE :keyword OR FILE_NAME LIKE :keyword)
-        ORDER BY SENT_AT ASC
-    `;
-    
-    const searchPattern = `%${keyword}%`;
-    
-    const result = await executeQuery(sql, { 
-        roomId, 
-        keyword: searchPattern 
-    });
-    
-    return result.rows || [];
-}
-
-export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
-    const limitPlusOne = Number(offset) + 1; 
-
-    const binds = {
-        roomId,
-        targetMsgId: Number(targetMsgId),
-        limitCnt: Number(offset),
-        limitCntNext: limitPlusOne
-    };
-
-    const sql = `
-        SELECT * FROM (
-            SELECT * FROM (
-                SELECT * FROM (
-                    SELECT 
-                        T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                        T2.NICKNAME, T2.PROFILE_PIC
-                    FROM T_MESSAGE T1
-                    JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-                    WHERE T1.ROOM_ID = :roomId 
-                      AND T1.MSG_ID < :targetMsgId
-                    ORDER BY T1.MSG_ID DESC
-                )
-                WHERE ROWNUM <= :limitCnt
-            )
-            UNION ALL
-            SELECT * FROM (
-                SELECT * FROM (
-                    SELECT 
-                        T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                        T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                        T2.NICKNAME, T2.PROFILE_PIC
-                    FROM T_MESSAGE T1
-                    JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-                    WHERE T1.ROOM_ID = :roomId 
-                      AND T1.MSG_ID >= :targetMsgId
-                    ORDER BY T1.MSG_ID ASC
-                )
-                WHERE ROWNUM <= :limitCntNext
-            )
-        )
-        ORDER BY SENT_AT ASC
-    `;
-
+    let connection;
     try {
-        const result = await executeQuery(sql, binds);
-        return result.rows || [];
+        connection = await getDBConnection();
+        const ts = lastReadTimestamp || Date.now();
+        const numericRoomId = Number(roomId);
+
+        // 1. 기존 값 조회
+        const selectSql = `SELECT LASTREADTIMESTAMP FROM USERROOMREADSTATUS WHERE USER_ID = :userId AND ROOM_ID = :roomId`;
+        const selectResult = await connection.execute(selectSql, { userId, roomId: numericRoomId });
+        const existingTs = selectResult.rows?.[0]?.LASTREADTIMESTAMP || 0;
+
+        console.log(`[Repository] upsertReadStatus: userId=${userId}, roomId=${numericRoomId}, newTs=${ts}, existingTs=${existingTs}`);
+
+        // 2. 항상 업데이트 실행
+        const sql = `
+        MERGE INTO USERROOMREADSTATUS target 
+        USING (SELECT :userId AS U_ID, :roomId AS R_ID, :ts AS TS FROM DUAL) source 
+        ON (target.USER_ID = source.U_ID AND target.ROOM_ID = source.R_ID) 
+        WHEN MATCHED THEN UPDATE SET target.LASTREADTIMESTAMP = source.TS 
+        WHEN NOT MATCHED THEN INSERT (USER_ID, ROOM_ID, LASTREADTIMESTAMP) VALUES (source.U_ID, source.R_ID, source.TS)
+        `;
+        await connection.execute(sql, { userId, roomId: numericRoomId, ts }, { autoCommit: true });
+
+        // 3. 새로운 타임스탬프가 기존보다 크면 브로드캐스트 필요
+        const shouldBroadcast = ts > existingTs;
+        return { updated: shouldBroadcast, timestamp: ts };
     } catch (err) {
-        console.error('Error fetching context messages:', err);
+        console.error('[Repository] upsertReadStatus error:', err);
         throw err;
+    } finally {
+        if (connection) await connection.close();
     }
 }
 
-export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
-    const binds = {
-        roomId,
-        afterMsgId: Number(afterMsgId),
-        limitCnt: Number(limit)
-    };
+// 5. 방 멤버 읽음 상태 조회
+export async function getRoomReadStatus(roomId) {
+    const numericRoomId = Number(roomId);
+    const sql = `SELECT USER_ID, LASTREADTIMESTAMP FROM USERROOMREADSTATUS WHERE ROOM_ID = :roomId`;
+    const res = await executeQuery(sql, { roomId: numericRoomId });
+    return res.rows || [];
+}
+
+// 6. 메시지 검색
+export async function searchMessages(roomId, keyword) {
+    const sql = `
+        SELECT m.MSG_ID, m.CONTENT, 
+        (
+            EXTRACT(DAY FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+            EXTRACT(HOUR FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+            EXTRACT(MINUTE FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+            EXTRACT(SECOND FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+        ) - 32400000 AS SENT_AT,
+        u.NICKNAME, u.PROFILE_PIC 
+        FROM T_MESSAGE m JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
+        WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID DESC
+    `;
+    const res = await executeQuery(sql, { roomId: Number(roomId), keyword: `%${keyword}%` });
+    return res.rows || [];
+}
+
+// 7. 특정 메시지 주변 컨텍스트 조회
+export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
+    const limitPlusOne = Number(offset) + 1;
+    const binds = { roomId: Number(roomId), targetMsgId, limitCnt: offset, limitCntNext: limitPlusOne };
+
+    const timeExtract = `(
+        EXTRACT(DAY FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+        EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+        EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+        EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+    ) - 32400000 AS SENT_AT`;
 
     const sql = `
         SELECT * FROM (
-            SELECT 
-                T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT,
-                T1.SENT_AT, T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-                T2.NICKNAME, T2.PROFILE_PIC
-            FROM T_MESSAGE T1
-            JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-            WHERE T1.ROOM_ID = :roomId 
-              AND T1.MSG_ID > :afterMsgId
-            ORDER BY T1.MSG_ID ASC
-        )
-        WHERE ROWNUM <= :limitCnt
-        ORDER BY MSG_ID ASC
+            SELECT * FROM (
+                SELECT * FROM (
+                    SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
+                           T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, T2.NICKNAME, T2.PROFILE_PIC
+                    FROM T_MESSAGE T1 JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                    WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID < :targetMsgId ORDER BY T1.MSG_ID DESC
+                ) WHERE ROWNUM <= :limitCnt
+            ) UNION ALL
+            SELECT * FROM (
+                SELECT * FROM (
+                    SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
+                           T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, T2.NICKNAME, T2.PROFILE_PIC
+                    FROM T_MESSAGE T1 JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                    WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID >= :targetMsgId ORDER BY T1.MSG_ID ASC
+                ) WHERE ROWNUM <= :limitCntNext
+            )
+        ) ORDER BY SENT_AT ASC
     `;
-
-    const result = await executeQuery(sql, binds);
-    return result.rows || [];
+    const res = await executeQuery(sql, binds);
+    return res.rows || [];
 }
 
-// 특정 방의 파일 메시지 전체 조회
+// 8. 특정 메시지 이후 조회
+export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
+    const binds = { roomId: Number(roomId), afterMsgId: Number(afterMsgId), limit: Number(limit) };
+
+    const timeExtract = `(
+        EXTRACT(DAY FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+        EXTRACT(HOUR FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+        EXTRACT(MINUTE FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+        EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+    ) - 32400000 AS SENT_AT`;
+
+    const sql = `
+        SELECT * FROM (
+            SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
+                   T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, T2.NICKNAME, T2.PROFILE_PIC
+            FROM T_MESSAGE T1 JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+            WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID > :afterMsgId ORDER BY T1.MSG_ID ASC
+        ) WHERE ROWNUM <= :limit
+    `;
+    const res = await executeQuery(sql, binds);
+    return res.rows || [];
+}
+
+// 9. 방 파일 목록 조회
 export async function getRoomFiles(roomId) {
     const sql = `
-        SELECT 
-            MSG_ID, SENDER_ID, SENT_AT, FILE_URL, FILE_NAME, MESSAGE_TYPE
-        FROM T_MESSAGE
-        WHERE ROOM_ID = :roomId
-          AND MESSAGE_TYPE = 'FILE'
-        ORDER BY SENT_AT DESC
+        SELECT MSG_ID, FILE_URL, FILE_NAME, 
+        (
+            EXTRACT(DAY FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+            EXTRACT(HOUR FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+            EXTRACT(MINUTE FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+            EXTRACT(SECOND FROM (SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+        ) - 32400000 AS SENT_AT, 
+        SENDER_ID 
+        FROM T_MESSAGE WHERE ROOM_ID=:roomId AND MESSAGE_TYPE='FILE' ORDER BY MSG_ID DESC
     `;
-    // 최신순 정렬
-    const res = await executeQuery(sql, { roomId });
+    const res = await executeQuery(sql, { roomId: Number(roomId) });
     return res.rows || [];
+}
+
+// 10. 메시지 수정/삭제
+export async function updateMessageTx(p) {
+    return await executeTransaction(`UPDATE T_MESSAGE SET CONTENT=:content WHERE MSG_ID=:msgId AND SENDER_ID=:senderId`, p, { autoCommit: true });
+}
+
+export async function deleteMessageTx(p) {
+    return await executeTransaction(`DELETE FROM T_MESSAGE WHERE MSG_ID=:msgId AND SENDER_ID=:senderId`, p, { autoCommit: true });
 }

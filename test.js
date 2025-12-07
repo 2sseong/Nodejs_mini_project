@@ -18,11 +18,11 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     const hasFutureMessagesRef = useRef(hasFutureMessages);
     const currentRoomIdRef = useRef(currentRoomId);
     const isPaginatingRef = useRef(false);
-    const lastSentTimestampRef = useRef(0); // 중복 호출 방지
 
     useEffect(() => { messagesRef.current = messages; }, [messages]);
     useEffect(() => { currentRoomIdRef.current = currentRoomId; }, [currentRoomId]);
 
+    // 초기화 및 히스토리 요청
     useEffect(() => {
         if (!socket || !userId || !currentRoomId) return;
         setMessages([]);
@@ -32,7 +32,6 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         setIsReadStatusLoaded(false);
         readStatusMapRef.current = {};
         isReadStatusLoadedRef.current = false;
-        lastSentTimestampRef.current = 0;
 
         socket.emit('chat:get_history', {
             roomId: currentRoomId,
@@ -93,15 +92,9 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         }
         if (!socket || !currentRoomId || !latest?.SENT_AT) return;
 
-        const ts = latest.SENT_AT;
-        // 같은 타임스탬프 중복 호출 방지
-        if (ts === lastSentTimestampRef.current) return;
-        lastSentTimestampRef.current = ts;
-
-        console.log('[Client] Emitting chat:mark_as_read', { roomId: currentRoomId, lastReadTimestamp: ts });
         socket.emit('chat:mark_as_read', {
             roomId: currentRoomId,
-            lastReadTimestamp: ts
+            lastReadTimestamp: latest.SENT_AT
         });
     }, [socket, currentRoomId]);
 
@@ -111,61 +104,39 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         setMessages(newMessages); setIsInitialLoad(false); setHasMoreMessages(true); setHasFutureMessages(true);
     }, []);
 
+    // 소켓 이벤트 핸들러
     useEffect(() => {
         if (!socket) return;
 
         const onChatHistory = (data) => {
-            const rawMessages = data.messages || [];
-            let readMap = {};
-
+            const newMessages = data.messages || [];
             if (data.memberReadStatus) {
-                Object.keys(data.memberReadStatus).forEach(k => {
-                    readMap[String(k).trim().toLowerCase()] = Number(data.memberReadStatus[k]);
-                });
-                readStatusMapRef.current = readMap;
+                const map = {};
+                Object.keys(data.memberReadStatus).forEach(k => map[String(k)] = Number(data.memberReadStatus[k]));
+                readStatusMapRef.current = map;
                 setIsReadStatusLoaded(true);
                 isReadStatusLoadedRef.current = true;
             }
-
-            const processedMessages = rawMessages.map(msg => {
-                const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
-                const readBy = [];
-
-                Object.keys(readMap).forEach(memberId => {
-                    const readerId = String(memberId).trim().toLowerCase();
-                    const lastRead = readMap[readerId];
-                    if (lastRead >= msgTs - 2000) {
-                        readBy.push(readerId);
-                    }
-                });
-
-                return {
-                    ...msg,
-                    readBy,
-                    unreadCount: typeof msg.unreadCount === 'number' ? msg.unreadCount : 0
-                };
-            });
-
             if (isPaginatingRef.current) {
                 setMessages(prev => {
                     const exists = new Set(prev.map(m => String(m.MSG_ID || m.msg_id || m.TEMP_ID)));
-                    const filtered = processedMessages.filter(m => !exists.has(String(m.MSG_ID || m.msg_id || m.TEMP_ID)));
+                    const filtered = newMessages.filter(m => !exists.has(String(m.MSG_ID || m.msg_id || m.TEMP_ID)));
                     return [...filtered, ...prev];
                 });
                 isPaginatingRef.current = false;
             } else {
-                setMessages(processedMessages);
+                setMessages(newMessages);
                 setIsInitialLoad(true);
             }
             setIsLoadingMore(false);
-            if (rawMessages.length < CHAT_PAGE_SIZE) setHasMoreMessages(false);
+            if (newMessages.length < CHAT_PAGE_SIZE) setHasMoreMessages(false);
         };
 
         const onChatMessage = (msg) => {
             if (!msg) return;
             setIsInitialLoad(false);
             if (hasFutureMessagesRef.current) return;
-            if (String(msg.SENDER_ID || msg.sender_id) === String(userId) && msg.TEMP_ID) {
+            if (String(msg.SENDER_ID) === String(userId) && msg.TEMP_ID) {
                 setMessages(prev => prev.map(m => m.TEMP_ID === msg.TEMP_ID ? msg : m));
                 return;
             }
@@ -174,36 +145,36 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             }
         };
 
+        // [★ 최종 수정] 실시간 읽음 처리 (중복 차감 방지 로직 복구)
         const onReadUpdate = (data) => {
             if (!data || !data.userId || !data.lastReadTimestamp) return;
+            if (!isReadStatusLoadedRef.current) return;
 
             const { userId: rId, lastReadTimestamp } = data;
             const ts = typeof lastReadTimestamp === 'number' ? lastReadTimestamp : new Date(lastReadTimestamp).getTime();
-            const readerId = String(rId).trim().toLowerCase();
 
-            readStatusMapRef.current[readerId] = Math.max(readStatusMapRef.current[readerId] || 0, ts);
+            // 1. 이전에 읽었던 시간을 가져옴
+            const prevReadTs = readStatusMapRef.current[String(rId)] || 0;
+
+            // 2. 만약 새로 온 시간(ts)이 이전 시간(prevReadTs)보다 작거나 같으면, 이미 처리된 것이므로 무시
+            if (ts <= prevReadTs) {
+                return;
+            }
+
+            // 3. 최신 시간으로 업데이트
+            readStatusMapRef.current[String(rId)] = ts;
 
             setMessages(prev => prev.map(msg => {
-                const currentUnread = typeof msg.unreadCount === 'number' ? msg.unreadCount : 0;
-                if (currentUnread <= 0) return msg;
-
-                const rawSenderId = msg.SENDER_ID || msg.sender_id;
-                if (!rawSenderId) return msg;
-
-                const senderId = String(rawSenderId).trim().toLowerCase();
-                if (senderId === readerId) return msg;
-
-                const readBy = (msg.readBy || []).map(id => String(id).trim().toLowerCase());
-                if (readBy.includes(readerId)) return msg;
+                if (msg.unreadCount <= 0) return msg;
+                if (String(msg.SENDER_ID) === String(rId)) return msg;
 
                 const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
 
-                if (msgTs <= ts + 60000) {
-                    return {
-                        ...msg,
-                        unreadCount: Math.max(0, currentUnread - 1),
-                        readBy: [...(msg.readBy || []), readerId]
-                    };
+                // [조건] 
+                // msgTs > prevReadTs: "이전에는 안 읽었던 메시지여야 하고" (중복 방지 핵심)
+                // msgTs <= ts + 2000: "지금 읽은 시점보다는 과거여야 한다" (읽음 처리)
+                if (msgTs > prevReadTs && msgTs <= ts + 2000) {
+                    return { ...msg, unreadCount: Math.max(0, msg.unreadCount - 1) };
                 }
                 return msg;
             }));

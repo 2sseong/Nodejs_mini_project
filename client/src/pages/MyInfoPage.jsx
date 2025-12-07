@@ -17,6 +17,11 @@ export default function MyInfoPage() {
     // 상태 값
     const [verifyPwInput, setVerifyPwInput] = useState('');
     const [nicknameInput, setNicknameInput] = useState('');
+    
+    // [추가] 부서, 직급 상태
+    const [departmentInput, setDepartmentInput] = useState('');
+    const [positionInput, setPositionInput] = useState('');
+
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -38,7 +43,10 @@ export default function MyInfoPage() {
             const res = await getMyInfo();
             if (res.success) {
                 setUser(res.data);
+                // [수정] 불러온 정보로 state 초기화
                 setNicknameInput(res.data.NICKNAME);
+                setDepartmentInput(res.data.DEPARTMENT || '');
+                setPositionInput(res.data.POSITION || '');
             }
         } catch (err) {
             console.error(err);
@@ -64,6 +72,12 @@ export default function MyInfoPage() {
         setVerifyPwInput('');
         setNewPassword('');
         setConfirmPassword('');
+        // 편집 모드 진입 시 최신 user 데이터로 다시 리셋 (취소 후 재진입 시 대비)
+        if (user) {
+            setNicknameInput(user.NICKNAME);
+            setDepartmentInput(user.DEPARTMENT || '');
+            setPositionInput(user.POSITION || '');
+        }
     };
 
     const handleVerify = async () => {
@@ -79,14 +93,10 @@ export default function MyInfoPage() {
     const handleSave = async () => {
         // 비밀번호 변경 시 유효성 검사
         if (newPassword) {
-            // 1. 일치 여부 확인
             if (newPassword !== confirmPassword) {
                 openModal('입력 오류', '새 비밀번호가 일치하지 않습니다.', true);
                 return;
             }
-
-            // 2. 길이 확인 (4자리 이상)
-            // (공백 입력은 EditProfileForm에서 원천 차단되므로 별도 정규식 검사 제거)
             if (newPassword.length < 4) {
                  openModal('입력 오류', '비밀번호는 4자 이상이어야 합니다.', true);
                  return;
@@ -96,6 +106,9 @@ export default function MyInfoPage() {
         try {
             const updateData = { 
                 nickname: nicknameInput,
+                // [추가] 수정된 부서, 직급 전송
+                department: departmentInput,
+                position: positionInput,
                 newPassword: newPassword || undefined
             };
 
@@ -114,9 +127,6 @@ export default function MyInfoPage() {
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        console.log('[Frontend] 선택된 파일:', file.name, file.size);
-
         try {
             const res = await uploadProfileImage(file);
             if (res.success) {
@@ -125,7 +135,7 @@ export default function MyInfoPage() {
                 openModal('업로드 실패', res.message, true);
             }
         } catch (err) {
-            console.error('[Frontend] 업로드 중 에러:', err);
+            console.error(err);
             openModal('오류', '이미지 업로드 중 오류가 발생했습니다.', true);
         } finally {
             e.target.value = ''; 
@@ -143,13 +153,11 @@ export default function MyInfoPage() {
             <div className="info-card">
                 <h2 className="page-title">내 정보</h2>
 
-                {/* 1. 프로필 이미지 섹션 */}
                 <ProfileImageSection 
                     profileSrc={profileSrc}
                     onFileChange={handleFileChange}
                 />
 
-                {/* 2. 정보 표시 및 수정 폼 영역 */}
                 {!isEditing ? (
                     <InfoDisplay 
                         user={user} 
@@ -168,6 +176,12 @@ export default function MyInfoPage() {
                             <EditProfileForm
                                 nickname={nicknameInput}
                                 onNicknameChange={setNicknameInput}
+                                // [추가] Props 전달
+                                department={departmentInput}
+                                onDepartmentChange={setDepartmentInput}
+                                position={positionInput}
+                                onPositionChange={setPositionInput}
+                                
                                 newPassword={newPassword}
                                 onNewPasswordChange={setNewPassword}
                                 confirmPassword={confirmPassword}
@@ -180,7 +194,6 @@ export default function MyInfoPage() {
                 )}
             </div>
 
-            {/* 3. 공통 알림 모달 */}
             <ConfirmModal 
                 isOpen={modalConfig.isOpen}
                 onClose={closeModal}
