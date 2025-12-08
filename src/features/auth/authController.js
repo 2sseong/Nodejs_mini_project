@@ -104,15 +104,14 @@ export async function verifyPassword(req, res) {
 // 정보 수정
 export async function updateInfo(req, res) {
     try {
-        // 클라이언트에서 nickname, department, position, newPassword를 보냄
-        const { nickname, department, position, newPassword } = req.body;
+        const { nickname, deptId, posId, newPassword } = req.body;
         const userId = req.user.userId;
 
-        const result = await authService.updateUserInfo(userId, { 
-            nickname, 
-            department, 
-            position, 
-            newPassword 
+        const result = await authService.updateUserInfo(userId, {
+            nickname,
+            deptId,
+            posId,
+            newPassword
         });
         res.json({ success: true, data: result });
     } catch (error) {

@@ -144,10 +144,10 @@ export async function updateProfileImage(userId, newFile) {
 }
 
 // 정보 수정
-export async function updateUserInfo(userId, { nickname, department, position, newPassword }) {
-    // 1. 닉네임 업데이트
+export async function updateUserInfo(userId, { nickname, deptId, posId, newPassword }) {
+    // 1. 닉네임, 부서, 직급 업데이트
     if (nickname) {
-        await authRepository.updateUserInfo(userId, { nickname, department, position });
+        await authRepository.updateUserInfo(userId, { nickname, deptId, posId });
     }
 
     // 2. 비밀번호 변경 요청이 있다면 처리
