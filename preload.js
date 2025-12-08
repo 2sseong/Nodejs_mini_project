@@ -46,4 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // [추가] 외부 URL 열기 (기본 브라우저)
   openExternalUrl: (url) => ipcRenderer.send('open-external-url', url),
+
+  // [추가] 배지 업데이트 (안 읽은 메시지 수)
+  updateBadge: (count) => ipcRenderer.send('update-badge', count),
 });

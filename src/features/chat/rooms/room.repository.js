@@ -48,6 +48,13 @@ export async function isMember({ roomId, userId }) {
     return res.rows?.length > 0;
 }
 
+// 사용자 닉네임 조회 (시스템 메시지용)
+export async function getUserNickname(userId) {
+    const sql = 'SELECT NICKNAME FROM T_USER WHERE USER_ID = :userId';
+    const res = await executeQuery(sql, { userId });
+    return res.rows?.[0]?.NICKNAME || null;
+}
+
 // addMemberTx 수정안 (named bind)
 export async function addMemberTx({ roomId, userId }) {
     let conn;

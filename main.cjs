@@ -1,6 +1,6 @@
 // Electron 메인 프로세스
 
-const { app, BrowserWindow, ipcMain, screen, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog, shell, Tray, nativeImage, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -15,9 +15,136 @@ let backendProcess;
 let notificationWindow = null;
 let notifTimeout = null;
 let chatWindows = {}; // 채팅창 관리 객체
+let tray = null; // 시스템 트레이
 
 // 메인 창 관리 배열
 let mainWindows = [];
+
+// 배지 아이콘 동적 생성 함수 (숫자 표시)
+function createBadgeIcon(count) {
+  const size = 16;
+  const canvas = require('canvas');
+  // canvas 모듈이 없으면 간단한 nativeImage 사용
+  // 숫자 배지는 nativeImage.createFromDataURL로 생성
+  const text = count > 99 ? '99+' : String(count);
+
+  // 간단한 빨간 원 SVG 생성
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#FF3B30"/>
+      <text x="${size / 2}" y="${size / 2 + 4}" font-size="10" font-family="Arial" font-weight="bold" fill="white" text-anchor="middle">${text}</text>
+    </svg>
+  `;
+
+  const base64 = Buffer.from(svg).toString('base64');
+  return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${base64}`);
+}
+
+// Overlay 배지 아이콘 (빨간 점) - Buffer로 직접 생성
+function createOverlayIcon() {
+  // 16x16 이미지, 12px 빨간 원 (중앙에 작은 원)
+  const size = 16;
+  const channels = 4; // BGRA (Windows)
+  const buffer = Buffer.alloc(size * size * channels);
+
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const radius = 5; // 더 작은 원 (5px 반지름)
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const index = (y * size + x) * channels;
+      const distance = Math.sqrt((x - centerX + 0.5) ** 2 + (y - centerY + 0.5) ** 2);
+
+      if (distance <= radius) {
+        // 빨간색 - BGRA 순서 (Windows)
+        buffer[index] = 48;      // B
+        buffer[index + 1] = 59;  // G
+        buffer[index + 2] = 255; // R
+        buffer[index + 3] = 255; // A
+      } else {
+        // 투명
+        buffer[index] = 0;
+        buffer[index + 1] = 0;
+        buffer[index + 2] = 0;
+        buffer[index + 3] = 0;
+      }
+    }
+  }
+
+  return nativeImage.createFromBuffer(buffer, { width: size, height: size });
+}
+
+// 배지 업데이트 함수
+function updateBadge(count) {
+  console.log(`[Main] updateBadge called with count: ${count}`);
+
+  // 모든 메인 창에 Overlay 적용
+  mainWindows.forEach((win, index) => {
+    if (win && !win.isDestroyed()) {
+      if (count > 0) {
+        const icon = createOverlayIcon();
+        console.log(`[Main] Setting overlay icon on window ${index}, icon empty: ${icon.isEmpty()}`);
+        win.setOverlayIcon(icon, `안 읽은 메시지 ${count}개`);
+      } else {
+        console.log(`[Main] Clearing overlay icon on window ${index}`);
+        win.setOverlayIcon(null, '');
+      }
+    }
+  });
+
+  // 트레이 아이콘 툴팁 업데이트
+  if (tray && !tray.isDestroyed()) {
+    if (count > 0) {
+      tray.setToolTip(`Chat App - 안 읽은 메시지 ${count}개`);
+    } else {
+      tray.setToolTip('Chat App');
+    }
+  }
+}
+
+// 트레이 생성 함수
+function createTray() {
+  // 회사 로고 사용
+  const logoPath = path.join(__dirname, 'assets', 'logo.png');
+  const trayIcon = nativeImage.createFromPath(logoPath).resize({ width: 20, height: 20 });
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip('Chat App');
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '열기', click: () => {
+        if (mainWindows.length > 0) {
+          const win = mainWindows[0];
+          if (win.isMinimized()) win.restore();
+          win.show();
+          win.focus();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '종료', click: () => {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    if (mainWindows.length > 0) {
+      const win = mainWindows[0];
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+  });
+
+  console.log('[Main] Tray created');
+}
 
 function startBackendServer() {
   const backendPath = path.join(__dirname, 'src');
@@ -110,7 +237,11 @@ function showCustomNotification(data) {
 }
 
 function createWindow(partition = 'persist:user1') {
+  // 회사 로고 아이콘
+  const logoPath = path.join(__dirname, 'assets', 'logo.png');
+
   let mainWindow = new BrowserWindow({
+    icon: logoPath,
     action: 'auto',
     width: 420,
     height: 700,
@@ -144,6 +275,7 @@ function createWindow(partition = 'persist:user1') {
 }
 
 app.whenReady().then(() => {
+  createTray(); // 시스템 트레이 생성
   startBackendServer();
 });
 
@@ -157,6 +289,31 @@ app.on('activate', () => {
 });
 
 // === IPC 핸들러 ===
+
+// [추가] 배지 업데이트 핸들러 - 각 창에 개별 적용
+ipcMain.on('update-badge', (event, count) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+
+  console.log(`[Main] updateBadge for window: count=${count}`);
+
+  if (count > 0) {
+    const icon = createOverlayIcon();
+    win.setOverlayIcon(icon, `안 읽은 메시지 ${count}개`);
+  } else {
+    win.setOverlayIcon(null, '');
+  }
+
+  // 트레이 툴팁은 최대 count로 업데이트
+  if (tray && !tray.isDestroyed()) {
+    if (count > 0) {
+      tray.setToolTip(`Chat App - 안 읽은 메시지 ${count}개`);
+    } else {
+      tray.setToolTip('Chat App');
+    }
+  }
+});
+
 ipcMain.on('window-minimize', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.minimize();
@@ -217,9 +374,9 @@ ipcMain.on('open-chat-window', (event, roomId) => {
   const parentSession = event.sender.session;
 
   const win = new BrowserWindow({
-    width: 450,
+    width: 400,
     height: 600,
-    minWidth: 450,
+    minWidth: 400,
     minHeight: 600,
     title: '채팅방',
     frame: false,

@@ -82,9 +82,9 @@ export default function ChatHeader({
         if (e.key === 'Enter') {
             e.preventDefault();
             if (e.shiftKey) {
-                if (onNextMatch) onNextMatch();
+                if (onPrevMatch) onPrevMatch();  // Shift+Enter → 이전(위)
             } else {
-                if (onPrevMatch) onPrevMatch();
+                if (onNextMatch) onNextMatch();  // Enter → 다음(아래)
             }
         }
     };

@@ -108,3 +108,20 @@
         opacity: 1;
     }
 }
+
+/* 시스템 메시지 (초대/퇴장 알림) */
+.system-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0;
+}
+
+.system-message-text {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    background-color: var(--bg-hover);
+    padding: 6px 12px;
+    border-radius: var(--radius-lg);
+    text-align: center;
+}
