@@ -110,6 +110,7 @@ SELECT
     U.NICKNAME,
     D.DEPT_NAME,
     P.POS_NAME,
+    U.PROFILE_PIC,
     CASE
         WHEN UP.USER_ID IS NOT NULL THEN 1 -- 즐겨찾기 됨
         ELSE 0                           -- 즐겨찾기 안 됨
@@ -125,8 +126,6 @@ WHERE
     (U.USER_ID LIKE '%' || :query || '%' 
     OR U.USERNAME LIKE '%' || :query || '%'
     OR U.NICKNAME LIKE '%' || :query || '%')
-    -- 본인 제외
-    AND U.USER_ID != :userId
 `;
 
     const binds = { userId: userId, query: query };

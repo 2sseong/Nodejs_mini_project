@@ -48,6 +48,7 @@ export const searchUsers = async (userId, query, deptId) => {
                 department: user.DEPT_NAME,
                 position: user.POS_NAME,
                 isPick: user.ISPICK,
+                profilePic: user.PROFILE_PIC,
             }
         });
 

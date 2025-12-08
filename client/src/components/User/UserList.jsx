@@ -2,6 +2,10 @@
 
 import React, { useState } from 'react';
 import './UserList.css';
+import DefaultAvatar from '../../assets/default-avatar.png';
+
+// 이미지가 저장된 서버 URL
+const IMAGE_BASE_URL = 'http://localhost:1337'; // 백엔드 서버 주소
 
 // 개별 사용자 아이템 컴포넌트
 function UserItem({ user, isOnline, onTogglePick }) {
@@ -9,6 +13,8 @@ function UserItem({ user, isOnline, onTogglePick }) {
     const { isMe } = user;
     // user 객체에서 isPick 속성 추출(즐겨찾기 여부)
     const isPicked = user.isPick === 1;
+    // 프로필 이미지 URL 생성
+    const profileImageUrl = user.profilePic ? `${IMAGE_BASE_URL}${user.profilePic}` : DefaultAvatar;
 
     // 즐겨찾기 토글 핸들러
     const handlePickClick = () => {
@@ -23,6 +29,18 @@ function UserItem({ user, isOnline, onTogglePick }) {
             className={`user-list-item ${isMe ? 'user-me' : ''}`}
             style={{ backgroundColor: isMe ? '#e6f7ff' : 'white', borderLeft: isMe ? '4px solid #1890ff' : 'none' }}
         >
+            {/* 프로필사진 렌더링 영역 */}
+            <img
+                src={profileImageUrl}
+                alt={`${user.userNickname} 프로필 사진`}
+                className="profile-pic"
+
+                // 로딩 오류 처리
+                onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = DefaultAvatar;
+                }}
+            />
             <div className="user-info">
                 <div className="user-name-row">
                     <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
