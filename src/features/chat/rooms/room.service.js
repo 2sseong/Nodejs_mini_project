@@ -9,27 +9,6 @@ export async function listRoomsForUser({ userId }) {
     return await roomRepo.listRoomsByUser({ userId });
 }
 
-export async function inviteUserToRoom({ roomId, inviteeId, inviterNickname }) {
-    const exists = await roomRepo.ensureUserExists(inviteeId);
-    if (!exists) throw { status: 404, message: '사용자를 찾을 수 없습니다.' };
-
-    const joined = await roomRepo.isMember({ roomId, userId: inviteeId });
-    if (joined) throw { status: 400, message: '이미 참여 중인 사용자입니다.' };
-
-    await roomRepo.addMemberTx({ roomId, userId: inviteeId });
-
-    // 초대된 사용자 닉네임 조회
-    const inviteeNickname = await roomRepo.getUserNickname(inviteeId);
-
-    // 시스템 메시지 저장
-    const systemMsg = await messageRepo.saveSystemMessage({
-        roomId,
-        content: `${inviterNickname || '알 수 없음'}님이 ${inviteeNickname || '새 멤버'}님을 초대했습니다.`
-    });
-
-    return { roomId, inviteeId, systemMessage: systemMsg };
-}
-
 export async function leaveRoom({ roomId, userId, userNickname }) {
     const rowsAffected = await roomRepo.deleteMember({ roomId, userId });
     if (rowsAffected === 0) {
@@ -57,4 +36,51 @@ export async function getRoomMemberCount(roomId) {
  */
 export async function markRoomAsRead({ roomId, userId }) {
     return await roomRepo.updateLastReadAt({ roomId, userId });
+}
+
+// 여러 명 동시 초대
+export async function inviteUsersToRoom({ roomId, inviteeIds, inviterNickname }) {
+    const successList = [];
+    const failList = [];
+    const nicknames = [];
+
+    for (const inviteeId of inviteeIds) {
+        try {
+            const exists = await roomRepo.ensureUserExists(inviteeId);
+            if (!exists) {
+                failList.push({ inviteeId, reason: '사용자를 찾을 수 없습니다.' });
+                continue;
+            }
+
+            const joined = await roomRepo.isMember({ roomId, userId: inviteeId });
+            if (joined) {
+                failList.push({ inviteeId, reason: '이미 참여 중인 사용자입니다.' });
+                continue;
+            }
+
+            await roomRepo.addMemberTx({ roomId, userId: inviteeId });
+            const inviteeNickname = await roomRepo.getUserNickname(inviteeId);
+            nicknames.push(inviteeNickname || '새 멤버');
+            successList.push(inviteeId);
+        } catch (err) {
+            failList.push({ inviteeId, reason: err.message || '알 수 없는 오류' });
+        }
+    }
+
+    // 시스템 메시지 (성공한 사람이 있을 때만)
+    let systemMsg = null;
+    if (nicknames.length > 0) {
+        const nicknameStr = nicknames.join(', ');
+        systemMsg = await messageRepo.saveSystemMessage({
+            roomId,
+            content: `${inviterNickname || '알 수 없음'}님이 ${nicknameStr}님을 초대했습니다.`
+        });
+    }
+
+    return { successList, failList, systemMessage: systemMsg };
+}
+
+// 채팅방 멤버 목록 조회
+export async function getRoomMembers(roomId) {
+    return await roomRepo.getRoomMembers(roomId);
 }
