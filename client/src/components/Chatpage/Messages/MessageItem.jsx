@@ -3,29 +3,29 @@ import './MessageItem.css';
 import ConfirmModal from '../Modals/ConfirmModal'; // [추가] 모달 컴포넌트 import
 
 // [수정] 백엔드 포트 5000으로 설정 (server.js 포트와 일치해야 함)
-const API_BASE_URL = 'http://localhost:1337'; 
+const API_BASE_URL = 'http://localhost:1337';
 
 export default function MessageItem(props) {
     const {
         msgId,
         mine,
         nickname,
-        profilePic, 
+        profilePic,
         sentAt,
         content,
         messageType,
         fileUrl,
         fileName,
         unreadCount,
-        onEdit,    
+        onEdit,
         onDelete,
-        onImageLoad 
+        onImageLoad
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(content);
-    
+
     // [추가] 삭제 확인 모달 상태
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -42,7 +42,7 @@ export default function MessageItem(props) {
     };
 
     const handleContextMenu = (e) => {
-        if (!mine || messageType === 'FILE') return; 
+        if (!mine || messageType === 'FILE') return;
         e.preventDefault();
         setContextMenu({ x: e.pageX, y: e.pageY });
     };
@@ -55,7 +55,7 @@ export default function MessageItem(props) {
 
     const handleClickEdit = () => {
         setIsEditing(true);
-        setEditContent(content); 
+        setEditContent(content);
     };
 
     // [수정] 삭제 버튼 클릭 시 모달 열기
@@ -92,34 +92,83 @@ export default function MessageItem(props) {
         if (messageType === 'FILE') {
             let downloadUrl = fileUrl;
             if (fileUrl && !fileUrl.startsWith('http') && !fileUrl.startsWith('blob')) {
-                 const normalizedPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-                 downloadUrl = `${API_BASE_URL}${normalizedPath}`;
+                const normalizedPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+                downloadUrl = `${API_BASE_URL}${normalizedPath}`;
             }
+
+            // [추가] 이미지 클릭 핸들러 (Electron 미리보기 창 열기)
+            const handleImageClick = (e) => {
+                e.preventDefault();
+                if (window.electronAPI?.openImagePreview) {
+                    window.electronAPI.openImagePreview(downloadUrl, fileName);
+                } else {
+                    // 웹 브라우저 환경에서는 새 탭으로 열기
+                    window.open(downloadUrl, '_blank');
+                }
+            };
+
+            // [추가] 파일 저장 핸들러 (Electron 저장 대화상자)
+            const handleSaveClick = async (e) => {
+                e.preventDefault();
+                if (window.electronAPI?.downloadFile) {
+                    const result = await window.electronAPI.downloadFile(downloadUrl, fileName);
+                    if (result.success) {
+                        console.log('파일 저장 완료:', result.filePath);
+                    } else if (result.message !== '취소됨') {
+                        console.error('파일 저장 실패:', result.message);
+                    }
+                } else {
+                    // 웹 브라우저 환경에서는 새 탭으로 열기
+                    window.open(downloadUrl, '_blank');
+                }
+            };
 
             if (isImageFile(fileName)) {
                 return (
                     <div className="file-message image-type">
-                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                            <img 
-                                src={downloadUrl} 
-                                alt={fileName} 
-                                className="image-preview"
-                                onLoad={handleImgLoad} // [핵심] 이미지 로딩 완료 시 호출
-                            />
-                        </a>
+                        <img
+                            src={downloadUrl}
+                            alt={fileName}
+                            className="image-preview"
+                            onClick={handleImageClick}
+                            onLoad={handleImgLoad}
+                            style={{ cursor: 'pointer' }}
+                        />
                         <div style={{ textAlign: 'right' }}>
-                            <a href={downloadUrl} download={fileName} target="_blank" rel="noopener noreferrer" className={`download-link ${mine ? 'mine' : 'theirs'}`}>
+                            <button
+                                onClick={handleSaveClick}
+                                className={`download-link ${mine ? 'mine' : 'theirs'}`}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '4px 0'
+                                }}
+                            >
                                 ⬇ 저장
-                            </a>
+                            </button>
                         </div>
                     </div>
                 );
             }
             return (
                 <div className="file-message">
-                    <a href={downloadUrl} download={fileName} target="_blank" rel="noopener noreferrer">
+                    <button
+                        onClick={handleSaveClick}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: 'inherit',
+                            fontWeight: 500,
+                            padding: 0
+                        }}
+                    >
                         <strong>📄 {fileName || '파일 다운로드'}</strong>
-                    </a>
+                    </button>
                 </div>
             );
         }
@@ -139,7 +188,7 @@ export default function MessageItem(props) {
     };
 
     const displayCount = unreadCount > 0 ? unreadCount : null;
-    
+
     // 프로필 사진 URL 처리
     const getAvatarUrl = (path) => {
         if (!path) return null;
@@ -153,41 +202,41 @@ export default function MessageItem(props) {
     return (
         <div className={`message-item ${mine ? 'mine' : 'theirs'}`} id={`msg-${msgId}`}>
             {!mine ? (
-                <div className="message-row-theirs">
-                    {avatarUrl ? (
-                        <img 
-                            key={avatarUrl} // [핵심] URL 변경 시 강제 리렌더링으로 즉시 업데이트 반영
-                            src={avatarUrl} 
-                            alt={nickname} 
-                            className="chat-profile-img" 
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                    ) : (
-                        <div className="chat-profile-initials">
-                            {getInitials(nickname)}
-                        </div>
-                    )}
+                <>
+                    <div className="sender-nickname">{nickname}</div>
+                    <div className="message-row-theirs">
+                        {avatarUrl ? (
+                            <img
+                                key={avatarUrl} // [핵심] URL 변경 시 강제 리렌더링으로 즉시 업데이트 반영
+                                src={avatarUrl}
+                                alt={nickname}
+                                className="chat-profile-img"
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                        ) : (
+                            <div className="chat-profile-initials">
+                                {getInitials(nickname)}
+                            </div>
+                        )}
 
-                    <div className="message-content-wrapper">
-                        <div className="sender-nickname">{nickname}</div>
                         <div className={`message-bubble theirs ${messageType === 'FILE' && isImageFile(fileName) ? 'is-file' : ''}`} onContextMenu={handleContextMenu} ref={bubbleRef}>
                             {renderMessageContent()}
                         </div>
-                    </div>
 
-                    <div className="message-info theirs">
-                        {displayCount && <span className="unread-count">{displayCount}</span>}
-                        <span className="timestamp">
-                            {sentAt ? new Date(sentAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
-                        </span>
+                        <div className="message-info theirs">
+                            {displayCount && <span className="unread-count">{displayCount}</span>}
+                            <span className="timestamp">
+                                {sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                        </div>
                     </div>
-                </div>
+                </>
             ) : (
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <div className="message-row-mine">
                     <div className="message-info mine">
                         {displayCount && <span className="unread-count">{displayCount}</span>}
                         <span className="timestamp">
-                            {sentAt ? new Date(sentAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                            {sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                     </div>
                     <div className={`message-bubble mine ${messageType === 'FILE' && isImageFile(fileName) ? 'is-file' : ''}`} onContextMenu={handleContextMenu} ref={bubbleRef}>
@@ -204,7 +253,7 @@ export default function MessageItem(props) {
             )}
 
             {/* 삭제 확인 모달 */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}

@@ -37,7 +37,23 @@ export default function ChatHeader({
         }
     }, [isSearchOpen]);
 
-    // 외부 클릭 시 메뉴 닫기 (간단 구현)
+    // Ctrl+F 키보드 단축키 핸들러
+    useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                if (!isSearchOpen) {
+                    setIsSearchOpen(true);
+                }
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [isSearchOpen]);
+
+    // 외부 클릭 시 메뉴 닫기
     useEffect(() => {
         const handleClickOutside = () => setIsMenuOpen(false);
         if (isMenuOpen) {

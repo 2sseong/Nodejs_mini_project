@@ -1,7 +1,10 @@
 // Electron 메인 프로세스
 
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
 const { spawn } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -214,9 +217,9 @@ ipcMain.on('open-chat-window', (event, roomId) => {
   const parentSession = event.sender.session;
 
   const win = new BrowserWindow({
-    width: 550,
+    width: 450,
     height: 600,
-    minWidth: 550,
+    minWidth: 450,
     minHeight: 600,
     title: '채팅방',
     frame: false,
@@ -285,4 +288,125 @@ ipcMain.on('resize-window', (event, bounds) => {
 ipcMain.handle('get-window-bounds', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   return win ? win.getBounds() : null;
+});
+
+//-------------------------파일 다운로드 및 이미지 미리보기-----------------------------//
+
+// [추가] 이미지 미리보기 창 열기
+ipcMain.on('open-image-preview', (event, { imageUrl, fileName }) => {
+  const parentSession = event.sender.session;
+
+  const previewWin = new BrowserWindow({
+    width: 800,
+    height: 600,
+    minWidth: 400,
+    minHeight: 300,
+    title: fileName || '이미지 미리보기',
+    frame: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      session: parentSession,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  // 이미지 미리보기용 HTML 생성
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${fileName || '이미지 미리보기'}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          background: #1a1a1a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          overflow: hidden;
+        }
+        img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+          cursor: zoom-in;
+        }
+        img.zoomed {
+          max-width: none;
+          max-height: none;
+          cursor: zoom-out;
+        }
+      </style>
+    </head>
+    <body>
+      <img src="${imageUrl}" alt="${fileName}" onclick="this.classList.toggle('zoomed')">
+    </body>
+    </html>
+  `;
+
+  previewWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
+  previewWin.setMenu(null);
+});
+
+// [추가] 파일 다운로드 (저장 대화상자 사용)
+ipcMain.handle('download-file', async (event, { url, fileName }) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+
+    // 저장 다이얼로그 표시
+    const result = await dialog.showSaveDialog(win, {
+      defaultPath: fileName,
+      title: '파일 저장',
+      buttonLabel: '저장'
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, message: '취소됨' };
+    }
+
+    // HTTP(S) 요청으로 파일 다운로드
+    const protocol = url.startsWith('https') ? https : http;
+
+    return new Promise((resolve) => {
+      const fileStream = fs.createWriteStream(result.filePath);
+
+      protocol.get(url, (response) => {
+        // 리다이렉트 처리
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          const redirectProtocol = response.headers.location.startsWith('https') ? https : http;
+          redirectProtocol.get(response.headers.location, (redirectResponse) => {
+            redirectResponse.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close();
+              resolve({ success: true, filePath: result.filePath });
+            });
+          }).on('error', (err) => {
+            fs.unlink(result.filePath, () => { });
+            resolve({ success: false, message: err.message });
+          });
+          return;
+        }
+
+        response.pipe(fileStream);
+        fileStream.on('finish', () => {
+          fileStream.close();
+          resolve({ success: true, filePath: result.filePath });
+        });
+      }).on('error', (err) => {
+        fs.unlink(result.filePath, () => { });
+        resolve({ success: false, message: err.message });
+      });
+    });
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+// [추가] 외부 URL 열기 (브라우저에서)
+ipcMain.on('open-external-url', (event, url) => {
+  shell.openExternal(url);
 });
