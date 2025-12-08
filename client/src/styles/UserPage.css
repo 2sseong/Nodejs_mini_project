@@ -1,242 +1,79 @@
-/* 전체 페이지 컨테이너 */
-.friend-page {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 24px;
-    background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
-    min-height: 100vh;
-}
+/* UserPage - 카카오톡/LINE 스타일 */
 
-/* 페이지 헤더 */
-.friend-page-header {
-    text-align: center;
-    margin-bottom: 48px;
-}
-
-.page-title {
-    font-size: 36px;
-    font-weight: 700;
-    color: #1976d2;
-    margin: 0 0 12px 0;
-    letter-spacing: -0.5px;
-}
-
-.page-subtitle {
-    font-size: 16px;
-    color: #64b5f6;
-    margin: 0;
-    font-weight: 400;
-}
-
-/* 콘텐츠 영역 */
-.friend-page-content {
+.user-page {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-}
-
-/* 섹션 공통 스타일 */
-.friend-section {
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 4px 20px rgba(25, 118, 210, 0.08);
+    height: 100%;
+    background-color: var(--bg-card);
     overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.friend-section:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(25, 118, 210, 0.12);
+/* 헤더 - 검색창 */
+.user-page-header {
+    padding: 12px;
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
-/* 섹션 헤더 */
-.section-header {
+/* 필터 탭 */
+.filter-tabs {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 24px 28px;
-    background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%);
-    border-bottom: 2px solid #90caf9;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    flex-shrink: 0;
 }
 
-.section-icon {
-    font-size: 24px;
+.filter-tab {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+    gap: 4px;
+    border-bottom: 2px solid transparent;
 }
 
-.section-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1565c0;
-    margin: 0;
-    letter-spacing: -0.3px;
+.filter-tab:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
 }
 
-/* 섹션 콘텐츠 */
-.section-content {
-    padding: 28px;
+.filter-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
 }
 
-/* 플레이스홀더 박스 */
-.placeholder-box {
-    background: linear-gradient(135deg, #e3f2fd 0%, #f5f9ff 100%);
-    border: 2px dashed #90caf9;
-    border-radius: 16px;
-    padding: 48px 24px;
-    text-align: center;
-    transition: all 0.3s ease;
+.filter-tab .online-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-success);
+    border-radius: 50%;
 }
 
-.placeholder-box:hover {
-    background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%);
-    border-color: #64b5f6;
-}
-
-.placeholder-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% {
-        transform: translateY(0px);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-.placeholder-text {
-    font-size: 16px;
-    color: #42a5f5;
-    margin: 0;
-    font-weight: 500;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .friend-page {
-        padding: 24px 16px;
-    }
-
-    .page-title {
-        font-size: 28px;
-    }
-
-    .page-subtitle {
-        font-size: 14px;
-    }
-
-    .section-header {
-        padding: 20px 20px;
-    }
-
-    .section-title {
-        font-size: 18px;
-    }
-
-    .section-content {
-        padding: 20px;
-    }
-
-    .section-icon {
-        width: 36px;
-        height: 36px;
-        font-size: 20px;
-    }
-}
-
-/* 스크롤바 커스터마이징 (선택사항) */
-.friend-page::-webkit-scrollbar {
-    width: 8px;
-}
-
-.friend-page::-webkit-scrollbar-track {
-    background: #e3f2fd;
-    border-radius: 10px;
-}
-
-.friend-page::-webkit-scrollbar-thumb {
-    background: #90caf9;
-    border-radius: 10px;
-}
-
-.friend-page::-webkit-scrollbar-thumb:hover {
-    background: #64b5f6;
-}
-
-/* 전체, 접속중, 즐겨찾기 버튼 css */
-/* 필터 버튼 컨테이너 */
-.filter-buttons {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-}
-
-/* 필터 버튼 기본 스타일 */
-.filter-buttons button {
+/* 유저 리스트 컨테이너 */
+.user-list-container {
     flex: 1;
-    padding: 10px 16px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background-color: #ffffff;
-    color: #666666;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-/* 호버 효과 */
-.filter-buttons button:hover {
-    background-color: #f5f5f5;
-    border-color: #d0d0d0;
+/* 로딩/에러 텍스트 */
+.loading-text,
+.error-text {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
 }
 
-/* 활성화된 버튼 스타일 */
-.filter-buttons button.active {
-    background-color: #4A90E2;
-    color: #ffffff;
-    border-color: #4A90E2;
-    font-weight: 600;
-}
-
-/* 별(⭐) 버튼 특별 스타일 */
-/* .filter-buttons button:last-child {
-    font-size: 16px;
-}
-
-/* 활성화된 별 버튼 */
-/* .filter-buttons button:last-child.active {
-    background-color: #FFD700;
-    border-color: #FFD700;
-    color: #333333;
-} */ 
-
-/* 포커스 상태 */
-.filter-buttons button:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
-}
-
-/* 반응형 - 작은 화면 */
-@media (max-width: 768px) {
-    .filter-buttons {
-        gap: 6px;
-    }
-    
-    .filter-buttons button {
-        padding: 8px 12px;
-        font-size: 13px;
-    }
+.error-text {
+    color: var(--color-danger);
 }

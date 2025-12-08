@@ -1,26 +1,29 @@
-// SignupForm 컴포넌트를 불러와 렌더링하고, 페이지 레이아웃(App.js)에 마운트되는 최상위 컨테이너
+// 회원가입 페이지 - 로그인 페이지와 일관된 디자인
 // src/pages/SignupPage.jsx
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import SignupForm from '../components/auth/SignupForm';
 import '../styles/SignupPage.css';
 
 function SignupPage() {
     return (
-        <div className="page-layout">
-            <header className="page-header">
-                <h1>새 계정 만들기</h1>
-            </header>
-            
-            <main className="page-content">
-                <section className="form-section">
-                    <SignupForm /> 
-                </section>
-                
-                <p className="login-link">
-                    이미 계정이 있으신가요? <a href="/login">로그인</a>
-                </p>
-            </main>
+        <div className="signup-wrap">
+            <div className="signup-card">
+                {/* 로고 영역 */}
+                <div className="signup-logo">
+                    <i className="bi bi-chat-square-heart-fill"></i>
+                    <h2 className="signup-title">회원가입</h2>
+                </div>
+
+                {/* 회원가입 폼 */}
+                <SignupForm />
+
+                {/* 로그인 링크 */}
+                <div className="login-link">
+                    이미 계정이 있으신가요? <Link to="/login">로그인</Link>
+                </div>
+            </div>
         </div>
     );
 }

@@ -1,72 +1,59 @@
-/* src/components/auth/SignupForm.css */
+/* SignupForm - 메신저 스타일 */
 
 .signup-form {
     width: 100%;
 }
 
 .signup-form h3 {
-    color: #1565c0;
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 28px 0;
-    text-align: center;
+    display: none;
+    /* 페이지 타이틀로 대체 */
 }
 
 /* 폼 그룹 */
 .form-group {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
 }
 
 .form-group label {
     display: block;
-    color: #37474f;
-    font-size: 14px;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-bottom: 4px;
     font-weight: 500;
-    margin-bottom: 8px;
-    text-align: left;
 }
 
-/* 입력 필드 (input, select 공통) */
+/* 입력 필드 */
 .form-group input,
 .form-group select {
     width: 100%;
-    padding: 12px 16px;
-    font-size: 15px;
-    color: #263238;
-    background: rgba(255, 255, 255, 0.8);
-    border: 1.5px solid rgba(100, 181, 246, 0.3);
-    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     outline: none;
     box-sizing: border-box;
-    transition: all 0.2s ease;
+    transition: border-color var(--transition-fast);
     font-family: inherit;
 }
 
-/* Select 특화 스타일 */
+/* Select 스타일 */
 .form-group select {
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
-    -moz-appearance: none;
-    padding-right: 40px;
-    /* 커스텀 화살표 아이콘 추가 */
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364b5f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 20px;
+    background-position: right 10px center;
+    background-size: 16px;
 }
 
 /* 포커스 상태 */
 .form-group input:focus,
 .form-group select:focus {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: #64b5f6;
-    box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
-}
-
-/* Select 포커스 상태 - 화살표 위치 유지 */
-.form-group select:focus {
-    background-position: right 12px center;
+    border-color: var(--color-primary);
 }
 
 /* 비활성화 상태 */
@@ -74,62 +61,31 @@
 .form-group select:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    background-color: rgba(245, 245, 245, 0.8);
+    background-color: var(--bg-hover);
 }
 
 /* 제출 버튼 */
 .submit-btn {
     width: 100%;
-    padding: 14px 24px;
-    margin-top: 8px;
-    font-size: 16px;
+    padding: 12px;
+    margin-top: 16px;
+    font-size: var(--font-size-sm);
     font-weight: 600;
-    color: #ffffff;
-    background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+    color: var(--text-inverse);
+    background: var(--color-primary);
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(66, 165, 245, 0.3);
+    transition: background var(--transition-normal);
 }
 
 .submit-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
-    box-shadow: 0 4px 12px rgba(66, 165, 245, 0.4);
-    transform: translateY(-1px);
-}
-
-.submit-btn:active:not(:disabled) {
-    transform: translateY(0);
+    background: var(--color-primary-hover);
 }
 
 .submit-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-}
-
-/* 에러 메시지 */
-.error-message {
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    color: #c62828;
-    background: rgba(244, 67, 54, 0.1);
-    border: 1px solid rgba(244, 67, 54, 0.3);
-    border-radius: 8px;
-    text-align: center;
-}
-
-/* 성공 메시지 */
-.success-message {
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    color: #2e7d32;
-    background: rgba(76, 175, 80, 0.1);
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    border-radius: 8px;
-    text-align: center;
 }
 
 /* 모달 오버레이 */
@@ -159,13 +115,13 @@
 
 /* 모달 컨텐츠 */
 .modal-content {
-    background: white;
-    border-radius: 16px;
-    padding: 32px 24px;
-    max-width: 400px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 24px 20px;
+    max-width: 300px;
     width: 90%;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
     animation: slideUp 0.3s ease;
 }
 
@@ -183,89 +139,34 @@
 
 /* 모달 아이콘 */
 .modal-icon {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 20px;
-    font-size: 32px;
+    margin: 0 auto 16px;
+    font-size: 24px;
     font-weight: bold;
 }
 
-/* 성공 모달 */
 .modal-content.success .modal-icon {
-    background: rgba(76, 175, 80, 0.1);
-    color: #2e7d32;
-    border: 3px solid #4caf50;
+    background: var(--color-success-light);
+    color: var(--color-success);
+    border: 2px solid var(--color-success);
 }
 
-/* 에러 모달 */
 .modal-content.error .modal-icon {
-    background: rgba(244, 67, 54, 0.1);
-    color: #c62828;
-    border: 3px solid #f44336;
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+    border: 2px solid var(--color-danger);
 }
 
 /* 모달 메시지 */
 .modal-message {
-    font-size: 16px;
-    color: #37474f;
-    line-height: 1.6;
-    margin: 0 0 24px 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin: 0;
     white-space: pre-line;
-}
-
-/* 모달 닫기 버튼 */
-.modal-close-btn {
-    width: 100%;
-    padding: 12px 24px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #ffffff;
-    background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(66, 165, 245, 0.3);
-}
-
-.modal-close-btn:hover {
-    background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
-    box-shadow: 0 4px 12px rgba(66, 165, 245, 0.4);
-    transform: translateY(-1px);
-}
-
-.modal-close-btn:active {
-    transform: translateY(0);
-}
-
-/* 반응형 디자인 */
-@media (max-width: 600px) {
-    .signup-form h3 {
-        font-size: 18px;
-        margin-bottom: 24px;
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-    }
-
-    .form-group input,
-    .form-group select {
-        padding: 11px 14px;
-        font-size: 14px;
-    }
-
-    .form-group select {
-        padding-right: 36px;
-        background-size: 18px;
-    }
-
-    .submit-btn {
-        padding: 13px 20px;
-        font-size: 15px;
-    }
 }

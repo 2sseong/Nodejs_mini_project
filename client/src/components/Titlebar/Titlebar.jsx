@@ -13,7 +13,7 @@ const CloseIcon = () => (
 );
 
 // [중요] { title } props를 받아야 각 창마다 다른 제목을 띄울 수 있습니다.
-function Titlebar({ title = "test" }) {
+function Titlebar({ title = "엠아이토크" }) {
   const handleMinimize = () => {
     if (window.electronAPI) window.electronAPI.minimizeWindow();
   };

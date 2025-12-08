@@ -1,194 +1,196 @@
-/* src/components/Friend/FriendList.css */
+/* UserList - 카카오톡/LINE 스타일 */
 
-/* 전체 컨테이너 */
 .friend-list-container {
     width: 100%;
 }
 
-/* 내 프로필 섹션 */
-.my-profile-section {
-    margin-bottom: 20px;
-}
-
 /* 부서 섹션 */
 .department-section {
-    margin-bottom: 16px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: white;
+    margin-bottom: 0;
+    background-color: var(--bg-card);
 }
 
-/* 부서 헤더 (클릭 가능) */
 .department-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    background-color: #f5f5f5;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--bg-page);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color var(--transition-fast);
     user-select: none;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .department-header:hover {
-    background-color: #ebebeb;
+    background-color: var(--bg-hover);
 }
 
 .expand-icon {
-    font-size: 12px;
-    color: #666;
-    transition: transform 0.2s;
+    font-size: 10px;
+    color: var(--text-muted);
 }
 
 .department-name {
     font-weight: 600;
-    font-size: 1em;
-    color: #333;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
 }
 
 .user-count {
-    font-size: 0.9em;
-    color: #888;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
     margin-left: auto;
 }
 
-/* 1. 리스트 컨테이너 (<ul>) 스타일: 점 제거 및 왼쪽 정렬의 핵심 */
+/* 사용자 리스트 */
 .user-list {
     list-style: none;
-    padding-left: 0;
+    padding: 0;
     margin: 0;
-    width: 100%;
 }
 
-/* 2. 각 리스트 아이템 (<li>) 스타일 */
 .user-list-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 15px;
-    border-bottom: 1px solid #e0e0e0;
-    margin: 0;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color var(--transition-fast);
+    gap: 12px;
 }
 
 .user-list-item:hover {
-    background-color: #f7f7f7;
+    background-color: var(--bg-hover);
 }
 
 .user-list-item:last-child {
     border-bottom: none;
 }
 
-/* 3. '나' 자신 강조 스타일 */
+/* 나 자신 */
 .user-list-item.user-me {
-    background-color: #e6f7ff !important;
+    background-color: var(--color-primary-light);
 }
 
-/* 4. 사용자 정보 컨테이너 */
+/* 프로필 영역 (아바타 자리) */
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: var(--font-size-base);
+    flex-shrink: 0;
+}
+
+/* 사용자 정보 */
 .user-info {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    text-align: left;
-    flex-grow: 1;
-    align-items: flex-start;
-    gap: 4px;
+    gap: 2px;
 }
 
 .user-name-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .user-nickname {
-    font-weight: bold;
-    color: #333;
-    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* 부서/직급 정보 컨테이너 */
-.user-details {
-    margin-left: 18px;
-}
-
-/* 부서 / 직급 스타일 (작은 회색 글씨) */
-.user-dept-position {
-    font-size: 0.85em;
-    color: #999;
-}
-
-.user-username {
-    font-size: 0.9em;
-    color: #888;
-    margin-left: 18px;
-}
-
-/* 5. 친구 버튼 스타일 */
-.btn-friend {
-    padding: 5px 10px;
-    background-color: #5cb85c;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.9em;
-    cursor: default;
-    opacity: 0.8;
-}
-
-/* 6. 검색 결과 없음 메시지 스타일 */
-.no-results,
-.empty-list-text {
-    padding: 20px;
-    text-align: center;
-    color: #777;
-}
-
-.no-results-text {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.suggestion {
-    color: #999;
+.me-tag {
+    font-size: var(--font-size-xs);
+    color: var(--color-primary);
+    font-weight: 600;
 }
 
 .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    display: inline-block;
     flex-shrink: 0;
 }
 
 .status-dot.online {
-    background-color: #75a576;
+    background-color: var(--color-success);
 }
 
 .status-dot.offline {
-    background-color: #bdbdbd;
+    background-color: var(--text-muted);
 }
 
-/* 즐겨찾기 버튼 - 이름 바로 옆에 배치 */
+.user-dept-position {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.user-username {
+    display: none;
+}
+
+.user-details {
+    margin-left: 0;
+}
+
+/* 즐겨찾기 버튼 */
 .btn-pick {
-    background-color: transparent;
+    background: none;
     border: none;
-    padding: 2px 6px;
-    font-size: 16px;
-    color: #888888;
+    padding: 4px;
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
     cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s ease;
-    display: inline-block;
-    margin-left: 4px;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
 }
 
 .btn-pick.active {
-    color: #ffcc00;
-    transform: scale(1.1);
+    color: var(--color-warning);
 }
 
 .btn-pick:hover {
-    color: #333333;
+    transform: scale(1.1);
+}
+
+/* 검색 결과 없음 */
+.no-results,
+.empty-list-text {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.no-results-text {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+}
+
+.suggestion {
+    font-size: var(--font-size-xs);
+}
+
+/* 친구 버튼 */
+.btn-friend {
+    display: none;
+}
+
+/* 내 프로필 섹션 */
+.my-profile-section {
+    margin-bottom: 0;
 }

@@ -3,29 +3,18 @@ import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage } from '.
 import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal';
 import '../styles/MyInfoPage.css';
 
-// 모듈화된 컴포넌트 import
-import ProfileImageSection from '../components/MyInfo/ProfileImageSection';
-import InfoDisplay from '../components/MyInfo/InfoDisplay';
-import VerifyPasswordForm from '../components/MyInfo/VerifyPasswordForm';
-import EditProfileForm from '../components/MyInfo/EditProfileForm';
-
 export default function MyInfoPage() {
     const [user, setUser] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
-    
-    // 상태 값
+
     const [verifyPwInput, setVerifyPwInput] = useState('');
     const [nicknameInput, setNicknameInput] = useState('');
-    
-    // [추가] 부서, 직급 상태
     const [departmentInput, setDepartmentInput] = useState('');
     const [positionInput, setPositionInput] = useState('');
-
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    // 모달 설정
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
         title: '',
@@ -43,7 +32,6 @@ export default function MyInfoPage() {
             const res = await getMyInfo();
             if (res.success) {
                 setUser(res.data);
-                // [수정] 불러온 정보로 state 초기화
                 setNicknameInput(res.data.NICKNAME);
                 setDepartmentInput(res.data.DEPARTMENT || '');
                 setPositionInput(res.data.POSITION || '');
@@ -53,7 +41,6 @@ export default function MyInfoPage() {
         }
     };
 
-    // --- 모달 관련 핸들러 ---
     const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
 
     const handleModalConfirm = () => {
@@ -65,14 +52,12 @@ export default function MyInfoPage() {
         setModalConfig({ isOpen: true, title, message, isDanger, onConfirm });
     };
 
-    // --- 이벤트 핸들러 ---
     const handleEditClick = () => {
         setIsEditing(true);
         setIsVerified(false);
         setVerifyPwInput('');
         setNewPassword('');
         setConfirmPassword('');
-        // 편집 모드 진입 시 최신 user 데이터로 다시 리셋 (취소 후 재진입 시 대비)
         if (user) {
             setNicknameInput(user.NICKNAME);
             setDepartmentInput(user.DEPARTMENT || '');
@@ -91,29 +76,27 @@ export default function MyInfoPage() {
     };
 
     const handleSave = async () => {
-        // 비밀번호 변경 시 유효성 검사
         if (newPassword) {
             if (newPassword !== confirmPassword) {
                 openModal('입력 오류', '새 비밀번호가 일치하지 않습니다.', true);
                 return;
             }
             if (newPassword.length < 4) {
-                 openModal('입력 오류', '비밀번호는 4자 이상이어야 합니다.', true);
-                 return;
+                openModal('입력 오류', '비밀번호는 4자 이상이어야 합니다.', true);
+                return;
             }
         }
 
         try {
-            const updateData = { 
+            const updateData = {
                 nickname: nicknameInput,
-                // [추가] 수정된 부서, 직급 전송
                 department: departmentInput,
                 position: positionInput,
                 newPassword: newPassword || undefined
             };
 
             await updateUserInfo(updateData);
-            
+
             openModal('성공', '정보가 수정되었습니다.', false, () => {
                 setIsEditing(false);
                 setIsVerified(false);
@@ -138,63 +121,132 @@ export default function MyInfoPage() {
             console.error(err);
             openModal('오류', '이미지 업로드 중 오류가 발생했습니다.', true);
         } finally {
-            e.target.value = ''; 
+            e.target.value = '';
         }
     };
 
-    if (!user) return <div>Loading...</div>;
+    if (!user) return <div className="my-info-page"><p className="loading-text">로딩 중...</p></div>;
 
-    const profileSrc = user.PROFILE_PIC 
-        ? `http://localhost:1337${user.PROFILE_PIC}` 
-        : 'https://via.placeholder.com/150';
+    const profileSrc = user.PROFILE_PIC
+        ? `http://localhost:1337${user.PROFILE_PIC}`
+        : null;
+
+    const getInitials = (nickname) => {
+        return nickname ? nickname.charAt(0).toUpperCase() : '?';
+    };
 
     return (
-        <div className="my-info-container">
-            <div className="info-card">
-                <h2 className="page-title">내 정보</h2>
+        <div className="my-info-page">
+            {/* 프로필 헤더 */}
+            <div className="profile-header">
+                <div className="profile-avatar-wrap">
+                    {profileSrc ? (
+                        <img src={profileSrc} alt="프로필" className="profile-avatar" />
+                    ) : (
+                        <div className="profile-avatar-placeholder">
+                            {getInitials(user.NICKNAME)}
+                        </div>
+                    )}
+                    <label className="avatar-edit-btn">
+                        <i className="bi bi-camera-fill"></i>
+                        <input type="file" accept="image/*" onChange={handleFileChange} hidden />
+                    </label>
+                </div>
+                <h2 className="profile-name">{user.NICKNAME}</h2>
+                <p className="profile-username">@{user.USERNAME}</p>
+            </div>
 
-                <ProfileImageSection 
-                    profileSrc={profileSrc}
-                    onFileChange={handleFileChange}
-                />
-
+            {/* 정보 카드 */}
+            <div className="info-section">
                 {!isEditing ? (
-                    <InfoDisplay 
-                        user={user} 
-                        onEditClick={handleEditClick} 
-                    />
+                    <>
+                        <div className="info-row">
+                            <span className="info-label">부서</span>
+                            <span className="info-value">{user.DEPARTMENT || '-'}</span>
+                        </div>
+                        <div className="info-row">
+                            <span className="info-label">직급</span>
+                            <span className="info-value">{user.POSITION || '-'}</span>
+                        </div>
+                        <button className="btn-edit" onClick={handleEditClick}>
+                            <i className="bi bi-pencil"></i> 정보 수정
+                        </button>
+                    </>
+                ) : !isVerified ? (
+                    <div className="verify-section">
+                        <p className="verify-desc">정보 수정을 위해 현재 비밀번호를 입력하세요.</p>
+                        <input
+                            type="password"
+                            className="input-field"
+                            placeholder="현재 비밀번호"
+                            value={verifyPwInput}
+                            onChange={e => setVerifyPwInput(e.target.value)}
+                        />
+                        <div className="btn-row">
+                            <button className="btn-secondary" onClick={() => setIsEditing(false)}>취소</button>
+                            <button className="btn-primary" onClick={handleVerify}>확인</button>
+                        </div>
+                    </div>
                 ) : (
-                    <div className="edit-form">
-                        {!isVerified ? (
-                            <VerifyPasswordForm
-                                password={verifyPwInput}
-                                onChange={setVerifyPwInput}
-                                onVerify={handleVerify}
-                                onCancel={() => setIsEditing(false)}
+                    <div className="edit-section">
+                        <div className="field-group">
+                            <label>닉네임</label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                value={nicknameInput}
+                                onChange={e => setNicknameInput(e.target.value)}
                             />
-                        ) : (
-                            <EditProfileForm
-                                nickname={nicknameInput}
-                                onNicknameChange={setNicknameInput}
-                                // [추가] Props 전달
-                                department={departmentInput}
-                                onDepartmentChange={setDepartmentInput}
-                                position={positionInput}
-                                onPositionChange={setPositionInput}
-                                
-                                newPassword={newPassword}
-                                onNewPasswordChange={setNewPassword}
-                                confirmPassword={confirmPassword}
-                                onConfirmPasswordChange={setConfirmPassword}
-                                onSave={handleSave}
-                                onCancel={() => setIsEditing(false)}
+                        </div>
+                        <div className="field-group">
+                            <label>부서</label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                value={departmentInput}
+                                onChange={e => setDepartmentInput(e.target.value)}
                             />
+                        </div>
+                        <div className="field-group">
+                            <label>직급</label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                value={positionInput}
+                                onChange={e => setPositionInput(e.target.value)}
+                            />
+                        </div>
+                        <div className="field-group">
+                            <label>새 비밀번호 (선택)</label>
+                            <input
+                                type="password"
+                                className="input-field"
+                                placeholder="변경 시 입력"
+                                value={newPassword}
+                                onChange={e => setNewPassword(e.target.value)}
+                            />
+                        </div>
+                        {newPassword && (
+                            <div className="field-group">
+                                <label>비밀번호 확인</label>
+                                <input
+                                    type="password"
+                                    className="input-field"
+                                    placeholder="다시 입력"
+                                    value={confirmPassword}
+                                    onChange={e => setConfirmPassword(e.target.value)}
+                                />
+                            </div>
                         )}
+                        <div className="btn-row">
+                            <button className="btn-secondary" onClick={() => setIsEditing(false)}>취소</button>
+                            <button className="btn-primary" onClick={handleSave}>저장</button>
+                        </div>
                     </div>
                 )}
             </div>
 
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={modalConfig.isOpen}
                 onClose={closeModal}
                 onConfirm={handleModalConfirm}

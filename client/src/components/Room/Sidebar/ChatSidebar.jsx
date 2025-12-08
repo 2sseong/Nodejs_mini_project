@@ -17,7 +17,7 @@ export default function ChatSidebar({
     const filteredRooms = useMemo(() => {
         if (!searchTerm.trim()) return rooms;
         const lowerTerm = searchTerm.toLowerCase();
-        return rooms.filter((room) => 
+        return rooms.filter((room) =>
             (room.ROOM_NAME || '').toLowerCase().includes(lowerTerm)
         );
     }, [rooms, searchTerm]);
@@ -42,19 +42,19 @@ export default function ChatSidebar({
 
             {/* 기능 버튼 영역 (검색 / 방 만들기) */}
             <div className="sidebar-actions">
-                <button 
-                    className="icon-btn search-btn" 
-                    onClick={handleToggleSearch} 
+                <button
+                    className="icon-btn search-btn"
+                    onClick={handleToggleSearch}
                     title="채팅방 검색"
                 >
-                    🔍 검색
+                    <i className="bi bi-search"></i> 검색
                 </button>
-                <button 
-                    className="icon-btn create-room-btn" 
-                    onClick={onOpenCreateModal} 
+                <button
+                    className="icon-btn create-room-btn"
+                    onClick={onOpenCreateModal}
                     title="새 채팅방 만들기"
                 >
-                    + 방 만들기
+                    <i className="bi bi-plus-circle"></i> 방 만들기
                 </button>
             </div>
 
