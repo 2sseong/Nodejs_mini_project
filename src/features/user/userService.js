@@ -113,3 +113,32 @@ export const removePick = async (userId, targetUserId) => {
         throw error;
     }
 };
+
+/**
+ * 본인 프로필 조회 비즈니스 로직
+ */
+export const getMyProfile = async (userId) => {
+    if (!userId) {
+        throw new Error("사용자 ID가 필요합니다.");
+    }
+
+    try {
+        const rawResult = await userRepository.getUserById(userId);
+
+        if (!rawResult) {
+            throw new Error("사용자 정보를 찾을 수 없습니다.");
+        }
+
+        const formattedResult = {
+            userId: rawResult.USER_ID,
+            username: rawResult.USERNAME,
+            userNickname: rawResult.NICKNAME,
+            profileImage: rawResult.PROFILE_PIC,
+        };
+
+        return formattedResult;
+    } catch (error) {
+        console.error("Service Error: 본인 프로필 조회 중 DB 오류 발생", error);
+        throw error;
+    }
+};

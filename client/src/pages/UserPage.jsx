@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/AuthContext.jsx';
 import UserSearch from '../components/User/UserSearch.jsx';
 import UserList from '../components/User/UserList.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
-import { searchAllUsers, toggleUserPick } from '../api/usersApi.jsx';
+import { searchAllUsers, toggleUserPick, getMyProfile } from '../api/usersApi.jsx';
 import '../styles/UserPage.css';
 
 
@@ -81,16 +81,22 @@ export default function UserPage() {
             setError(null);
 
             try {
-                const data = await searchAllUsers(searchQuery, myUserId);
-                const hasMe = data.some(u => String(u.userId) === String(myUserId));
-                let usersWithMe = data;
-                if (!hasMe && userNickname && !searchQuery.trim()) {
-                    const myInfo = {
-                        userId: myUserId,
-                        username: username,
-                        userNickname: userNickname,
-                    };
-                    usersWithMe = [myInfo, ...data];
+
+                // Promise.all로 본인 프로필과 다른 사용자 동시 조회
+                const [myProfileData, otherUsersData] = await Promise.all([
+                    getMyProfile(),
+                    searchAllUsers(searchQuery, myUserId)
+                ]);
+
+                // DB에서 받은 본인 데이터 사용
+                // 백엔드에서 profileImage로 넘어오는 경우 profilePic으로 매핑
+                if (myProfileData && myProfileData.profileImage) {
+                    myProfileData.profilePic = myProfileData.profileImage;
+                }
+
+                let usersWithMe = otherUsersData;
+                if (!searchQuery.trim()) {
+                    usersWithMe = [myProfileData, ...otherUsersData];
                 }
 
                 const sorted = [...usersWithMe].sort((a, b) => {

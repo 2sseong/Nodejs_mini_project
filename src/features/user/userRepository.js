@@ -96,6 +96,45 @@ export const getUserPick = async (userId) => {
 }
 
 /**
+ * 사용자 ID로 사용자 정보 조회 (본인 프로필)
+ * @param {string} userId - 조회할 사용자 ID
+ * @returns {Promise<Object>} - 사용자 정보 (USER_ID, USERNAME, NICKNAME, PROFILE_PIC)
+ */
+export const getUserById = async (userId) => {
+    const sql = `
+    SELECT
+        U.USER_ID,
+        U.USERNAME,
+        U.NICKNAME,
+        U.PROFILE_PIC
+    FROM T_USER U
+    WHERE U.USER_ID = :userId
+    `;
+
+    const binds = { userId: userId };
+
+    let connection;
+
+    try {
+        connection = await getConnection();
+        const options = {
+            outFormat: oracledb.OUT_FORMAT_OBJECT
+        };
+
+        const result = await connection.execute(sql, binds, options);
+
+        // 결과가 있으면 첫 번째 행 반환, 없으면 null 반환
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error("Repository Error: 사용자 정보 조회 DB 실패:", error);
+        throw new Error("사용자 정보 조회 DB 조회 중 오류 발생");
+    } finally {
+        if (connection) await connection.close();
+    }
+}
+
+
+/**
  * !!! 사용자 검색 및 사용자 상태 조회 (GET /users/search)
  * @param {string} userId - 현재 로그인된 사용자 ID
  * @param {string} query - 검색어

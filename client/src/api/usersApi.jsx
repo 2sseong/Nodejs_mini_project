@@ -80,3 +80,24 @@ export const toggleUserPick = async (targetUserId, isAdding) => {
         throw new Error(errorMessage);
     }
 };
+
+/**
+ * 본인 프로필 조회 API
+ * @returns {Promise<object>} - 본인 프로필 정보
+ */
+export const getMyProfile = async () => {
+    try {
+        const response = await api.get('/users/my-profile');
+        console.log("본인 프로필 조회 API 응답:", response.data);
+
+        if (response.data.success && response.data.data) {
+            return response.data.data;
+        }
+
+        throw new Error("프로필 데이터 형식이 올바르지 않습니다.");
+    } catch (error) {
+        console.error("API Error: 본인 프로필 조회 실패", error);
+        console.error("에러 상세:", error.response?.status, error.response?.data);
+        throw new Error("본인 프로필을 조회하는 데 실패했습니다.");
+    }
+};

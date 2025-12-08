@@ -1,7 +1,8 @@
 ﻿import {
     searchUsers as searchUsersService,
     addPick as addPickService,
-    removePick as removePickService
+    removePick as removePickService,
+    getMyProfile as getMyProfileService
 } from './userService.js';
 import { addPick, removePick, searchUsersByQuery } from './userRepository.js';
 
@@ -21,6 +22,47 @@ export const getFriendList = async (req, res) => {
         });
     }
 };
+
+/**
+ * 본인 프로필 조회 API 핸들러
+ * GET /api/friends/my-profile
+ * @param {object} req - 요청 객체 (req.user.userId 포함)
+ * @param {object} res - 응답 객체
+ */
+export const getMyProfile = async (req, res) => {
+    const userId = req.user.userId;
+
+    if (!userId) {
+        console.error('인증된 사용자 ID를 찾을 수 없습니다.');
+        return res.status(400).json({
+            success: false,
+            message: '사용자 ID를 제공해야 합니다.'
+        });
+    }
+
+    try {
+        const profile = await getMyProfileService(userId);
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: '사용자 정보를 찾을 수 없습니다.'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: profile
+        });
+    } catch (error) {
+        console.error("본인 프로필 조회 중 Controller 오류:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: '본인 프로필을 불러오는데 실패했습니다.'
+        });
+    }
+};
+
 
 /**
  * 사용자 검색 API 핸들러
