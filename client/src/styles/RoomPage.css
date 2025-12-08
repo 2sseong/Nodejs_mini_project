@@ -1,35 +1,10 @@
-/* RoomPage.css - 메인 창의 방 목록 화면 스타일 */
+/* RoomPage - 채팅방 목록 (카카오톡 스타일) */
 
-.room-page-container {
-    display: flex;
-    width: 100%;
-    height: 100vh;
-    background-color: #f5f6f7;
-    overflow: hidden; /* 스크롤은 내부 컴포넌트에서 처리 */
-}
-
-/* 사이드바 영역이 전체를 차지하도록 설정 (메인 창에서는 내용 영역이 없으므로) */
-.room-page-sidebar-wrapper {
-    width: 100%;
-    height: 100%;
+.chat-container {
     display: flex;
     flex-direction: column;
-}
-
-/* 방 생성 모달 등에서 재사용될 수 있는 버튼 스타일 */
-.create-room-btn-large {
-    margin-top: 20px;
-    padding: 12px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 6px;
-    background-color: #28a745;
-    color: white;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.2s;
-}
-
-.create-room-btn-large:hover {
-    background-color: #1e7e34;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-card);
+    overflow: hidden;
 }

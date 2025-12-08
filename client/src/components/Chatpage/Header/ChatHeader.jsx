@@ -2,18 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import ConfirmModal from '../Modals/ConfirmModal';
 import './ChatHeader.css';
 
-export default function ChatHeader({ 
-    title, 
+export default function ChatHeader({
+    title,
     memberCount, // [추가] 인원수 props
-    onOpenInvite, 
+    onOpenInvite,
     onOpenDrawer, // [추가] 서랍 열기 핸들러
-    disabled, 
-    onLeaveRoom, 
-    onSearch,      
-    onNextMatch,   
-    onPrevMatch,   
-    matchCount,    
-    currentMatchIdx 
+    disabled,
+    onLeaveRoom,
+    onSearch,
+    onNextMatch,
+    onPrevMatch,
+    matchCount,
+    currentMatchIdx
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false); // [추가] 메뉴 드롭다운 상태
@@ -86,14 +86,14 @@ export default function ChatHeader({
     const handleConfirmLeave = async () => {
         setIsLeaving(true);
         try {
-            await onLeaveRoom(); 
+            await onLeaveRoom();
             setIsLeaveModalOpen(false);
         } catch (error) {
             console.error('방 나가기 실패:', error);
             setIsLeaving(false);
-            setIsLeaveModalOpen(false); 
+            setIsLeaveModalOpen(false);
             const errMsg = error.response?.data?.message || '오류가 발생했습니다.';
-            
+
             // [수정] alert 대신 커스텀 모달 사용
             setAlertModal({
                 isOpen: true,
@@ -118,34 +118,34 @@ export default function ChatHeader({
                 </div>
 
                 <div className="chat-header-buttons">
-                    <button 
+                    <button
                         className={`search-toggle-btn ${isSearchOpen ? 'active' : ''}`}
                         onClick={toggleSearch}
                         title="대화 내용 검색"
                         disabled={disabled}
                     >
-                        🔍
+                        <i className="bi bi-search"></i>
                     </button>
 
                     {/* [변경] 메뉴 버튼 (기존 초대/나가기 버튼 대체) */}
                     <div className="menu-container" onClick={(e) => e.stopPropagation()}>
-                        <button 
+                        <button
                             className="menu-toggle-btn"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             disabled={disabled}
                             title="메뉴"
                         >
-                            ☰
+                            <i className="bi bi-list"></i>
                         </button>
 
                         {/* 드롭다운 메뉴 */}
                         {isMenuOpen && (
                             <div className="header-dropdown">
                                 <button onClick={() => { setIsMenuOpen(false); onOpenInvite(); }}>
-                                    + 초대하기
+                                    <i className="bi bi-person-plus"></i> 초대하기
                                 </button>
                                 <button onClick={() => { setIsMenuOpen(false); onOpenDrawer(); }}>
-                                    📁 채팅방 서랍
+                                    <i className="bi bi-folder2-open"></i> 채팅방 서랍
                                 </button>
                                 <div className="divider"></div>
                                 <button onClick={() => { setIsMenuOpen(false); handleLeaveClick(); }} className="danger-text">
@@ -173,12 +173,12 @@ export default function ChatHeader({
                             {matchCount > 0 ? `${currentMatchIdx + 1}/${matchCount}` : '0/0'}
                         </span>
                     </div>
-                    
+
                     <div className="search-nav-buttons">
-                        <button onClick={onPrevMatch} title="이전(위) 내용">▲</button>
-                        <button onClick={onNextMatch} title="다음(아래) 내용">▼</button>
+                        <button onClick={onPrevMatch} title="이전(위) 내용"><i className="bi bi-chevron-up"></i></button>
+                        <button onClick={onNextMatch} title="다음(아래) 내용"><i className="bi bi-chevron-down"></i></button>
                     </div>
-                    
+
                     <button className="search-close-btn" onClick={toggleSearch}>닫기</button>
                 </div>
             )}

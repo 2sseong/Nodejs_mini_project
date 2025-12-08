@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import Topbar from './components/Topbar/Topbar.jsx';
+import Sidebar from './components/Sidebar/Sidebar.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RoomPage from './pages/RoomPage.jsx';
 import MyInfoPage from './pages/MyInfoPage.jsx';
@@ -21,14 +21,16 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
-// 메인 레이아웃 (타이틀바 + 탑바 + 콘텐츠)
+// 메인 레이아웃 (타이틀바 + 사이드바 + 콘텐츠)
 const MainLayout = () => {
     return (
         <div className="App">
             <Titlebar />
-            <Topbar />
-            <div className="content-area">
-                <Outlet />
+            <div className="app-body">
+                <Sidebar />
+                <main className="content-area">
+                    <Outlet />
+                </main>
             </div>
         </div>
     );

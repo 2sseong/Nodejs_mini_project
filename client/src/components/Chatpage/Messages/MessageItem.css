@@ -1,132 +1,132 @@
-/* client/src/components/Chatpage/Messages/MessageItem.css */
+/* MessageItem.css */
 
-/* --- 개별 메시지 컨테이너 --- */
+/* 개별 메시지 컨테이너 */
 .message-item {
     display: flex;
     flex-direction: column;
     width: 100%;
-    margin-bottom: 10px;
-    position: relative; /* 컨텍스트 메뉴 위치 기준 */
+    margin-bottom: 8px;
+    position: relative;
 }
 
-/* --- 닉네임 (상대방) --- */
+/* 닉네임 (상대방) */
 .sender-nickname {
-    font-size: 13px;
+    font-size: var(--font-size-xs);
     font-weight: 600;
-    color: #555;
+    color: var(--text-secondary);
     margin-bottom: 4px;
-    margin-left: 5px;
+    margin-left: 4px;
 }
 
-/* --- 말풍선 공통 --- */
+/* 말풍선 공통 */
 .message-bubble {
     display: inline-block;
-    max-width: 70%;
-    padding: 10px 14px;
-    border-radius: 18px;
+    max-width: 75%;
+    padding: 8px 12px;
+    border-radius: 16px;
     word-break: break-word;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    font-size: 14px;
+    box-shadow: var(--shadow-sm);
+    font-size: var(--font-size-sm);
     line-height: 1.5;
     position: relative;
 }
 
-/* --- 내 메시지 스타일 --- */
+/* 내 메시지 스타일 */
 .message-item.mine {
     align-items: flex-end;
 }
 
 .message-bubble.mine {
-    background-color: #007bff; /* 파란색 */
-    color: white;
-    border-bottom-right-radius: 4px; /* 꼬리 효과 */
+    background-color: var(--bubble-mine);
+    color: var(--text-inverse);
+    border-bottom-right-radius: 4px;
 }
 
 .message-info.mine {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    margin-right: 6px;
+    margin-right: 4px;
     justify-content: flex-end;
 }
 
-/* --- 상대방 메시지 스타일 --- */
+/* 상대방 메시지 스타일 */
 .message-item.theirs {
     align-items: flex-start;
 }
 
 .message-row-theirs {
     display: flex;
-    align-items: flex-end; /* 프로필 사진 하단 정렬 */
-    gap: 8px;
+    align-items: flex-end;
+    gap: 6px;
     max-width: 100%;
 }
 
 .message-bubble.theirs {
-    background-color: #f1f3f5; /* 회색 */
-    color: #212529;
-    border-bottom-left-radius: 4px; /* 꼬리 효과 */
+    background-color: var(--bubble-theirs);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
 }
 
 .message-info.theirs {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-left: 6px;
+    margin-left: 4px;
     justify-content: flex-end;
 }
 
-/* --- 프로필 사진 --- */
+/* 프로필 사진 */
 .chat-profile-img {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
-    background-color: #e9ecef;
-    margin-bottom: 20px; /* 말풍선 위치와 맞추기 위함 */
+    background-color: var(--bg-hover);
+    margin-bottom: 18px;
 }
 
 .chat-profile-initials {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background-color: #adb5bd;
-    color: white;
+    background-color: var(--text-muted);
+    color: var(--text-inverse);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 14px;
-    margin-bottom: 20px;
+    font-size: var(--font-size-sm);
+    margin-bottom: 18px;
 }
 
-/* --- 메시지 내용 래퍼 --- */
+/* 메시지 내용 래퍼 */
 .message-content-wrapper {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
 
-/* --- 시간 및 읽음 확인 --- */
+/* 시간 및 읽음 확인 */
 .timestamp {
-    font-size: 11px;
-    color: #868e96;
+    font-size: 10px;
+    color: var(--text-muted);
     margin-top: 2px;
     white-space: nowrap;
 }
 
 .unread-count {
-    color: #ffc107; /* 노란색 */
+    color: var(--color-warning);
     font-size: 10px;
     font-weight: bold;
     margin-bottom: 2px;
 }
 
-/* --- 파일 메시지 --- */
+/* 파일 메시지 */
 .file-message a {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     text-decoration: none;
     color: inherit;
     font-weight: 500;
@@ -137,93 +137,107 @@
 }
 
 .image-preview {
-    max-width: 200px;
-    max-height: 200px;
-    border-radius: 8px;
+    max-width: 180px;
+    max-height: 180px;
+    border-radius: var(--radius-md);
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     cursor: pointer;
 }
 
 .download-link {
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     text-decoration: none;
     opacity: 0.8;
 }
-.download-link.mine { color: white; }
-.download-link.theirs { color: #007bff; }
 
-/* --- 컨텍스트 메뉴 (우클릭) --- */
+.download-link.mine {
+    color: var(--text-inverse);
+}
+
+.download-link.theirs {
+    color: var(--color-primary);
+}
+
+/* 컨텍스트 메뉴 */
 .context-menu {
-    background-color: white;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
     z-index: 1000;
     overflow: hidden;
-    min-width: 100px;
+    min-width: 90px;
     padding: 4px 0;
 }
 
 .context-menu button {
     display: block;
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: none;
     background: none;
     text-align: left;
-    font-size: 14px;
+    font-size: var(--font-size-sm);
     cursor: pointer;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .context-menu button:hover {
-    background-color: #f8f9fa;
+    background-color: var(--bg-hover);
 }
 
 .context-menu button.delete-option {
-    color: #dc3545;
+    color: var(--color-danger);
 }
 
-/* --- 수정 모드 --- */
+.context-menu button.delete-option:hover {
+    background-color: var(--color-danger-light);
+}
+
+/* 수정 모드 */
 .edit-input-area {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 200px;
+    gap: 4px;
+    min-width: 180px;
 }
 
 .edit-input {
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    font-size: 14px;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
     resize: none;
     outline: none;
+}
+
+.edit-input:focus {
+    border-color: var(--color-primary);
 }
 
 .edit-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 4px;
 }
 
 .edit-btn-save {
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--text-inverse);
     border: none;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
 }
 
 .edit-btn-cancel {
-    background-color: #6c757d;
-    color: white;
+    background-color: var(--text-muted);
+    color: var(--text-inverse);
     border: none;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
 }

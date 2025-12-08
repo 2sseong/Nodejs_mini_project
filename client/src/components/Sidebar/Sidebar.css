@@ -1,0 +1,116 @@
+/* Sidebar Navigation - 카카오톡/LINE 스타일 좌측 네비게이션 */
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-width, 56px);
+    height: 100%;
+    background-color: var(--color-primary);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* 로고 영역 */
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    cursor: pointer;
+    color: var(--text-inverse);
+    font-size: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.sidebar-logo:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* 네비게이션 메뉴 */
+.sidebar-menu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    overflow: hidden;
+}
+
+/* 개별 네비게이션 아이템 */
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    min-height: 44px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    border: none;
+    background: none;
+    cursor: pointer;
+    width: 100%;
+    font-size: var(--font-size-sm);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.sidebar-item i {
+    font-size: 18px;
+}
+
+.sidebar-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-inverse);
+}
+
+.sidebar-item.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--text-inverse);
+    border-left: 3px solid var(--text-inverse);
+}
+
+/* 라벨 숨김 */
+.sidebar-label {
+    display: none;
+}
+
+/* 하단 영역 */
+.sidebar-footer {
+    padding: 8px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.logout-btn {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.logout-btn:hover {
+    background-color: var(--color-danger);
+    color: var(--text-inverse);
+}
+
+/* 툴팁 효과 */
+.sidebar-item::after {
+    content: attr(title);
+    position: absolute;
+    left: calc(100% + 6px);
+    padding: 4px 8px;
+    background-color: var(--text-primary);
+    color: var(--text-inverse);
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-fast);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.sidebar-item:hover::after {
+    opacity: 1;
+    visibility: visible;
+}

@@ -1,70 +1,79 @@
 .chat-header-container {
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid #e0e0e0;
-    background-color: #fff;
-    /* 그림자 효과 선택사항 */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
 }
 
-/* 1. 메인 헤더 영역 */
+/* 메인 헤더 영역 */
 .chat-header-main {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
-    height: 60px;
+    padding: 12px 16px;
+    height: 52px;
     box-sizing: border-box;
 }
 
 .chat-header-main h2 {
     margin: 0;
-    font-size: 1.5em;
-    color: #333;
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
 }
 
 .chat-header-buttons {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
 }
 
-/* 검색 토글 버튼 아이콘 스타일 */
+/* 검색 토글 버튼 */
 .search-toggle-btn {
     background: none;
     border: none;
-    font-size: 1.2rem;
+    font-size: var(--font-size-lg);
     cursor: pointer;
-    padding: 5px;
-    border-radius: 50%;
-    transition: background-color 0.2s;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
 }
+
 .search-toggle-btn:hover {
-    background-color: #f0f0f0;
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
 }
+
 .search-toggle-btn.active {
-    background-color: #e8f5e9; /* 활성화 시 연두색 배경 */
-    color: #4CAF50;
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
 }
 
-
-/* 2. 하단 검색 바 영역 */
+/* 검색 바 영역 */
 .chat-search-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    background-color: #f9f9f9;
-    border-top: 1px solid #eee;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--bg-page);
+    border-top: 1px solid var(--border-color);
     animation: slideDown 0.2s ease-out;
 }
 
 @keyframes slideDown {
-    from { transform: translateY(-10px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
-/* 검색 인풋 래퍼 (인풋 + 카운트) */
 .search-input-wrapper {
     position: relative;
     flex: 1;
@@ -74,85 +83,94 @@
 
 .search-input-wrapper input {
     width: 100%;
-    padding: 8px 12px;
-    padding-right: 60px; /* 카운트 공간 확보 */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
+    padding: 6px 10px;
+    padding-right: 50px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
     outline: none;
 }
 
 .search-input-wrapper input:focus {
-    border-color: #4CAF50;
+    border-color: var(--color-primary);
 }
 
 .search-count {
     position: absolute;
-    right: 10px;
-    font-size: 12px;
-    color: #888;
+    right: 8px;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
     pointer-events: none;
 }
 
-/* 위/아래 이동 버튼 그룹 */
 .search-nav-buttons {
     display: flex;
     gap: 2px;
 }
 
 .search-nav-buttons button {
-    padding: 6px 10px;
-    border: 1px solid #ddd;
-    background-color: white;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
     cursor: pointer;
-    font-size: 12px;
-}
-.search-nav-buttons button:first-child {
-    border-top-left-radius: 4px;
-    border-bottom-left-radius: 4px;
-}
-.search-nav-buttons button:last-child {
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
-}
-.search-nav-buttons button:hover {
-    background-color: #eee;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
 }
 
-/* 닫기 버튼 */
+.search-nav-buttons button:first-child {
+    border-top-left-radius: var(--radius-sm);
+    border-bottom-left-radius: var(--radius-sm);
+}
+
+.search-nav-buttons button:last-child {
+    border-top-right-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+}
+
+.search-nav-buttons button:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
 .search-close-btn {
     background: none;
     border: none;
-    color: #666;
-    font-size: 13px;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
     cursor: pointer;
     text-decoration: underline;
 }
+
 .search-close-btn:hover {
-    color: #333;
+    color: var(--text-primary);
 }
 
-/* [추가] 헤더 정보 영역 (제목 + 인원수) */
+/* 헤더 정보 영역 */
 .chat-header-info {
     display: flex;
-    flex-direction: column; /* 제목 밑에 인원수 */
+    flex-direction: column;
     justify-content: center;
+    min-width: 0;
 }
 
 .room-title {
     margin: 0;
-    font-size: 1.2em; /* 제목 크기 조정 */
-    color: #333;
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
     font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .member-count {
-    font-size: 0.85rem;
-    color: #888;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
     margin-top: 2px;
 }
 
-/* [추가] 메뉴 버튼 및 드롭다운 */
+/* 메뉴 버튼 및 드롭다운 */
 .menu-container {
     position: relative;
 }
@@ -160,54 +178,63 @@
 .menu-toggle-btn {
     background: none;
     border: none;
-    font-size: 1.4rem;
+    font-size: var(--font-size-xl);
     cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
 }
+
 .menu-toggle-btn:hover {
-    background-color: #f0f0f0;
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 .header-dropdown {
     position: absolute;
     top: 100%;
     right: 0;
-    margin-top: 5px;
-    background-color: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    width: 150px;
+    margin-top: 4px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    width: 140px;
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    padding: 5px 0;
+    padding: 4px 0;
 }
 
 .header-dropdown button {
     background: none;
     border: none;
     text-align: left;
-    padding: 10px 15px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: var(--font-size-sm);
     cursor: pointer;
-    color: #333;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color var(--transition-fast);
 }
 
 .header-dropdown button:hover {
-    background-color: #f5f5f5;
+    background-color: var(--bg-hover);
 }
 
 .header-dropdown .divider {
     height: 1px;
-    background-color: #eee;
-    margin: 5px 0;
+    background-color: var(--border-color);
+    margin: 4px 0;
 }
 
 .header-dropdown .danger-text {
-    color: #f44336;
+    color: var(--color-danger);
 }
+
 .header-dropdown .danger-text:hover {
-    background-color: #ffebee;
+    background-color: var(--color-danger-light);
 }

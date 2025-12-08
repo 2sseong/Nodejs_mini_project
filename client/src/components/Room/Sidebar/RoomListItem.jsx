@@ -1,86 +1,64 @@
-// src/components/Roompage/Sidebar/RoomListItem.jsx
+// src/components/Room/Sidebar/RoomListItem.jsx
 import React from 'react';
 
 /**
- * 개별 채팅방 아이템 컴포넌트
- * - 구조: [방 이름(인원수) + 최근 메시지] 좌측, [안 읽은 배지] 우측
+ * 개별 채팅방 아이템 컴포넌트 (카카오톡 스타일)
  */
 export default function RoomListItem({ room, active, onClick }) {
+    // 방 이름에서 첫 글자 추출
+    const getInitial = (name) => {
+        return name ? name.charAt(0).toUpperCase() : '#';
+    };
+
+    // 시간 포맷
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const isToday = date.toDateString() === now.toDateString();
+
+        if (isToday) {
+            return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    };
+
     return (
         <li
             className={`room-item ${active ? 'active' : ''}`}
             onClick={() => onClick(room.ROOM_ID)}
-            style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '12px 15px',
-                cursor: 'pointer'
-            }}
         >
-            <div className="room-info" style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                overflow: 'hidden', 
-                flex: 1,
-                marginRight: '10px'
-            }}>
-                <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    marginBottom: '4px',
-                    width: '100%'
-                }}>
-                    <span className="room-name" style={{ 
-                        fontWeight: 'bold', 
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '80%'
-                    }}>
+            {/* 방 아바타 */}
+            <div className="room-avatar">
+                <i className="bi bi-chat-dots-fill"></i>
+            </div>
+
+            {/* 방 정보 */}
+            <div className="room-info">
+                <div className="room-name-row">
+                    <span className="room-name">
                         {room.ROOM_NAME || '채팅방'}
                     </span>
-                    
-                    {/* 인원 수 표시 (데이터가 있을 경우에만 렌더링, 없으면 기본값 1 처리 혹은 숨김) */}
-                    <span className="member-count" style={{
-                        fontSize: '0.8em',
-                        color: active ? '#e6f7ff' : '#999',
-                        marginLeft: '6px',
-                        flexShrink: 0
-                    }}>
-                        {room.MEMBER_COUNT || 1}
-                    </span>
+                    {room.MEMBER_COUNT > 1 && (
+                        <span className="member-count">{room.MEMBER_COUNT}</span>
+                    )}
                 </div>
-
-                <span className="room-last-message" style={{ 
-                    fontSize: '0.85em', 
-                    color: active ? '#e6f7ff' : '#888',
-                    whiteSpace: 'nowrap', 
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis' 
-                }}>
-                    {room.LAST_MESSAGE || '대화 내용이 없습니다.'}
+                <span className="room-last-message">
+                    {room.LAST_MESSAGE || '대화를 시작하세요'}
                 </span>
             </div>
 
-            {/* 안 읽은 메시지 카운트 */}
-            {room.UNREAD_COUNT > 0 && (
-                <div className="unread-badge" style={{
-                    backgroundColor: '#ff4d4f',
-                    color: 'white',
-                    borderRadius: '12px',
-                    padding: '0 6px',
-                    fontSize: '0.75rem',
-                    height: '20px',
-                    minWidth: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold'
-                }}>
-                    {room.UNREAD_COUNT > 99 ? '99+' : room.UNREAD_COUNT}
-                </div>
-            )}
+            {/* 메타 정보 */}
+            <div className="room-meta">
+                <span className="room-time">
+                    {formatTime(room.LAST_MESSAGE_TIME)}
+                </span>
+                {room.UNREAD_COUNT > 0 && (
+                    <span className="room-badge">
+                        {room.UNREAD_COUNT > 99 ? '99+' : room.UNREAD_COUNT}
+                    </span>
+                )}
+            </div>
         </li>
     );
 }

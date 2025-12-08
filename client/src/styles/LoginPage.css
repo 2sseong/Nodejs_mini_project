@@ -1,29 +1,25 @@
-/* 전체 컨테이너 */
+/* LoginPage - 심플한 메신저 스타일 */
+
 .login-wrap {
-    height: calc(86vh - 56px); 
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center; 
-    background: #f8fafc;
-    padding: 40px 20px;
+    justify-content: center;
+    min-height: 100%;
+    background: var(--bg-card);
+    padding: 24px;
 }
 
-/* 로그인 카드 */
 .login-card {
     width: 100%;
-    min-width: 720px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 40px 36px; 
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-    animation: fadeIn 0.4s ease;
+    max-width: 300px;
+    animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(15px);
+        transform: translateY(10px);
     }
 
     to {
@@ -32,42 +28,51 @@
     }
 }
 
-.login-title {
-    margin: 0 0 24px;
-    font-size: 26px; 
-    font-weight: 800;
+/* 로고 영역 */
+.login-logo {
     text-align: center;
-    color: #1e293b;
+    margin-bottom: 32px;
+}
+
+.login-logo i {
+    font-size: 48px;
+    color: var(--color-primary);
+}
+
+.login-title {
+    margin: 12px 0 0;
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 /* 필드 */
 .field {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
 }
 
-    .field > span {
-        font-size: 14px;
-        color: #475569;
-        font-weight: 500;
-    }
+.field>span {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
 
-    .field input {
-        width: 100%;
-        padding: 14px 16px;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        font-size: 15px;
-        outline: none;
-        transition: all 0.15s ease;
-    }
+.field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast);
+    box-sizing: border-box;
+}
 
-        .field input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
-        }
-
+.field input:focus {
+    border-color: var(--color-primary);
+}
 
 .pw-box {
     position: relative;
@@ -75,70 +80,69 @@
 
 .pw-toggle {
     position: absolute;
-    right: 10px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
-    border: 0;
+    border: none;
     background: transparent;
-    padding: 4px 8px;
-    font-size: 13px;
-    color: #475569;
+    padding: 4px 6px;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
     cursor: pointer;
-    transition: color 0.15s;
 }
 
-    .pw-toggle:hover {
-        color: #111827;
-    }
+.pw-toggle:hover {
+    color: var(--text-primary);
+}
 
 /* 에러 */
 .error {
-    margin: 6px 0 10px;
-    color: #b91c1c;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
+    margin: 8px 0;
+    color: var(--color-danger);
+    background: var(--color-danger-light);
+    border-radius: var(--radius-sm);
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--font-size-xs);
 }
 
 /* 제출 버튼 */
 .submit {
     width: 100%;
-    margin-top: 12px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    border: 1px solid #2563eb;
-    background: #3b82f6;
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--color-primary);
+    color: var(--text-inverse);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--transition-normal);
 }
 
-    .submit:hover {
-        background: #2563eb;
-    }
+.submit:hover {
+    background: var(--color-primary-hover);
+}
 
-    .submit:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
+.submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 
-/* 하단 도움 링크 */
+/* 도움 링크 */
 .help-row {
     margin-top: 16px;
     display: flex;
-    justify-content: space-between;
-    font-size: 14px;
+    justify-content: center;
+    font-size: var(--font-size-xs);
 }
 
-    .help-row a {
-        color: #374151;
-        text-decoration: none;
-    }
+.help-row a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
 
-        .help-row a:hover {
-            text-decoration: underline;
-        }
+.help-row a:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
