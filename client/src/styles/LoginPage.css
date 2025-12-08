@@ -139,7 +139,7 @@
 .help-row {
     margin-top: 16px;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     font-size: var(--font-size-xs);
 }
 

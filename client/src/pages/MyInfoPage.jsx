@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage } from '../api/authApi';
+import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage, getDepartments, getPositions } from '../api/authApi';
 import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal';
 import '../styles/MyInfoPage.css';
 
@@ -10,10 +10,14 @@ export default function MyInfoPage() {
 
     const [verifyPwInput, setVerifyPwInput] = useState('');
     const [nicknameInput, setNicknameInput] = useState('');
-    const [departmentInput, setDepartmentInput] = useState('');
-    const [positionInput, setPositionInput] = useState('');
+    const [deptId, setDeptId] = useState('');
+    const [posId, setPosId] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // 부서/직급 목록
+    const [deptList, setDeptList] = useState([]);
+    const [posList, setPosList] = useState([]);
 
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
@@ -25,7 +29,19 @@ export default function MyInfoPage() {
 
     useEffect(() => {
         loadUserInfo();
+        loadOptions();
     }, []);
+
+    const loadOptions = async () => {
+        try {
+            const depts = await getDepartments();
+            const positions = await getPositions();
+            setDeptList(depts);
+            setPosList(positions);
+        } catch (err) {
+            console.error('부서/직급 목록 로드 실패:', err);
+        }
+    };
 
     const loadUserInfo = async () => {
         try {
@@ -33,8 +49,9 @@ export default function MyInfoPage() {
             if (res.success) {
                 setUser(res.data);
                 setNicknameInput(res.data.NICKNAME);
-                setDepartmentInput(res.data.DEPARTMENT || '');
-                setPositionInput(res.data.POSITION || '');
+                // DEPT_ID, POS_ID로 설정 (서버에서 전달되는 필드명 확인 필요)
+                setDeptId(res.data.DEPT_ID?.toString() || '');
+                setPosId(res.data.POS_ID?.toString() || '');
             }
         } catch (err) {
             console.error(err);
@@ -60,8 +77,8 @@ export default function MyInfoPage() {
         setConfirmPassword('');
         if (user) {
             setNicknameInput(user.NICKNAME);
-            setDepartmentInput(user.DEPARTMENT || '');
-            setPositionInput(user.POSITION || '');
+            setDeptId(user.DEPT_ID?.toString() || '');
+            setPosId(user.POS_ID?.toString() || '');
         }
     };
 
@@ -90,8 +107,8 @@ export default function MyInfoPage() {
         try {
             const updateData = {
                 nickname: nicknameInput,
-                department: departmentInput,
-                position: positionInput,
+                deptId: deptId ? Number(deptId) : undefined,
+                posId: posId ? Number(posId) : undefined,
                 newPassword: newPassword || undefined
             };
 
@@ -200,21 +217,31 @@ export default function MyInfoPage() {
                         </div>
                         <div className="field-group">
                             <label>부서</label>
-                            <input
-                                type="text"
+                            <select
                                 className="input-field"
-                                value={departmentInput}
-                                onChange={e => setDepartmentInput(e.target.value)}
-                            />
+                                value={deptId}
+                                onChange={e => setDeptId(e.target.value)}
+                            >
+                                {deptList.map((dept) => (
+                                    <option key={dept.deptId} value={dept.deptId.toString()}>
+                                        {dept.deptName}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="field-group">
                             <label>직급</label>
-                            <input
-                                type="text"
+                            <select
                                 className="input-field"
-                                value={positionInput}
-                                onChange={e => setPositionInput(e.target.value)}
-                            />
+                                value={posId}
+                                onChange={e => setPosId(e.target.value)}
+                            >
+                                {posList.map((pos) => (
+                                    <option key={pos.posId} value={pos.posId.toString()}>
+                                        {pos.posName}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="field-group">
                             <label>새 비밀번호 (선택)</label>
