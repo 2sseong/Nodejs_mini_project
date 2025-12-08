@@ -244,3 +244,22 @@ export async function updateLastReadAt({ roomId, userId }) {
 
     await executeTransaction(sql, { roomId, userId });
 }
+
+/**
+ * 채팅방 멤버 목록 조회
+ */
+export async function getRoomMembers(roomId) {
+    const sql = `
+        SELECT 
+            u.USER_ID,
+            u.NICKNAME,
+            u.PROFILE_PIC,
+            rm.JOINED_AT
+        FROM T_ROOM_MEMBER rm
+        JOIN T_USER u ON rm.USER_ID = u.USER_ID
+        WHERE rm.ROOM_ID = :roomId
+        ORDER BY rm.JOINED_AT ASC
+    `;
+    const result = await executeQuery(sql, [roomId]);
+    return result.rows || [];
+}

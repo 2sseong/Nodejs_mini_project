@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import '../styles/LoginPage.css'
 import { login } from '../api/authApi'
 import { useAuth } from '../hooks/AuthContext';
+import mitalkLogo from '../assets/mitalk.png';
 
 export default function LoginPage() {
     const nav = useNavigate()
@@ -69,8 +70,7 @@ export default function LoginPage() {
         <div className="login-wrap">
             <form className="login-card" onSubmit={onSubmit} noValidate>
                 <div className="login-logo">
-                    <i className="bi bi-chat-square-heart-fill"></i>
-                    <h2 className="login-title">엠아이토크</h2>
+                    <img src={mitalkLogo} alt="엠아이토크" className="login-logo-img" />
                 </div>
 
                 <label className="field">

@@ -4,12 +4,12 @@ import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatHandlers } from '../hooks/useChatHandlers';
 
-// ... (기존 import 유지)
 import ChatHeader from '../components/Chatpage/Header/ChatHeader.jsx';
 import MessageList from '../components/Chatpage/Messages/MessageList.jsx';
 import MessageInput from '../components/Chatpage/Input/MessageInput.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import { searchMessagesApi, getMessagesContextApi } from '../api/chatApi';
+import { apiGetRoomMembers } from '../api/roomApi';
 import Titlebar from '../components/Titlebar/Titlebar.jsx';
 
 import '../styles/PopupChatPage.css';
@@ -17,7 +17,6 @@ import '../styles/PopupChatPage.css';
 export default function PopupChatPage() {
     const { roomId } = useParams();
     const { userId, userNickname } = useAuth();
-
     const chatSocket = useChatSocket({ userId, userNickname, roomId });
 
     const {
@@ -35,6 +34,11 @@ export default function PopupChatPage() {
     });
 
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+    // --- [멤버 패널 상태] ---
+    const [isMemberPanelOpen, setIsMemberPanelOpen] = useState(false);
+    const [members, setMembers] = useState([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
 
     // --- [검색 기능 상태] ---
     const [searchMatches, setSearchMatches] = useState([]);
@@ -224,58 +228,128 @@ export default function PopupChatPage() {
         window.open(`#/files/${roomId}`, 'FileDrawerWindow', 'width=400,height=600,resizable=yes,scrollbars=yes');
     };
 
-    if (!roomId) return <div>잘못된 접근입니다.</div>;
+    // 멤버 패널 토글
+    const handleToggleMemberPanel = async () => {
+        if (isMemberPanelOpen) {
+            setIsMemberPanelOpen(false);
+            return;
+        }
+
+        setLoadingMembers(true);
+        setIsMemberPanelOpen(true);
+        try {
+            const res = await apiGetRoomMembers(roomId);
+            if (res.data?.success) {
+                setMembers(res.data.members || []);
+            }
+        } catch (error) {
+            console.error('멤버 목록 조회 실패:', error);
+        } finally {
+            setLoadingMembers(false);
+        }
+    };
 
     return (
         <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
             <Titlebar title={`채팅방 - ${roomName}`} />
-            <div className="chat-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
-                <ChatHeader
-                    title={roomName}
-                    memberCount={memberCount}
-                    onOpenInvite={() => setIsInviteOpen(true)}
-                    onOpenDrawer={handleOpenDrawer}
-                    disabled={!connected}
-                    onLeaveRoom={async () => {
-                        const success = await handleLeaveRoom();
-                        if (success) window.close();
-                    }}
-                    onSearch={handleServerSearch}
-                    onPrevMatch={handlePrevMatch}
-                    onNextMatch={handleNextMatch}
-                    matchCount={searchMatches.length}
-                    currentMatchIdx={currentMatchIndex}
-                />
-                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                    <MessageList
-                        messages={messages}
+            <div className="chat-main" style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
+
+                {/* 멤버 모달 */}
+                {isMemberPanelOpen && (
+                    <>
+                        <div className="member-modal-overlay" onClick={() => setIsMemberPanelOpen(false)} />
+                        <div className="member-modal">
+                            <div className="member-modal-header">
+                                <span>참여자 ({memberCount})</span>
+                                <button onClick={() => setIsMemberPanelOpen(false)} className="close-btn">
+                                    <i className="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div className="member-modal-list">
+                                {loadingMembers ? (
+                                    <div className="member-loading">불러오는 중...</div>
+                                ) : (
+                                    members.map((member) => (
+                                        <div key={member.USER_ID} className="member-modal-item">
+                                            {member.PROFILE_PIC ? (
+                                                <img
+                                                    src={`http://localhost:1337${member.PROFILE_PIC}`}
+                                                    alt={member.NICKNAME}
+                                                    className="member-avatar"
+                                                />
+                                            ) : (
+                                                <div className="member-avatar-placeholder">
+                                                    {member.NICKNAME?.charAt(0) || '?'}
+                                                </div>
+                                            )}
+                                            <span className="member-nickname">{member.NICKNAME}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div className="member-modal-footer">
+                                <button
+                                    className="invite-btn"
+                                    onClick={() => { setIsMemberPanelOpen(false); setIsInviteOpen(true); }}
+                                >
+                                    <i className="bi bi-person-plus"></i> 대화 상대 초대하기
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* 오른쪽 채팅 영역 */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <ChatHeader
+                        title={roomName}
+                        memberCount={memberCount}
+                        onOpenInvite={() => setIsInviteOpen(true)}
+                        onOpenDrawer={handleOpenDrawer}
+                        disabled={!connected}
+                        onLeaveRoom={async () => {
+                            const success = await handleLeaveRoom();
+                            if (success) window.close();
+                        }}
+                        onSearch={handleServerSearch}
+                        onPrevMatch={handlePrevMatch}
+                        onNextMatch={handleNextMatch}
+                        matchCount={searchMatches.length}
+                        currentMatchIdx={currentMatchIndex}
+                        onToggleMemberPanel={handleToggleMemberPanel}
+                        isMemberPanelOpen={isMemberPanelOpen}
+                    />
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                        <MessageList
+                            messages={messages}
+                            userId={userId}
+                            onLoadMore={loadMoreMessages}
+                            isLoadingMore={isLoadingMore}
+                            hasMoreMessages={hasMoreMessages}
+                            isInitialLoad={isInitialLoad}
+                            markAsRead={markAsRead}
+                            isReadStatusLoaded={isReadStatusLoaded}
+                            onEditMessage={editMessage}
+                            onDeleteMessage={deleteMessage}
+                            scrollToMsgId={scrollToMsgId}
+                            loadNewerMessages={loadNewerMessages}
+                            hasFutureMessages={hasFutureMessages}
+                            isLoadingNewer={isLoadingNewer}
+                        />
+                    </div>
+                    <MessageInput
+                        onSend={(text) => sendMessage({ text })}
+                        onSendFile={handleSendFile}
+                        disabled={!connected}
+                    />
+                    <InviteUserModal
+                        isOpen={isInviteOpen}
+                        onClose={() => setIsInviteOpen(false)}
+                        currentRoomId={roomId}
                         userId={userId}
-                        onLoadMore={loadMoreMessages}
-                        isLoadingMore={isLoadingMore}
-                        hasMoreMessages={hasMoreMessages}
-                        isInitialLoad={isInitialLoad}
-                        markAsRead={markAsRead}
-                        isReadStatusLoaded={isReadStatusLoaded}
-                        onEditMessage={editMessage}
-                        onDeleteMessage={deleteMessage}
-                        scrollToMsgId={scrollToMsgId}
-                        loadNewerMessages={loadNewerMessages}
-                        hasFutureMessages={hasFutureMessages}
-                        isLoadingNewer={isLoadingNewer}
+                        userNickname={userNickname}
                     />
                 </div>
-                <MessageInput
-                    onSend={(text) => sendMessage({ text })}
-                    onSendFile={handleSendFile}
-                    disabled={!connected}
-                />
-                <InviteUserModal
-                    isOpen={isInviteOpen}
-                    onClose={() => setIsInviteOpen(false)}
-                    currentRoomId={roomId}
-                    userId={userId}
-                    userNickname={userNickname}
-                />
             </div>
         </div>
     );

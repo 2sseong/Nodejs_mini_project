@@ -12,7 +12,6 @@ const CloseIcon = () => (
   <svg viewBox="0 0 10 10"><polygon points="10,1.01 8.99,0 5,3.99 1.01,0 0,1.01 3.99,5 0,8.99 1.01,10 5,6.01 8.99,10 10,8.99 6.01,5"></polygon></svg>
 );
 
-// [중요] { title } props를 받아야 각 창마다 다른 제목을 띄울 수 있습니다.
 function Titlebar({ title = "엠아이토크" }) {
   const handleMinimize = () => {
     if (window.electronAPI) window.electronAPI.minimizeWindow();

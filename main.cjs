@@ -75,34 +75,6 @@ function createOverlayIcon() {
   return nativeImage.createFromBuffer(buffer, { width: size, height: size });
 }
 
-// 배지 업데이트 함수
-function updateBadge(count) {
-  console.log(`[Main] updateBadge called with count: ${count}`);
-
-  // 모든 메인 창에 Overlay 적용
-  mainWindows.forEach((win, index) => {
-    if (win && !win.isDestroyed()) {
-      if (count > 0) {
-        const icon = createOverlayIcon();
-        console.log(`[Main] Setting overlay icon on window ${index}, icon empty: ${icon.isEmpty()}`);
-        win.setOverlayIcon(icon, `안 읽은 메시지 ${count}개`);
-      } else {
-        console.log(`[Main] Clearing overlay icon on window ${index}`);
-        win.setOverlayIcon(null, '');
-      }
-    }
-  });
-
-  // 트레이 아이콘 툴팁 업데이트
-  if (tray && !tray.isDestroyed()) {
-    if (count > 0) {
-      tray.setToolTip(`Chat App - 안 읽은 메시지 ${count}개`);
-    } else {
-      tray.setToolTip('Chat App');
-    }
-  }
-}
-
 // 트레이 생성 함수
 function createTray() {
   // 회사 로고 사용
@@ -294,8 +266,6 @@ app.on('activate', () => {
 ipcMain.on('update-badge', (event, count) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || win.isDestroyed()) return;
-
-  console.log(`[Main] updateBadge for window: count=${count}`);
 
   if (count > 0) {
     const icon = createOverlayIcon();
