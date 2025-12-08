@@ -76,6 +76,7 @@
     display: flex;
     gap: 6px;
     max-width: 100%;
+    align-items: flex-start;
 }
 
 .message-bubble.theirs {
@@ -90,6 +91,7 @@
     align-items: flex-start;
     margin-left: 6px;
     justify-content: flex-end;
+    align-self: flex-end;
     flex-shrink: 0;
 }
 
@@ -100,7 +102,6 @@
     border-radius: 50%;
     object-fit: cover;
     background-color: var(--bg-hover);
-    margin-bottom: 18px;
     flex-shrink: 0;
 }
 
@@ -115,7 +116,6 @@
     justify-content: center;
     font-weight: bold;
     font-size: var(--font-size-sm);
-    margin-bottom: 18px;
     flex-shrink: 0;
 }
 

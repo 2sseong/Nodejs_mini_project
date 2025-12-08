@@ -10,12 +10,12 @@ export function useChatHandlers({
     refreshRooms,
     clearMessages
 }) {
-    
+
     // [수정] 방 나가기 핸들러
     // 성공 시 { success: true } 반환, 실패 시 Error를 throw 합니다.
     const handleLeaveRoom = async () => {
         const currentRoom = rooms.find(r => String(r.ROOM_ID) === String(currentRoomId));
-        
+
         // 유효성 검사 실패 시 에러 throw
         if (!currentRoomId || !userId || !currentRoom) {
             throw new Error('방 정보가 유효하지 않습니다.');
@@ -27,13 +27,13 @@ export function useChatHandlers({
 
         try {
             // 서버 요청 대기
-            await apiLeaveRoom(currentRoom.ROOM_ID, userId);
-            
+            await apiLeaveRoom(currentRoom.ROOM_ID, userId, userNickname);
+
             // 상태 초기화
             if (selectRoom) selectRoom(null);
             if (refreshRooms) refreshRooms();
             if (clearMessages) clearMessages();
-            
+
             // 성공 반환 (alert 제거)
             return { success: true, roomName: currentRoom.ROOM_NAME };
 

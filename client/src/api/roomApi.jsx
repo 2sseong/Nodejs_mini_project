@@ -32,14 +32,16 @@ export const apiSearchUsers = (query, signal) => {
  * @param {string|number} roomId 
  * @param {string|number} inviterId 
  * @param {string|number} inviteeId 
+ * @param {string} inviterNickname - 초대한 사람 닉네임 (시스템 메시지용)
  * @returns {Promise}
  */
-export const apiInviteUser = (roomId, inviterId, inviteeId) => {
+export const apiInviteUser = (roomId, inviterId, inviteeId, inviterNickname) => {
     // 기존 InviteUserModal에서 사용된 '/chats/invite' 엔드포인트 사용
     return api.post('/chats/invite', {
         roomId,
         inviterId,
         inviteeId,
+        inviterNickname,
     });
 };
 
@@ -48,9 +50,11 @@ export const apiInviteUser = (roomId, inviterId, inviteeId) => {
  * [DELETE] T_ROOM_MEMBER에서 사용자를 삭제합니다. (방 나가기)
  * @param {string|number} roomId 
  * @param {string|number} userId 
+ * @param {string} userNickname - 나가는 사람 닉네임 (시스템 메시지용)
  * @returns {Promise}
  */
-export const apiLeaveRoom = (roomId, userId) => {
-    // 1. [수정]: 데이터를 URL 파라미터로 전송
-    return api.delete(`/chats/exit/${roomId}/${userId}`);
+export const apiLeaveRoom = (roomId, userId, userNickname) => {
+    return api.delete(`/chats/exit/${roomId}/${userId}`, {
+        headers: { 'x-user-nickname': encodeURIComponent(userNickname || '') }
+    });
 };

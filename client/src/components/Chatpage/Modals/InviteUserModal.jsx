@@ -9,6 +9,7 @@ export default function InviteUserModal({
     onClose,
     currentRoomId,
     userId,
+    userNickname,
 }) {
     const [inviteeId, setInviteeId] = useState('');
     const [inviteeUsername, setInviteeUsername] = useState('');
@@ -16,7 +17,7 @@ export default function InviteUserModal({
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState('');
     const [isInviting, setIsInviting] = useState(false);
-    
+
     // [추가] ConfirmModal 상태 관리
     const [confirmModalState, setConfirmModalState] = useState({
         isOpen: false,
@@ -66,7 +67,7 @@ export default function InviteUserModal({
 
             setIsSearching(true);
             setSearchResults([]);
-            
+
             try {
                 const resp = await apiSearchUsers(q, abortRef.current.signal);
                 const payload = resp?.data;
@@ -106,9 +107,9 @@ export default function InviteUserModal({
 
     const handleInviteUser = async () => {
         if (isInviting || !currentRoomId || !inviteeId) {
-             // [추가] 필수 값 누락 시에도 모달로 알림
+            // [추가] 필수 값 누락 시에도 모달로 알림
             if (!inviteeId && !isInviting) {
-                 setConfirmModalState({
+                setConfirmModalState({
                     isOpen: true,
                     title: '알림',
                     message: '초대할 사용자를 선택해주세요.',
@@ -120,7 +121,7 @@ export default function InviteUserModal({
 
         if (inviteeId === String(userId)) {
             // [변경] alert -> ConfirmModal
-             setConfirmModalState({
+            setConfirmModalState({
                 isOpen: true,
                 title: '초대 불가',
                 message: '자기 자신을 초대할 수 없습니다.',
@@ -134,7 +135,8 @@ export default function InviteUserModal({
             const res = await apiInviteUser(
                 String(currentRoomId),
                 userId,
-                inviteeId
+                inviteeId,
+                userNickname
             );
 
             if (res.data?.success) {
@@ -147,7 +149,7 @@ export default function InviteUserModal({
                     isSuccess: true
                 });
             } else {
-                 // [변경] 실패 모달 표시
+                // [변경] 실패 모달 표시
                 setConfirmModalState({
                     isOpen: true,
                     title: '초대 실패',
@@ -157,7 +159,7 @@ export default function InviteUserModal({
             }
         } catch (err) {
             console.error('Invite failed:', err.response?.data || err.message);
-             // [변경] 에러 모달 표시
+            // [변경] 에러 모달 표시
             setConfirmModalState({
                 isOpen: true,
                 title: '오류 발생',
@@ -231,9 +233,9 @@ export default function InviteUserModal({
                 confirmText="확인"
                 // 취소 버튼을 숨기고 싶다면 ConfirmModal 수정 필요 (현재는 기본적으로 보임)
                 // 단순히 알림 용도라면 취소 버튼 없이 확인 버튼만 있어도 됨 -> ConfirmModal props 확인 필요
-                 // 여기서는 취소 버튼을 숨기기 위해 cancelText를 null로 주거나 ConfirmModal 로직에 따름
-                 // 만약 ConfirmModal이 cancelText가 없으면 버튼을 안 그리게 되어 있다면 아래처럼:
-                 cancelText={null} 
+                // 여기서는 취소 버튼을 숨기기 위해 cancelText를 null로 주거나 ConfirmModal 로직에 따름
+                // 만약 ConfirmModal이 cancelText가 없으면 버튼을 안 그리게 되어 있다면 아래처럼:
+                cancelText={null}
             />
         </>
     );

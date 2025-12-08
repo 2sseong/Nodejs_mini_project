@@ -12,32 +12,32 @@ import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import { searchMessagesApi, getMessagesContextApi } from '../api/chatApi';
 import Titlebar from '../components/Titlebar/Titlebar.jsx';
 
-import '../styles/PopupChatPage.css'; 
+import '../styles/PopupChatPage.css';
 
 export default function PopupChatPage() {
     const { roomId } = useParams();
     const { userId, userNickname } = useAuth();
 
-    const chatSocket = useChatSocket({userId, userNickname, roomId});
-    
+    const chatSocket = useChatSocket({ userId, userNickname, roomId });
+
     const {
-        socket, connected, rooms, messages, 
+        socket, connected, rooms, messages,
         sendMessage, loadMoreMessages, isLoadingMore, hasMoreMessages,
-        markAsRead, isInitialLoad, isReadStatusLoaded, 
-        editMessage, deleteMessage, selectRoom, loadNewerMessages, 
+        markAsRead, isInitialLoad, isReadStatusLoaded,
+        editMessage, deleteMessage, selectRoom, loadNewerMessages,
         hasFutureMessages, isLoadingNewer
     } = chatSocket;
 
     const { handleLeaveRoom, handleSendFile } = useChatHandlers({
         ...chatSocket,
-        userId, userNickname, 
-        currentRoomId: roomId 
+        userId, userNickname,
+        currentRoomId: roomId
     });
 
     const [isInviteOpen, setIsInviteOpen] = useState(false);
 
     // --- [검색 기능 상태] ---
-    const [searchMatches, setSearchMatches] = useState([]); 
+    const [searchMatches, setSearchMatches] = useState([]);
     const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
     const [scrollToMsgId, setScrollToMsgId] = useState(null);
     const lastSearchReqId = useRef(0);
@@ -45,7 +45,7 @@ export default function PopupChatPage() {
     // =========================================================
     // [START] 읽음 처리 최적화 로직 (RoomPage 동기화 수정 완료)
     // =========================================================
-    
+
     // 1. 윈도우 포커스 상태 추적
     const isWindowFocusedRef = useRef(document.hasFocus());
     // 2. 쓰로틀링(3초 제한) 기준 시간
@@ -62,17 +62,17 @@ export default function PopupChatPage() {
             // [수정됨] "새로 온 안 읽은 메시지가 없다면" -> 3초 쿨타임 적용
             // (반대로 안 읽은 메시지가 쌓여 있다면(true), 3초가 안 지났어도 즉시 보냄)
             if (!hasUnreadSinceLastFocusRef.current) {
-                if (now - lastFocusTimeRef.current < 3000) return; 
+                if (now - lastFocusTimeRef.current < 3000) return;
             }
         }
 
         if (socket && connected && roomId) {
-            socket.emit('chat:mark_as_read', { 
-                roomId, 
-                lastReadTimestamp: now 
+            socket.emit('chat:mark_as_read', {
+                roomId,
+                lastReadTimestamp: now
             });
-            lastFocusTimeRef.current = now; 
-            
+            lastFocusTimeRef.current = now;
+
             // 읽음 요청을 보냈으므로 "쌓인 안 읽은 메시지" 상태 초기화
             hasUnreadSinceLastFocusRef.current = false;
             // console.log(`[${triggerSource}] 읽음 처리 전송 완료`);
@@ -110,7 +110,7 @@ export default function PopupChatPage() {
         const handleNewMessage = (msg) => {
             // 현재 방의 메시지이고 + 내가 보낸 게 아닐 때
             if (String(msg.ROOM_ID) === String(roomId) && msg.SENDER_ID !== userId) {
-                
+
                 if (isWindowFocusedRef.current) {
                     // 화면을 보고 있다면 -> 즉시 읽음 처리 (NEW_MESSAGE는 쓰로틀링 무시)
                     sendMarkAsRead('NEW_MESSAGE');
@@ -147,7 +147,7 @@ export default function PopupChatPage() {
 
         try {
             const response = await searchMessagesApi(roomId, keyword);
-            
+
             if (lastSearchReqId.current !== reqId) return;
 
             const matches = response.data?.data || [];
@@ -171,7 +171,7 @@ export default function PopupChatPage() {
             if (!target) return;
 
             const targetId = target.MSG_ID || target.msg_id;
-            const isAlreadyLoaded = messages.some(m => 
+            const isAlreadyLoaded = messages.some(m =>
                 String(m.MSG_ID || m.msg_id) === String(targetId)
             );
 
@@ -181,9 +181,9 @@ export default function PopupChatPage() {
                 try {
                     const response = await getMessagesContextApi(roomId, targetId);
                     const newContextMessages = response.data?.data || [];
-                    
+
                     if (chatSocket.overrideMessages) {
-                        chatSocket.overrideMessages(newContextMessages); 
+                        chatSocket.overrideMessages(newContextMessages);
                     }
 
                     setTimeout(() => {
@@ -196,16 +196,18 @@ export default function PopupChatPage() {
             }
         };
         moveToMatch();
-    }, [currentMatchIndex, searchMatches, messages, roomId, chatSocket]); 
+    }, [currentMatchIndex, searchMatches, messages, roomId, chatSocket]);
 
     const handlePrevMatch = () => {
         if (searchMatches.length === 0) return;
-        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
+        // 이전(위로) = 더 오래된 메시지 = 인덱스 증가
+        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
     };
 
     const handleNextMatch = () => {
         if (searchMatches.length === 0) return;
-        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
+        // 다음(아래로) = 더 최근 메시지 = 인덱스 감소
+        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
     };
 
     useEffect(() => {
@@ -236,23 +238,23 @@ export default function PopupChatPage() {
                     disabled={!connected}
                     onLeaveRoom={async () => {
                         const success = await handleLeaveRoom();
-                        if (success) window.close(); 
+                        if (success) window.close();
                     }}
-                    onSearch={handleServerSearch} 
+                    onSearch={handleServerSearch}
                     onPrevMatch={handlePrevMatch}
                     onNextMatch={handleNextMatch}
                     matchCount={searchMatches.length}
                     currentMatchIdx={currentMatchIndex}
                 />
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                    <MessageList 
-                        messages={messages} 
+                    <MessageList
+                        messages={messages}
                         userId={userId}
                         onLoadMore={loadMoreMessages}
                         isLoadingMore={isLoadingMore}
                         hasMoreMessages={hasMoreMessages}
                         isInitialLoad={isInitialLoad}
-                        markAsRead={markAsRead} 
+                        markAsRead={markAsRead}
                         isReadStatusLoaded={isReadStatusLoaded}
                         onEditMessage={editMessage}
                         onDeleteMessage={deleteMessage}
@@ -272,6 +274,7 @@ export default function PopupChatPage() {
                     onClose={() => setIsInviteOpen(false)}
                     currentRoomId={roomId}
                     userId={userId}
+                    userNickname={userNickname}
                 />
             </div>
         </div>

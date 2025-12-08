@@ -184,7 +184,7 @@ export default function MessageItem(props) {
                 </div>
             );
         }
-        return <div className="message-content">{content}</div>;
+        return <div className="message-content">{content?.trim()}</div>;
     };
 
     const displayCount = unreadCount > 0 ? unreadCount : null;
