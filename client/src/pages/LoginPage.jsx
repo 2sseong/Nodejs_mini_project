@@ -68,7 +68,10 @@ export default function LoginPage() {
     return (
         <div className="login-wrap">
             <form className="login-card" onSubmit={onSubmit} noValidate>
-                <h2 className="login-title">로그인</h2>
+                <div className="login-logo">
+                    <i className="bi bi-chat-square-heart-fill"></i>
+                    <h2 className="login-title">엠아이토크</h2>
+                </div>
 
                 <label className="field">
                     <span>이메일</span>

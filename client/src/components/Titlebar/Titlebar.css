@@ -1,49 +1,49 @@
-/* 1. 타이틀바 전체 컨테이너 */
+/* 타이틀바 전체 컨테이너 */
 .titlebar {
   display: flex;
-  justify-content: space-between; /* 양쪽 끝으로 요소 배치 */
-  align-items: center; /* 수직 중앙 정렬 */
-  
-  height: 40px; /* 💡 타이틀바 높이 (필수) */
-  flex-shrink: 0; /* 💡 1. 창 크기가 줄어도 높이 유지 (필수) */
-  
-  background-color: #f8f9fa; /* 세련된 배경색 */
-  border-bottom: 1px solid #e9ecef; /* 구분선 */
-  color: #212529;
-  user-select: none; /* 텍스트 선택 방지 */
-  
-  position: relative; /* 💡 2. 'fixed'가 아님! (필수) */
-  
+  justify-content: space-between;
+  align-items: center;
+
+  height: 32px;
+  flex-shrink: 0;
+
+  background-color: var(--color-primary);
+  border-bottom: 1px solid var(--color-primary-hover);
+  color: var(--text-inverse);
+  user-select: none;
+
+  position: relative;
 }
 
-/* 2. 창 드래그 영역 */
+/* 창 드래그 영역 */
 .titlebar-drag-region {
-  flex-grow: 1; /* 남은 공간 모두 차지 */
+  flex-grow: 1;
   height: 100%;
-  -webkit-app-region: drag; /* 💡 핵심: 드래그 영역 */
+  -webkit-app-region: drag;
   display: flex;
   align-items: center;
 }
 
-/* 3. 앱 제목 */
+/* 앱 제목 */
 .titlebar-title {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
-  padding-left: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding-left: 12px;
+  font-family: inherit;
+  color: var(--text-inverse);
 }
 
-/* 4. 창 제어 버튼 (최소/최대/닫기) 컨테이너 */
+/* 창 제어 버튼 컨테이너 */
 .titlebar-controls {
   display: flex;
   height: 100%;
 }
 
-/* 5. 개별 제어 버튼 */
+/* 개별 제어 버튼 */
 .titlebar-button {
-  -webkit-app-region: no-drag; /* 💡 핵심: 버튼은 드래그 제외 */
-  
-  width: 46px;
+  -webkit-app-region: no-drag;
+
+  width: 40px;
   height: 100%;
   border: none;
   background-color: transparent;
@@ -51,11 +51,12 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--transition-fast);
+  color: var(--text-inverse);
 }
 
 .titlebar-button:hover {
-  background-color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* 닫기 버튼 호버 */

@@ -1,114 +1,110 @@
-/* src/components/Roompage/Sidebar/ChatSidebar.css */
+/* ChatSidebar - 카카오톡 스타일 채팅방 목록 */
+
 .sidebar {
-    flex: 0 0 300px;
-    min-width: 260px;
-    background-color: #ffffff;
-    border-right: 1px solid #e0e0e0;
-    padding: 15px;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-card);
+    overflow: hidden;
 }
 
+/* 헤더 */
 .sidebar-header {
-    margin-bottom: 10px;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .sidebar-header h3 {
     margin: 0;
-    color: #333;
-    font-size: 1.2em;
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 /* 연결 상태 */
 .connection-status {
-    font-size: 13px;
-    margin-bottom: 10px;
-    color: #666;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    padding: 0 16px 8px;
+    flex-shrink: 0;
 }
 
 .connected {
-    color: green;
-    font-weight: bold;
+    color: var(--color-success);
+    font-weight: 600;
 }
 
 .disconnected {
-    color: red;
-    font-weight: bold;
+    color: var(--color-danger);
+    font-weight: 600;
 }
 
-/* 액션 버튼 컨테이너 (검색, 방만들기) */
+/* 액션 버튼 */
 .sidebar-actions {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 8px;
+    padding: 8px 12px;
+    flex-shrink: 0;
 }
 
 .icon-btn {
     flex: 1;
-    padding: 8px 0;
+    padding: 8px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
-    transition: background-color 0.2s, transform 0.1s;
-}
-
-.icon-btn:active {
-    transform: scale(0.98);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 
 .search-btn {
-    background-color: #f0f2f5;
-    color: #333;
-    border: 1px solid #ddd;
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 .search-btn:hover {
-    background-color: #e4e6eb;
+    background-color: var(--border-color);
 }
 
 .create-room-btn {
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
 }
 
 .create-room-btn:hover {
-    background-color: #1e7e34;
+    background-color: var(--color-primary-hover);
 }
 
-/* 검색창 영역 */
+/* 검색창 */
 .search-container {
-    margin-bottom: 15px;
-    animation: slideDown 0.2s ease-out;
+    padding: 0 12px 8px;
+    flex-shrink: 0;
 }
 
 .search-input {
     width: 100%;
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
     outline: none;
-    box-sizing: border-box; /* padding 포함 너비 계산 */
+    box-sizing: border-box;
+    background-color: var(--bg-hover);
 }
 
 .search-input:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    border-color: var(--color-primary);
+    background-color: var(--bg-card);
 }
 
 /* 방 리스트 */
@@ -116,32 +112,102 @@
     list-style: none;
     padding: 0;
     margin: 0;
+    flex: 1;
     overflow-y: auto;
-    flex: 1; /* 남은 공간 모두 차지 */
 }
 
 .no-room-message {
     text-align: center;
-    color: #999;
-    font-size: 13px;
-    margin-top: 20px;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    padding: 40px 20px;
 }
 
 .room-item {
-    padding: 12px 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    transition: background-color 0.2s;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
 }
 
 .room-item:hover {
-    background-color: #f1f7ff;
+    background-color: var(--bg-hover);
 }
 
 .room-item.active {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--color-primary-light);
+}
+
+/* 방 아바타 */
+.room-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-lg);
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+/* 방 정보 */
+.room-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.room-name {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.room-last-message {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 방 메타 */
+.room-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.room-time {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.room-badge {
+    background-color: var(--color-danger);
+    color: var(--text-inverse);
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: var(--radius-full);
+    min-width: 18px;
+    text-align: center;
+}
+
+.member-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }

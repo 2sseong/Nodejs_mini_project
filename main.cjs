@@ -106,12 +106,13 @@ function showCustomNotification(data) {
   }, 5500);
 }
 
-// [수정] partition 매개변수 추가 (기본값: user1)
 function createWindow(partition = 'persist:user1') {
   let mainWindow = new BrowserWindow({
     action: 'auto',
-    width: 1000,
-    height: 800,
+    width: 420,
+    height: 700,
+    minWidth: 360,
+    minHeight: 640,
     frame: false,
     transparent: false,
     hasShadow: false,
@@ -213,10 +214,10 @@ ipcMain.on('open-chat-window', (event, roomId) => {
   const parentSession = event.sender.session;
 
   const win = new BrowserWindow({
-    width: 400,
+    width: 550,
     height: 600,
-    minWidth: 300,
-    minHeight: 400,
+    minWidth: 550,
+    minHeight: 600,
     title: '채팅방',
     frame: false,
     transparent: false,

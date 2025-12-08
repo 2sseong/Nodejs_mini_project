@@ -41,18 +41,18 @@ export default function MessageInput({ onSend, onSendFile, disabled }) {
         };
 
         // 같은 파일을 다시 선택할 수 있도록 input 값 초기화
-        e.target.value = null; 
+        e.target.value = null;
     };
 
     return (
         <div className="input-area">
             {/* 파일 선택 버튼 */}
-            <button 
-                onClick={handleFileButtonClick} 
-                disabled={disabled} 
+            <button
+                onClick={handleFileButtonClick}
+                disabled={disabled}
                 className="file-upload-btn"
             >
-                +
+                <i className="bi bi-plus-lg"></i>
             </button>
 
             {/* 숨겨진 파일 입력 */}
@@ -74,7 +74,7 @@ export default function MessageInput({ onSend, onSendFile, disabled }) {
 
             {/* 텍스트 전송 버튼 */}
             <button onClick={trySendText} disabled={disabled || text.trim().length === 0}>
-                보내기
+                <i className="bi bi-send-fill"></i>
             </button>
         </div>
     );

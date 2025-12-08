@@ -1,8 +1,9 @@
 .App {
-  /* 🚨 마진 제거 및 꽉 찬 화면 설정 */
   margin: 0;
   width: 100%;
   height: 100%;
+  min-width: var(--min-width-main, 360px);
+  min-height: var(--min-height-main, 640px);
   background-color: transparent;
   overflow: hidden;
   display: flex;
@@ -10,28 +11,39 @@
   pointer-events: auto;
 }
 
-/* 3. 💡 콘텐츠 영역 스타일 (신규 추가) */
-/* Titlebar를 제외한 실제 콘텐츠 영역입니다. */
-.content-area {
-  flex-grow: 1; /* Titlebar를 제외한 모든 공간을 차지 */
-  overflow-y: auto; /* 💡 콘텐츠가 영역을 넘치면 자동으로 스크롤바 생성 */
-  text-align: center;
-  
-  /* 시스템 폰트 적용 (선택 사항) */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+/* 앱 본문 영역 (사이드바 + 콘텐츠) */
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  min-height: 0;
+  /* flexbox 스크롤 버그 방지 */
 }
 
+/* 콘텐츠 영역 스타일 */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--bg-page);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  min-width: 0;
+  /* flexbox 축소 허용 */
+}
 
-/* (이제 이 스타일들은 .content-area 내부에서 작동합니다) */
+/* 로고 관련 스타일 (사용 안함 - 정리용 보관) */
 .logo {
   height: 6em;
   padding: 1.5em;
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -40,6 +52,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -63,83 +76,83 @@
 
 /* 모든 핸들의 공통 스타일 */
 .resize-handle {
-    position: absolute;
-    z-index: 99999;
-    
-    /* 1. 드래그 영역과 겹쳐도 문제없도록 설정 */
-    -webkit-app-region: no-drag; 
-    
-    /* 테스트용 빨간색*/
-    /* background-color: rgba(255, 0, 0, 0.5) !important;  */
+  position: absolute;
+  z-index: 99999;
+  -webkit-app-region: no-drag;
 }
 
-/* 💡💡💡 모든 방향 핸들 추가 (창 바깥으로 배치) 💡💡💡 */
-/* 두께 변수 설정 (필요에 따라 조절) */
+/* 두께 변수 설정 */
 :root {
-    --handle-size: 8px; /* 가장자리 핸들 두께 */
-    --corner-size: 12px; /* 모서리 핸들 크기 */
+  --handle-size: 8px;
+  --corner-size: 12px;
 }
 
 /* --- 가장자리 (Edges) --- */
 .resize-handle-top {
-    top: 0; /* 0으로 변경 */
-    left: 0;
-    width: 100%;
-    height: var(--handle-size);
-    cursor: n-resize;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--handle-size);
+  cursor: n-resize;
 }
+
 .resize-handle-bottom {
-    bottom: 0; /* 0으로 변경 */
-    left: 0;
-    width: 100%;
-    height: var(--handle-size);
-    cursor: s-resize;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--handle-size);
+  cursor: s-resize;
 }
+
 .resize-handle-left {
-    top: 0;
-    left: 0; /* 0으로 변경 */
-    width: var(--handle-size);
-    height: 100%;
-    cursor: w-resize;
+  top: 0;
+  left: 0;
+  width: var(--handle-size);
+  height: 100%;
+  cursor: w-resize;
 }
+
 .resize-handle-right {
-    top: 0;
-    right: 0; /* 0으로 변경 */
-    width: var(--handle-size);
-    height: 100%;
-    cursor: e-resize;
+  top: 0;
+  right: 0;
+  width: var(--handle-size);
+  height: 100%;
+  cursor: e-resize;
 }
 
 /* --- 모서리 (Corners) --- */
 .resize-handle-top-left {
-    top: 0; /* 0으로 변경 */
-    left: 0; /* 0으로 변경 */
-    width: var(--corner-size);
-    height: var(--corner-size);
-    cursor: nw-resize;
-    z-index: 100000;
+  top: 0;
+  left: 0;
+  width: var(--corner-size);
+  height: var(--corner-size);
+  cursor: nw-resize;
+  z-index: 100000;
 }
+
 .resize-handle-top-right {
-    top: 0; /* 0으로 변경 */
-    right: 0; /* 0으로 변경 */
-    width: var(--corner-size);
-    height: var(--corner-size);
-    cursor: ne-resize;
-    z-index: 100000;
+  top: 0;
+  right: 0;
+  width: var(--corner-size);
+  height: var(--corner-size);
+  cursor: ne-resize;
+  z-index: 100000;
 }
+
 .resize-handle-bottom-left {
-    bottom: 0; /* 0으로 변경 */
-    left: 0; /* 0으로 변경 */
-    width: var(--corner-size);
-    height: var(--corner-size);
-    cursor: sw-resize;
-    z-index: 100000;
+  bottom: 0;
+  left: 0;
+  width: var(--corner-size);
+  height: var(--corner-size);
+  cursor: sw-resize;
+  z-index: 100000;
 }
+
 .resize-handle-bottom-right {
-    bottom: 0; /* 0으로 변경 */
-    right: 0; /* 0으로 변경 */
-    width: var(--corner-size);
-    height: var(--corner-size);
-    cursor: se-resize;
-    z-index: 100000;
+  bottom: 0;
+  right: 0;
+  width: var(--corner-size);
+  height: var(--corner-size);
+  cursor: se-resize;
+  z-index: 100000;
 }

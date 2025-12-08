@@ -36,7 +36,7 @@ function UserItem({ user, isOnline, onTogglePick }) {
                             onClick={handlePickClick}
                             title={isPicked ? "즐겨찾기 해제" : "즐겨찾기 추가"}
                         >
-                            <i className={isPicked ? 'fas fa-star' : 'far fa-star'}></i>
+                            <i className={isPicked ? 'bi bi-star-fill' : 'bi bi-star'}></i>
                         </button>
                     )}
                 </div>
@@ -69,7 +69,7 @@ function DepartmentSection({ department, users, myUserId, onlineUsers, onToggleP
     return (
         <div className="department-section">
             <div className="department-header" onClick={() => setIsExpanded(!isExpanded)}>
-                <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                <span className="expand-icon"><i className={isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-right'}></i></span>
                 <span className="department-name">{department || '미배정'}</span>
                 <span className="user-count">({users.length}명)</span>
             </div>
