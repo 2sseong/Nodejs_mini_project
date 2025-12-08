@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.send('window-close'),
   resizeWindow: (bounds) => ipcRenderer.send('resize-window', bounds),
   getWindowBounds: () => ipcRenderer.invoke('get-window-bounds'),
-  
+
   // [추가] 테스트 및 강제 활성화
   showFocusWindow: () => ipcRenderer.send('window-show-focus'),
 
@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendCustomNotification: (data) => ipcRenderer.send('req-custom-notification', data),
   closeNotificationWindow: () => ipcRenderer.send('close-notification-window'),
   clickNotification: (roomId) => ipcRenderer.send('notification-clicked', roomId),
-  
+
   // [수정] 리스너 등록 시 '제거 함수(cleanup)'를 반환하도록 변경
   onShowNotification: (callback) => {
     const subscription = (event, ...args) => callback(event, ...args);
@@ -35,6 +35,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('cmd-select-room', subscription);
     };
   },
-  
+
   openChatWindow: (roomId) => ipcRenderer.send('open-chat-window', roomId),
+
+  // [추가] 이미지 미리보기 창 열기
+  openImagePreview: (imageUrl, fileName) => ipcRenderer.send('open-image-preview', { imageUrl, fileName }),
+
+  // [추가] 파일 다운로드 (저장 대화상자)
+  downloadFile: (url, fileName) => ipcRenderer.invoke('download-file', { url, fileName }),
+
+  // [추가] 외부 URL 열기 (기본 브라우저)
+  openExternalUrl: (url) => ipcRenderer.send('open-external-url', url),
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/AuthContext.jsx';
 import UserSearch from '../components/User/UserSearch.jsx';
 import UserList from '../components/User/UserList.jsx';
@@ -19,6 +19,9 @@ export default function UserPage() {
     const [myUserId, setMyUserId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // 검색창 ref (Ctrl+F 포커스용)
+    const searchRef = useRef(null);
+
     useEffect(() => {
         const storedUserId = localStorage.getItem('userId');
         if (storedUserId) {
@@ -27,6 +30,19 @@ export default function UserPage() {
             setIsLoading(false);
             setError("사용자 ID를 찾을 수 없습니다.");
         }
+    }, []);
+
+    // Ctrl+F 키보드 단축키 핸들러
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchRef.current?.focus();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     const handleQueryChange = (query) => {
@@ -122,7 +138,7 @@ export default function UserPage() {
         <div className="user-page">
             {/* 헤더: 검색창 */}
             <div className="user-page-header">
-                <UserSearch onQueryChange={handleQueryChange} />
+                <UserSearch ref={searchRef} onQueryChange={handleQueryChange} />
             </div>
 
             {/* 필터 탭 */}

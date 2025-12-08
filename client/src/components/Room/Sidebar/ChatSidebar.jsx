@@ -1,5 +1,5 @@
-// src/components/Roompage/Sidebar/ChatSidebar.jsx
-import { useState, useMemo } from 'react';
+// src/components/Room/Sidebar/ChatSidebar.jsx
+import { useState, useMemo, useEffect, useRef } from 'react';
 import RoomListItem from './RoomListItem.jsx';
 import './ChatSidebar.css';
 
@@ -12,8 +12,9 @@ export default function ChatSidebar({
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const searchInputRef = useRef(null);
 
-    // [최적화] 검색어 필터링: 시간복잡도 O(N), rooms나 searchTerm이 변경될 때만 연산 수행
+    // 검색어 필터링
     const filteredRooms = useMemo(() => {
         if (!searchTerm.trim()) return rooms;
         const lowerTerm = searchTerm.toLowerCase();
@@ -24,47 +25,64 @@ export default function ChatSidebar({
 
     const handleToggleSearch = () => {
         setIsSearchOpen(prev => !prev);
-        if (isSearchOpen) setSearchTerm(''); // 닫을 때 검색어 초기화
+        if (isSearchOpen) setSearchTerm('');
     };
+
+    // Ctrl+F 키보드 단축키 핸들러
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                if (!isSearchOpen) {
+                    setIsSearchOpen(true);
+                }
+                // 다음 렌더링 후 포커스
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isSearchOpen]);
 
     return (
         <div className="sidebar">
             <div className="sidebar-header">
-                <h3>채팅방 목록</h3>
+                <h3>채팅</h3>
             </div>
 
             <div className="connection-status">
-                연결 상태:{' '}
                 <span className={connected ? 'connected' : 'disconnected'}>
-                    {connected ? 'ON' : 'OFF'}
+                    {connected ? '● 연결됨' : '○ 연결 끊김'}
                 </span>
             </div>
 
-            {/* 기능 버튼 영역 (검색 / 방 만들기) */}
+            {/* 기능 버튼 영역 */}
             <div className="sidebar-actions">
                 <button
                     className="icon-btn search-btn"
                     onClick={handleToggleSearch}
-                    title="채팅방 검색"
+                    title="채팅방 검색 (Ctrl+F)"
                 >
-                    <i className="bi bi-search"></i> 검색
+                    <i className="bi bi-search"></i>
                 </button>
                 <button
                     className="icon-btn create-room-btn"
                     onClick={onOpenCreateModal}
-                    title="새 채팅방 만들기"
+                    title="새 채팅방"
                 >
-                    <i className="bi bi-plus-circle"></i> 방 만들기
+                    <i className="bi bi-plus-lg"></i>
                 </button>
             </div>
 
-            {/* 검색창 (조건부 렌더링) */}
+            {/* 검색창 */}
             {isSearchOpen && (
                 <div className="search-container">
                     <input
+                        ref={searchInputRef}
                         type="text"
                         className="search-input"
-                        placeholder="채팅방 제목 검색..."
+                        placeholder="채팅방 검색..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         autoFocus
@@ -84,7 +102,7 @@ export default function ChatSidebar({
                     ))
                 ) : (
                     <li className="no-room-message">
-                        {searchTerm ? '검색 결과가 없습니다.' : '참여 중인 채팅방이 없습니다.'}
+                        {searchTerm ? '검색 결과 없음' : '채팅방이 없습니다'}
                     </li>
                 )}
             </ul>
