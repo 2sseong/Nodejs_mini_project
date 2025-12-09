@@ -157,6 +157,11 @@ export async function modifyMessage({ msgId, userId, content }) {
     return await messageRepo.updateMessageTx({ msgId, senderId: userId, content });
 }
 
+// 메시지 ID로 메시지 조회 (삭제 전 파일 정보 확인용)
+export async function getMessageById(msgId) {
+    return await messageRepo.getMessageById(msgId);
+}
+
 // 메시지 삭제 서비스
 export async function removeMessage({ msgId, userId }) {
     return await messageRepo.deleteMessageTx({ msgId, senderId: userId });

@@ -1,7 +1,7 @@
 import * as messageService from './message.service.js';
 import * as roomService from '../rooms/room.service.js';
 import * as authService from '../../auth/authService.js';
-import { writeFile } from 'fs/promises';
+import { writeFile, unlink } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
@@ -206,8 +206,27 @@ export default function messageSocket(io, socket) {
         if (!roomId || !msgId) return;
 
         try {
+            // 1. 파일 정보 먼저 조회 (삭제 전에)
+            const messageInfo = await messageService.getMessageById(msgId);
+
+            // 2. DB에서 메시지 삭제
             const success = await messageService.removeMessage({ msgId, userId });
+
             if (success) {
+                // 3. 파일 메시지였다면 실제 파일도 삭제
+                if (messageInfo && messageInfo.MESSAGE_TYPE === 'FILE' && messageInfo.FILE_URL) {
+                    try {
+                        // FILE_URL 예: /uploads/uuid.png -> public/uploads/uuid.png 경로로 변환
+                        const fileName = messageInfo.FILE_URL.replace('/uploads/', '');
+                        const filePath = path.join(UPLOAD_DIR, fileName);
+                        await unlink(filePath);
+                        console.log(`[Socket] File deleted successfully: ${filePath}`);
+                    } catch (fileErr) {
+                        // 파일 삭제 실패해도 메시지는 이미 삭제됨
+                        console.error('[Socket] Failed to delete file:', fileErr.message);
+                    }
+                }
+
                 io.to(String(roomId)).emit('chat:message_deleted', { msgId });
             }
         } catch (e) {

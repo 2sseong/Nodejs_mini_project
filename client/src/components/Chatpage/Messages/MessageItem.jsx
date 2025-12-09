@@ -19,12 +19,11 @@ export default function MessageItem(props) {
         unreadCount,
         onEdit,
         onDelete,
+        onStartEdit,
         onImageLoad
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editContent, setEditContent] = useState(content);
 
     // [추가] 삭제 확인 모달 상태
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -42,7 +41,7 @@ export default function MessageItem(props) {
     };
 
     const handleContextMenu = (e) => {
-        if (!mine || messageType === 'FILE') return;
+        if (!mine) return; // 내 메시지만 우클릭 메뉴 표시
         e.preventDefault();
         setContextMenu({ x: e.pageX, y: e.pageY });
     };
@@ -53,33 +52,24 @@ export default function MessageItem(props) {
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
+    // 수정 클릭 시 부모에게 수정 시작 알림
     const handleClickEdit = () => {
-        setIsEditing(true);
-        setEditContent(content);
+        if (onStartEdit) {
+            onStartEdit({ msgId, content });
+        }
+        setContextMenu(null);
     };
 
-    // [수정] 삭제 버튼 클릭 시 모달 열기
+    // 삭제 버튼 클릭 시 모달 열기
     const handleClickDelete = () => {
         setIsDeleteModalOpen(true);
-        // window.confirm 제거됨
+        setContextMenu(null);
     };
 
-    // [추가] 모달에서 '삭제' 확인 클릭 시 호출
+    // 모달에서 '삭제' 확인 클릭 시 호출
     const handleConfirmDelete = () => {
         onDelete(msgId);
         setIsDeleteModalOpen(false);
-    };
-
-    const handleSaveEdit = () => {
-        if (editContent.trim() !== '') {
-            onEdit(msgId, editContent);
-            setIsEditing(false);
-        }
-    };
-
-    const handleCancelEdit = () => {
-        setIsEditing(false);
-        setEditContent(content);
     };
 
     // [추가] 이미지 로딩 완료 시 부모에게 알림 (스크롤 조정용)
@@ -173,17 +163,7 @@ export default function MessageItem(props) {
             );
         }
 
-        if (isEditing) {
-            return (
-                <div className="edit-input-area" onClick={e => e.stopPropagation()}>
-                    <textarea className="edit-input" value={editContent} onChange={(e) => setEditContent(e.target.value)} autoFocus />
-                    <div className="edit-actions">
-                        <button className="edit-btn-cancel" onClick={handleCancelEdit}>취소</button>
-                        <button className="edit-btn-save" onClick={handleSaveEdit}>저장</button>
-                    </div>
-                </div>
-            );
-        }
+        // 일반 텍스트 메시지
         return <div className="message-content">{content?.trim()}</div>;
     };
 
@@ -247,7 +227,10 @@ export default function MessageItem(props) {
 
             {contextMenu && (
                 <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x, position: 'fixed' }}>
-                    <button onClick={handleClickEdit}>수정</button>
+                    {/* 파일 메시지가 아닐 때만 수정 버튼 표시 */}
+                    {messageType !== 'FILE' && (
+                        <button onClick={handleClickEdit}>수정</button>
+                    )}
                     <button className="delete-option" onClick={handleClickDelete}>삭제</button>
                 </div>
             )}
