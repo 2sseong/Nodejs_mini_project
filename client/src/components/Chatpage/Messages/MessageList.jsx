@@ -22,7 +22,7 @@ export default function MessageList({
     messages, userId, onLoadMore, isLoadingMore, hasMoreMessages,
     isInitialLoad, markAsRead,
     onEditMessage, onDeleteMessage, onStartEdit, scrollToMsgId, searchKeyword,
-    loadNewerMessages, hasFutureMessages, isLoadingNewer
+    loadNewerMessages, hasFutureMessages, isLoadingNewer, firstUnreadMsgId
 }) {
     const listRef = useRef(null);
     const [previewMsg, setPreviewMsg] = useState(null); // 미리보기 메시지 상태
@@ -32,7 +32,8 @@ export default function MessageList({
     const prevMsgLenRef = useRef(messages.length);
     const prevScrollHeightRef = useRef(0);
     const isLoadingNewerRef = useRef(false);
-    const firstVisibleMsgIdRef = useRef(null); // 스크롤 위치 복원용 
+    const firstVisibleMsgIdRef = useRef(null); // 스크롤 위치 복원용
+    const hasScrolledToInitialRef = useRef(false); // 초기 스크롤 완료 여부
 
     // 1. 스크롤 이벤트 핸들러
     const handleScroll = useCallback(() => {
@@ -111,12 +112,20 @@ export default function MessageList({
             return;
         }
 
-        // B. 초기 로딩: 무조건 바닥 (과거 메시지 로딩이 아닌 경우만)
-        if (isInitialLoad) {
+        // B. 초기 로딩: 메시지가 있고 한 번만 실행
+        if (isInitialLoad && currentLen > 0 && !hasScrolledToInitialRef.current) {
+            hasScrolledToInitialRef.current = true;
+
+            // firstUnreadMsgId가 있으면 별도 useEffect에서 처리하므로 건너뛰기
+            if (firstUnreadMsgId) {
+                return;
+            }
+
+            // 읽지 않은 메시지가 없으면 바닥으로 스크롤
             requestAnimationFrame(() => {
                 list.scrollTop = list.scrollHeight;
+                isAtBottomRef.current = true;
             });
-            isAtBottomRef.current = true;
             return;
         }
 
@@ -149,7 +158,20 @@ export default function MessageList({
                 }
             }
         }
-    }, [messages, isInitialLoad, userId, isLoadingNewer]);
+    }, [messages, isInitialLoad, userId, isLoadingNewer, firstUnreadMsgId]);
+
+    // 2-1. 읽지 않은 메시지 위치로 스크롤 (firstUnreadMsgId가 설정되면)
+    useEffect(() => {
+        if (firstUnreadMsgId && listRef.current) {
+            const el = document.getElementById(`msg-${firstUnreadMsgId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                el.classList.add('highlight-flash');
+                setTimeout(() => el.classList.remove('highlight-flash'), 2000);
+                isAtBottomRef.current = false;
+            }
+        }
+    }, [firstUnreadMsgId]);
 
     // 3. 읽음 처리 트리거
     useEffect(() => {
