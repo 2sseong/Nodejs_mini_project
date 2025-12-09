@@ -38,11 +38,17 @@ export async function leaveRoom(req, res, next) {
         // 나간 본인에게 목록 갱신 요청
         socketGateway.requestRoomsRefresh(userId);
 
-        // [추가됨] 남은 사람들에게 인원수 업데이트 알림 (Gateway 사용)
+        // [추가] 남은 멤버들에게도 방 목록 갱신 요청 (아바타 업데이트를 위해)
+        const remainingMembers = await roomService.getRoomMembers(roomId);
+        for (const member of remainingMembers) {
+            socketGateway.requestRoomsRefresh(member.USER_ID);
+        }
+
+        // 남은 사람들에게 인원수 업데이트 알림 (Gateway 사용)
         const memberCount = await roomService.getRoomMemberCount(roomId);
         socketGateway.notifyRoomMemberCount(roomId, memberCount);
 
-        // [추가] 시스템 메시지 브로드캐스트
+        // 시스템 메시지 브로드캐스트
         if (result.systemMessage) {
             const io = getIoInstance();
             io.to(String(roomId)).emit('chat:message', result.systemMessage);
@@ -131,6 +137,9 @@ export async function inviteUsers(req, res, next) {
             return res.status(400).json({ success: false, message: '유효한 roomId와 inviteeIds 배열이 필요합니다.' });
         }
 
+        // 초대 전에 기존 멤버 목록 조회
+        const existingMembers = await roomService.getRoomMembers(roomId);
+
         const result = await roomService.inviteUsersToRoom({
             roomId,
             inviteeIds,
@@ -140,6 +149,11 @@ export async function inviteUsers(req, res, next) {
         // 초대받은 사람들에게 방 목록 갱신 요청
         for (const inviteeId of result.successList) {
             socketGateway.requestRoomsRefresh(inviteeId);
+        }
+
+        // [추가] 기존 멤버들에게도 방 목록 갱신 요청 (아바타 업데이트를 위해)
+        for (const member of existingMembers) {
+            socketGateway.requestRoomsRefresh(member.USER_ID);
         }
 
         // 방에 있는 기존 멤버들에게 실시간 인원수 업데이트

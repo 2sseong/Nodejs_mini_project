@@ -2,9 +2,18 @@ import React, { useEffect, useState } from 'react';
 import DaumPostcode from 'react-daum-postcode';
 import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage, getDepartments, getPositions } from '../api/authApi';
 import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal';
+import { useAuth } from '../hooks/AuthContext.jsx';
+import { useChatSocket } from '../hooks/useChatSocket.js';
+import { useChatNotifications } from '../hooks/useChatNotifications.js';
 import '../styles/MyInfoPage.css';
 
 export default function MyInfoPage() {
+    const { userId, userNickname } = useAuth();
+
+    // [추가] 알림 기능 활성화
+    const { socket, rooms, currentRoomId, selectRoom } = useChatSocket({ userId, userNickname });
+    useChatNotifications({ socket, userId, rooms, currentRoomId, selectRoom });
+
     const [user, setUser] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
