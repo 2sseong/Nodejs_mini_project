@@ -136,6 +136,24 @@ function createWindow(partition = 'persist:user1') {
     mainWindow = null;
   });
 
+  // [추가] window.open으로 열리는 새 창(채팅방 등)에 대한 설정
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        frame: false,
+        transparent: false,
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: path.join(__dirname, 'preload.js'),
+          partition: partition
+        }
+      }
+    };
+  });
+
   mainWindows.push(mainWindow);
   return mainWindow;
 }

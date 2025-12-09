@@ -5,7 +5,28 @@ import UserList from '../components/User/UserList.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
 import { searchAllUsers, toggleUserPick, getMyProfile } from '../api/usersApi.jsx';
 import '../styles/UserPage.css';
+// 1:1 채팅 API 임포트
+import { checkOneToOneChat } from '../api/chatApi.jsx';
+// 1:1 채팅 모달 임포트
+import OneToOneChatModal from '../components/Room/Modals/OneToOneChatModal.jsx';
 
+// 채팅방을 여는 핵심 함수
+// 채팅방을 여는 핵심 함수
+const openChatRoom = (roomId) => {
+    console.log("openChatRoom called with:", roomId);
+    console.log("window.electronAPI:", window.electronAPI);
+
+    // 일렉트론 환경인지 확인
+    if (window.electronAPI && typeof window.electronAPI.openChatRoom === 'function') {
+        window.electronAPI.openChatRoom(roomId);
+    } else {
+        // 웹 브라우저 환경 (또는 Electron API 로드 실패 시)
+        console.warn("Electron API not found or openChatRoom missing. Falling back to window.open");
+        // [수정] HashRouter를 사용하므로 URL에 #을 포함해야 함
+        const chatUrl = `#/popup/${roomId}`;
+        window.open(chatUrl, `chat_room_${roomId}`, 'width=550,height=600,scrollbars=yes,resizable=yes');
+    }
+};
 
 export default function UserPage() {
     const [userList, setUserList] = useState([]);
@@ -18,6 +39,10 @@ export default function UserPage() {
 
     const [myUserId, setMyUserId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+
+    // 1:1 채팅 모달 상태 관리
+    const [isOneToOneModalOpen, setIsOneToOneModalOpen] = useState(false);
+    const [targetUserForChat, setTargetUserForChat] = useState(null); // 모달에 전달할 대상 사용자 정보
 
     // 검색창 ref (Ctrl+F 포커스용)
     const searchRef = useRef(null);
@@ -73,6 +98,42 @@ export default function UserPage() {
             alert(`오류가 발생했습니다: ${err.message}`);
         }
     };
+
+    // 1:1 채팅 시작 버튼 클릭 핸들러 (핵심 로직)
+    const handleStartChat = async (user) => {
+        // userId는 number/string 타입이 다를 수 있으므로, String()으로 통일하여 비교
+        if (String(user.userId) === String(myUserId)) return;
+
+        try {
+            // 1. 기존 채팅방 존재 여부 확인 API 호출
+            const result = await checkOneToOneChat(user.userId);
+
+            if (result.exists && result.roomId) {
+                // (1) 기존 방이 존재하는 경우: 즉시 채팅방 열기
+                openChatRoom(result.roomId);
+            } else {
+                // (2) 기존 방이 없는 경우: 방 이름 설정 모달 열기
+                setTargetUserForChat(user);
+                setIsOneToOneModalOpen(true);
+            }
+        } catch (error) {
+            console.error("채팅 시작 중 오류 발생:", error);
+            alert(`채팅방 확인 중 오류 발생: ${error.message || error}`);
+        }
+    };
+
+    // 모달에서 새 채팅방 개설을 확정했을 때 처리 (Modal -> UserPage)
+    const handleCreateChatConfirmed = (roomId, roomName) => {
+        // 모달에서 방 생성 API 호출이 완료되었으므로, 받은 ID로 채팅방 열기
+
+        // 1. 모달 닫기 및 상태 초기화
+        setIsOneToOneModalOpen(false);
+        setTargetUserForChat(null);
+
+        // 2. 생성된 방 열기
+        openChatRoom(roomId);
+    };
+
 
     useEffect(() => {
         if (!myUserId) return;
@@ -136,6 +197,7 @@ export default function UserPage() {
                 onlineUsers={onlineUsers}
                 filterType={filterType}
                 onTogglePick={handleTogglePick}
+                onStartChat={handleStartChat}
             />
         );
     }
@@ -173,6 +235,20 @@ export default function UserPage() {
             <div className="user-list-container">
                 {listContent}
             </div>
+
+            {/* 1:1 채팅 모달 */}
+            <OneToOneChatModal
+                isOpen={isOneToOneModalOpen}
+                userId={myUserId} // 로그인 사용자
+                targetUser={targetUserForChat}
+                onClose={() => {
+                    setIsOneToOneModalOpen(false);
+                    setTargetUserForChat(null);
+                }}
+                // 생성 확정 시 호출될 함수 연결
+                onCreate={handleCreateChatConfirmed}
+            />
         </div>
     );
 }
+

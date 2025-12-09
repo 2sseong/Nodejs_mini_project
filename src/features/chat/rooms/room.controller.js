@@ -79,3 +79,63 @@ export async function leaveRoom(req, res, next) {
         next(error);
     }
 }
+
+/**
+ * GET /checkOneToOne : 1:1 채팅방 존재 여부 확인
+ */
+export async function checkChat(req, res, next) {
+    try {
+        const myUserId = req.user.userId; // 로그인 사용자 ID
+        const targetId = req.query.targetId;
+
+        if (!targetId) {
+            return res.status(400).json({ message: "대상 사용자 ID(targetId)가 필요합니다." });
+        }
+
+        // Service 호출: 기존 방 ID 조회
+        const roomId = await roomService.checkExistingOneToOneChat(myUserId, targetId);
+
+        if (roomId) {
+            // (1) 존재함
+            return res.status(200).json({ exists: true, roomId: roomId });
+        } else {
+            // (2) 존재하지 않음
+            return res.status(200).json({ exists: false });
+        }
+    } catch (e) {
+        next(e); // 에러 핸들링 미들웨어로 전달
+    }
+}
+
+
+/**
+ * POST /createOneToOne : 새로운 1:1 채팅방 생성
+ */
+export async function createChat(req, res, next) {
+    try {
+        const myUserId = req.user.userId; // 로그인 사용자 ID
+        const { targetId, roomName } = req.body;
+
+        if (!targetId || !roomName) {
+            return res.status(400).json({ message: "필수 정보(targetId, roomName)가 누락되었습니다." });
+        }
+
+        // Service 호출: 새 1:1 채팅방 생성
+        const newRoomInfo = await roomService.createNewOneToOneChat(myUserId, targetId, roomName);
+
+        // 1. [소켓 알림] 새로 생성된 방 목록 갱신 요청 (나와 상대방 모두)
+        // Note: 새로운 1:1 채팅이므로, 두 사용자 모두에게 방 목록 갱신을 요청합니다.
+        socketGateway.requestRoomsRefresh(myUserId);
+        socketGateway.requestRoomsRefresh(Number(targetId));
+
+        // 새로 생성된 roomId 반환
+        return res.status(201).json({
+            success: true,
+            roomId: newRoomInfo.roomId,
+            roomName: newRoomInfo.roomName
+        });
+
+    } catch (e) {
+        next(e); // 에러 핸들링 미들웨어로 전달
+    }
+}

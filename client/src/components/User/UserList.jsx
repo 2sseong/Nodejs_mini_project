@@ -8,7 +8,7 @@ import DefaultAvatar from '../../assets/default-avatar.png';
 const IMAGE_BASE_URL = 'http://localhost:1337'; // 백엔드 서버 주소
 
 // 개별 사용자 아이템 컴포넌트
-function UserItem({ user, isOnline, onTogglePick }) {
+function UserItem({ user, isOnline, onTogglePick, onStartChat }) {
     // user 객체에서 isMe 속성 추출(현재 로그인 사용자 여부)
     const { isMe } = user;
     // user 객체에서 isPick 속성 추출(즐겨찾기 여부)
@@ -21,6 +21,13 @@ function UserItem({ user, isOnline, onTogglePick }) {
         // 현재 사용자가 자신이면 즐겨찾기 토글을 할 수 없음
         if (isMe) return;
         onTogglePick(user.userId, isPicked);
+    };
+
+    // 채팅 버튼 클릭 핸들러
+    const handleChatClick = () => {
+        if (isMe) return;
+        // UserPage.jsx의 handleStartChat 함수 호출
+        onStartChat(user);
     };
 
     return (
@@ -71,9 +78,16 @@ function UserItem({ user, isOnline, onTogglePick }) {
                 <span className="user-username">( {user.username} )</span>
             </div>
 
+            {/* 채팅 버튼 활성화 및 핸들러 연결 */}
             {!isMe && (
                 <div className="friend-actions">
-                    <button disabled className="btn-friend">채팅</button>
+                    <button
+                        className="btn-chat"
+                        onClick={handleChatClick} // 클릭 핸들러 연결
+                        title="1:1 채팅"
+                    >
+                        <i className="bi bi-chat-dots-fill"></i>
+                    </button>
                 </div>
             )}
         </li>
@@ -81,7 +95,7 @@ function UserItem({ user, isOnline, onTogglePick }) {
 }
 
 // 부서별 섹션 컴포넌트
-function DepartmentSection({ department, users, myUserId, onlineUsers, onTogglePick }) {
+function DepartmentSection({ department, users, myUserId, onlineUsers, onTogglePick, onStartChat }) {
     const [isExpanded, setIsExpanded] = useState(true);
 
     return (
@@ -100,6 +114,7 @@ function DepartmentSection({ department, users, myUserId, onlineUsers, onToggleP
                             myUserId={myUserId}
                             isOnline={onlineUsers.includes(String(user.userId))}
                             onTogglePick={onTogglePick}
+                            onStartChat={onStartChat}
                         />
                     ))}
                 </ul>
@@ -116,8 +131,9 @@ function DepartmentSection({ department, users, myUserId, onlineUsers, onToggleP
  * @param {Array<string>} onlineUsers - 소켓에서 받은 온라인 사용자 ID 배열
  * @param {string} filterType - 'ALL' | 'ONLINE' | 'PICK'
  * @param {Function} onTogglePick - 즐겨찾기 토글 핸들러 함수
+ * @param {Function} onStartChat - 1:1 채팅 시작 핸들러 함수 (UserPage.jsx에서 전달됨)
  */
-export default function UserList({ users, myUserId, searchQuery, onlineUsers = [], filterType = 'ALL', onTogglePick }) {
+export default function UserList({ users, myUserId, searchQuery, onlineUsers = [], filterType = 'ALL', onTogglePick, onStartChat }) {
 
     // 0. 전체 유저 자체가 없을 때 (검색 결과 0)
     if (!users || users.length === 0) {
@@ -205,6 +221,7 @@ export default function UserList({ users, myUserId, searchQuery, onlineUsers = [
                             myUserId={myUserId}
                             isOnline={me.isOnline}
                             onTogglePick={onTogglePick}
+                            onStartChat={onStartChat} // onStartChat prop 전달
                         />
                     </ul>
                 </div>
@@ -219,6 +236,7 @@ export default function UserList({ users, myUserId, searchQuery, onlineUsers = [
                     myUserId={myUserId}
                     onlineUsers={onlineUsers}
                     onTogglePick={onTogglePick}
+                    onStartChat={onStartChat} // onStartChat prop 전달
                 />
             ))}
         </div>

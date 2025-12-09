@@ -40,3 +40,33 @@ export async function getRoomMemberCount(roomId) {
 export async function markRoomAsRead({ roomId, userId }) {
     return await roomRepo.updateLastReadAt({ roomId, userId });
 }
+
+/**
+ * 기존 1:1 채팅방 존재 여부 확인
+ * @param {number} myUserId 현재 로그인 사용자 ID
+ * @param {number} targetUserId 대상 사용자 ID
+ * @returns {number | null} 존재하는 경우 roomId
+ */
+export async function checkExistingOneToOneChat(myUserId, targetUserId) {
+    // roomRepo의 findOneToOneRoomId 함수를 호출하여 ID를 조회합니다.
+    const existingRoomId = await roomRepo.findOneToOneRoomId(myUserId, targetUserId);
+
+    return existingRoomId;
+}
+
+/**
+ * 새로운 1:1 채팅방 생성 및 정보 반환
+ * @param {number} myUserId 
+ * @param {number} targetUserId 
+ * @param {string} roomName 클라이언트에서 설정한 이름
+ * @returns {{roomId: number, roomName: string}}
+ */
+export async function createNewOneToOneChat(myUserId, targetUserId, roomName) {
+    // 1. 대상 사용자 유효성 검사 (안전성 확보)
+    const exists = await roomRepo.ensureUserExists(targetUserId);
+    if (!exists) throw { status: 404, message: '대상 사용자를 찾을 수 없습니다.' };
+
+    // 2. Repository를 호출하여 채팅방 생성 및 멤버 추가 트랜잭션 실행
+    const newRoomInfo = await roomRepo.createNewOneToOneRoom(myUserId, targetUserId, roomName);
+    return newRoomInfo;
+}

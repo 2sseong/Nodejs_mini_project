@@ -38,3 +38,42 @@ export const getNewerMessagesApi = (roomId, msgId) => {
 export const getRoomFilesApi = (roomId) => {
     return api.get(`/chats/rooms/${roomId}/files`);
 };
+
+
+/**
+ * 1:1 채팅방 존재 여부 확인 및 ID 조회
+ * GET /api/chat/rooms/checkOneToOne?targetId={targetId}
+ * @param {string|number} targetUserId - 대상 사용자 ID
+ * @returns {Promise<{exists: boolean, roomId?: number, message?: string}>}
+ */
+export async function checkOneToOneChat(targetUserId) {
+    try {
+        const response = await api.get(`chats/checkOneToOne`, {
+            params: { targetId: targetUserId }
+        });
+        return response.data;
+    } catch (error) {
+        // 오류 응답 메시지를 던져 상위 컴포넌트에서 처리하도록 합니다.
+        throw new Error(error.response?.data?.message || "채팅방 확인 중 알 수 없는 오류");
+    }
+}
+
+/**
+ * 새로운 1:1 채팅방 생성
+ * POST /api/chat/rooms/createOneToOne
+ * @param {string|number} targetUserId - 대상 사용자 ID
+ * @param {string} roomName - 생성할 채팅방 이름
+ * @returns {Promise<{roomId: number, roomName: string, message?: string}>}
+ */
+export async function createOneToOneChat(targetUserId, roomName) {
+    try {
+        const response = await api.post(`chats/createOneToOne`, {
+            targetId: targetUserId,
+            roomName: roomName
+        });
+        return response.data;
+    } catch (error) {
+        // 오류 응답 메시지를 던져 상위 컴포넌트에서 처리하도록 합니다.
+        throw new Error(error.response?.data?.message || "채팅방 생성 중 알 수 없는 오류");
+    }
+}

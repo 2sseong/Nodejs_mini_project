@@ -166,6 +166,23 @@
     transform: scale(1.1);
 }
 
+/* 채팅 버튼 (새로 추가) */
+.btn-chat {
+    background: none;
+    border: none;
+    padding: 4px;
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.btn-chat:hover {
+    color: var(--color-primary);
+    transform: scale(1.1);
+}
+
 /* 검색 결과 없음 */
 .no-results,
 .empty-list-text {
@@ -186,9 +203,9 @@
 }
 
 /* 친구 버튼 */
-.btn-friend {
+/* .btn-friend {
     display: none;
-}
+} */
 
 /* 내 프로필 섹션 */
 .my-profile-section {

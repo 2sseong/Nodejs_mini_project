@@ -237,3 +237,86 @@ export async function updateLastReadAt({ roomId, userId }) {
 
     await executeTransaction(sql, { roomId, userId });
 }
+
+/**
+ * 두 사용자 ID로 1:1 채팅방이 존재하는지 조회
+ * @param {number} myUserId - 현재 로그인 사용자 ID
+ * @param {number} targetUserId - 대상 사용자 ID
+ * @returns {number | null} 존재하는 경우 ROOM_ID, 없으면 null
+ */
+export async function findOneToOneRoomId(myUserId, targetUserId) {
+    const sql = `
+        SELECT tcr.ROOM_ID
+        FROM T_CHAT_ROOM tcr
+        WHERE tcr.ROOM_TYPE = '1_TO_1'
+          -- 1. 두 사용자가 모두 참여하는 방을 찾음
+          AND tcr.ROOM_ID IN (
+            SELECT trm.ROOM_ID
+            FROM T_ROOM_MEMBER trm
+            WHERE trm.USER_ID IN (:myUserId, :targetUserId)
+            GROUP BY trm.ROOM_ID
+            HAVING COUNT(trm.USER_ID) = 2 -- 두 사용자 모두 포함
+          )
+          -- 2. 해당 방의 전체 참가자 수가 2명인지 최종 확인
+          AND (
+            SELECT COUNT(*) FROM T_ROOM_MEMBER WHERE ROOM_ID = tcr.ROOM_ID
+          ) = 2
+        FETCH FIRST 1 ROW ONLY
+    `;
+
+    const bindParams = { myUserId, targetUserId };
+
+    const result = await executeQuery(sql, bindParams);
+
+    return result.rows?.length > 0 ? result.rows[0].ROOM_ID : null;
+}
+
+/**
+ * 새로운 1:1 채팅방을 생성하고 두 사용자를 멤버로 추가 (트랜잭션)
+ * @param {number} myUserId 
+ * @param {number} targetUserId 
+ * @param {string} roomName 
+ * @returns {{roomId: number, roomName: string}} 새로 생성된 방 정보
+ */
+export async function createNewOneToOneRoom(myUserId, targetUserId, roomName) {
+    let conn;
+    try {
+        conn = await getConnection(); // 수동 커넥션 획득
+
+        // 1. T_CHAT_ROOM에 삽입
+        const roomSql = `
+            INSERT INTO T_CHAT_ROOM (ROOM_NAME, ROOM_TYPE, CREATED_AT)
+            VALUES (:roomName, '1_TO_1', CURRENT_TIMESTAMP)
+            RETURNING ROOM_ID INTO :roomId
+        `;
+        const roomBinds = {
+            roomName,
+            // ROOM_ID를 OUT BIND 변수로 설정하여 삽입 즉시 ID를 받아옴
+            roomId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
+        };
+        const roomRes = await conn.execute(roomSql, roomBinds, { autoCommit: false });
+        const roomId = roomRes.outBinds.roomId[0]; // 삽입된 ROOM_ID 추출
+
+        // 2. T_ROOM_MEMBER에 첫 번째 사용자(나) 추가
+        const memberSql = `
+            INSERT INTO T_ROOM_MEMBER (ROOM_ID, USER_ID, JOINED_AT)
+            VALUES (:roomId, :userId, CURRENT_TIMESTAMP)
+        `;
+        await conn.execute(memberSql, { roomId, userId: myUserId }, { autoCommit: false });
+
+        // 3. T_ROOM_MEMBER에 두 번째 사용자(상대방) 추가
+        await conn.execute(memberSql, { roomId, userId: targetUserId }, { autoCommit: false });
+
+        await conn.commit(); // 트랜잭션 커밋
+
+        return { roomId, roomName };
+
+    } catch (e) {
+        if (conn) { try { await conn.rollback(); } catch (rbkErr) { console.error("Rollback error:", rbkErr); } }
+        console.error("Error in createNewOneToOneRoom transaction:", e);
+        throw e;
+    } finally {
+        if (conn) { try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); } }
+    }
+}
+
