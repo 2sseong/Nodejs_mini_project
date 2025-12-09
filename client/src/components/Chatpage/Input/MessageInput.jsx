@@ -2,20 +2,116 @@
 import { useState, useRef, useEffect } from 'react';
 import './MessageInput.css';
 
-export default function MessageInput({ onSend, onSendFile, disabled }) {
+export default function MessageInput({
+    onSend,
+    onSendFile,
+    disabled,
+    // 수정 모드 props
+    editingMessage,
+    onCancelEdit,
+    onSaveEdit
+}) {
     const [text, setText] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
     const textareaRef = useRef(null);
+    const dropAreaRef = useRef(null);
+
+    // 수정 모드 진입 시 기존 메시지 내용을 입력창에 로드
+    useEffect(() => {
+        if (editingMessage) {
+            setText(editingMessage.content || '');
+            // 입력창에 포커스
+            setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 50);
+        }
+    }, [editingMessage]);
 
     const trySendText = () => {
         const t = text.trim();
         if (!t) return;
+
+        // 수정 모드일 때는 수정 저장
+        if (editingMessage) {
+            onSaveEdit(editingMessage.msgId, t);
+            setText('');
+            return;
+        }
+
+        // 일반 전송
         onSend(t);
         setText('');
     };
 
-    // 키보드 핸들러: Enter=전송, Shift+Enter=줄바꿈
+    // 수정 취소
+    const handleCancelEdit = () => {
+        setText('');
+        onCancelEdit?.();
+    };
+
+    // 파일 처리 공통 함수
+    const processFile = (file) => {
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            onSendFile({
+                fileName: file.name,
+                mimeType: file.type,
+                fileData: reader.result,
+            });
+        };
+        reader.onerror = (error) => {
+            console.error('File reading error:', error);
+            alert('파일을 읽는 중 오류가 발생했습니다.');
+        };
+    };
+
+    // 드래그 앤 드롭 핸들러
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!disabled) {
+            setIsDragging(true);
+        }
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // 자식 요소로 이동할 때는 무시
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        setIsDragging(false);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+
+        if (disabled) return;
+
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            // 첫 번째 파일만 전송
+            processFile(files[0]);
+        }
+    };
+
+    // 키보드 핸들러: Enter=전송, Shift+Enter=줄바꿈, Escape=수정 취소
     const handleKeyDown = (e) => {
+        if (e.key === 'Escape' && editingMessage) {
+            e.preventDefault();
+            handleCancelEdit();
+            return;
+        }
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             trySendText();
@@ -39,59 +135,76 @@ export default function MessageInput({ onSend, onSendFile, disabled }) {
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-            onSendFile({
-                fileName: file.name,
-                mimeType: file.type,
-                fileData: reader.result,
-            });
-        };
-        reader.onerror = (error) => {
-            console.error('File reading error:', error);
-            alert('파일을 읽는 중 오류가 발생했습니다.');
-        };
-
+        processFile(file);
         e.target.value = null;
     };
 
     return (
-        <div className="input-area">
-            {/* 파일 선택 버튼 */}
-            <button
-                onClick={handleFileButtonClick}
-                disabled={disabled}
-                className="file-upload-btn"
+        <div className="input-wrapper">
+            {/* 수정 모드 표시 */}
+            {editingMessage && (
+                <div className="edit-mode-bar">
+                    <div className="edit-mode-info">
+                        <i className="bi bi-pencil-square"></i>
+                        <span>메시지 수정 중</span>
+                    </div>
+                    <button
+                        className="edit-cancel-btn"
+                        onClick={handleCancelEdit}
+                        title="수정 취소"
+                    >
+                        <i className="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            )}
+
+            <div
+                className={`input-area ${isDragging ? 'dragging' : ''} ${editingMessage ? 'editing' : ''}`}
+                ref={dropAreaRef}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
             >
-                <i className="bi bi-plus-lg"></i>
-            </button>
+                {/* 파일 선택 버튼 (수정 모드에서는 숨김) */}
+                {!editingMessage && (
+                    <button
+                        onClick={handleFileButtonClick}
+                        disabled={disabled}
+                        className="file-upload-btn"
+                    >
+                        <i className="bi bi-plus-lg"></i>
+                    </button>
+                )}
 
-            {/* 숨겨진 파일 입력 */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-            />
+                {/* 숨겨진 파일 입력 */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                />
 
-            {/* 텍스트 입력 (textarea로 변경) */}
-            <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="메시지를 입력하세요..."
-                disabled={disabled}
-                rows={1}
-            />
+                {/* 텍스트 입력 (textarea로 변경) */}
+                <textarea
+                    ref={textareaRef}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={editingMessage ? "수정할 내용을 입력하세요..." : "메시지를 입력하세요..."}
+                    disabled={disabled}
+                    rows={1}
+                />
 
-            {/* 텍스트 전송 버튼 */}
-            <button onClick={trySendText} disabled={disabled || text.trim().length === 0}>
-                <i className="bi bi-send-fill"></i>
-            </button>
+                {/* 전송/저장 버튼 */}
+                <button
+                    onClick={trySendText}
+                    disabled={disabled || text.trim().length === 0}
+                    className={editingMessage ? 'save-btn' : ''}
+                >
+                    <i className={editingMessage ? "bi bi-check-lg" : "bi bi-send-fill"}></i>
+                </button>
+            </div>
         </div>
     );
 }

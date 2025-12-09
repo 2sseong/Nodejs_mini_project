@@ -84,3 +84,84 @@
     background-color: var(--border-color);
     color: var(--text-primary);
 }
+
+/* 드래그 앤 드롭 상태 */
+.input-area.dragging {
+    border: 2px dashed var(--color-primary);
+    background-color: var(--color-primary-light, rgba(59, 130, 246, 0.1));
+    border-radius: var(--radius-lg);
+}
+
+.input-area.dragging textarea {
+    pointer-events: none;
+}
+
+/* 입력 영역 래퍼 */
+.input-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+/* 수정 모드 바 */
+.edit-mode-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background-color: var(--color-primary-light, rgba(59, 130, 246, 0.1));
+    border-top: 1px solid var(--color-primary);
+    border-left: 3px solid var(--color-primary);
+}
+
+.edit-mode-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+.edit-mode-info i {
+    font-size: var(--font-size-base);
+}
+
+.edit-cancel-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.edit-cancel-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--color-danger);
+}
+
+/* 수정 모드일 때 입력 영역 */
+.input-area.editing {
+    border-top: none;
+}
+
+.input-area.editing textarea {
+    border-color: var(--color-primary);
+}
+
+/* 저장 버튼 (수정 모드) */
+.input-area button.save-btn {
+    background-color: var(--color-success);
+}
+
+.input-area button.save-btn:hover:not(:disabled) {
+    background-color: var(--color-success-dark, #16a34a);
+}

@@ -46,6 +46,27 @@ export default function PopupChatPage() {
     const [scrollToMsgId, setScrollToMsgId] = useState(null);
     const lastSearchReqId = useRef(0);
 
+    // --- [메시지 수정 상태] ---
+    const [editingMessage, setEditingMessage] = useState(null); // { msgId, content }
+
+    // 수정 시작 핸들러 (MessageItem에서 호출)
+    const handleStartEdit = ({ msgId, content }) => {
+        setEditingMessage({ msgId, content });
+    };
+
+    // 수정 취소 핸들러
+    const handleCancelEdit = () => {
+        setEditingMessage(null);
+    };
+
+    // 수정 저장 핸들러
+    const handleSaveEdit = (msgId, newContent) => {
+        if (editMessage) {
+            editMessage(msgId, newContent);
+        }
+        setEditingMessage(null);
+    };
+
     // =========================================================
     // [START] 읽음 처리 최적화 로직 (RoomPage 동기화 수정 완료)
     // =========================================================
@@ -334,6 +355,7 @@ export default function PopupChatPage() {
                             isReadStatusLoaded={isReadStatusLoaded}
                             onEditMessage={editMessage}
                             onDeleteMessage={deleteMessage}
+                            onStartEdit={handleStartEdit}
                             scrollToMsgId={scrollToMsgId}
                             loadNewerMessages={loadNewerMessages}
                             hasFutureMessages={hasFutureMessages}
@@ -344,6 +366,9 @@ export default function PopupChatPage() {
                         onSend={(text) => sendMessage({ text })}
                         onSendFile={handleSendFile}
                         disabled={!connected}
+                        editingMessage={editingMessage}
+                        onCancelEdit={handleCancelEdit}
+                        onSaveEdit={handleSaveEdit}
                     />
                     <InviteUserModal
                         isOpen={isInviteOpen}

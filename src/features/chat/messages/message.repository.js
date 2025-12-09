@@ -304,7 +304,14 @@ export async function getRoomFiles(roomId) {
     return res.rows || [];
 }
 
-// 10. 메시지 수정/삭제
+// 10. 메시지 ID로 메시지 조회
+export async function getMessageById(msgId) {
+    const sql = `SELECT MSG_ID, ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME FROM T_MESSAGE WHERE MSG_ID = :msgId`;
+    const res = await executeQuery(sql, { msgId: Number(msgId) });
+    return res.rows?.[0] || null;
+}
+
+// 11. 메시지 수정/삭제
 export async function updateMessageTx(p) {
     return await executeTransaction(`UPDATE T_MESSAGE SET CONTENT=:content WHERE MSG_ID=:msgId AND SENDER_ID=:senderId`, p, { autoCommit: true });
 }

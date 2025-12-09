@@ -21,7 +21,7 @@ const getFormattedDate = (dateString) => {
 export default function MessageList({
     messages, userId, onLoadMore, isLoadingMore, hasMoreMessages,
     isInitialLoad, markAsRead,
-    onEditMessage, onDeleteMessage, scrollToMsgId, searchKeyword,
+    onEditMessage, onDeleteMessage, onStartEdit, scrollToMsgId, searchKeyword,
     loadNewerMessages, hasFutureMessages, isLoadingNewer
 }) {
     const listRef = useRef(null);
@@ -257,6 +257,7 @@ export default function MessageList({
                             unreadCount={m.unreadCount}
                             onEdit={onEditMessage}
                             onDelete={onDeleteMessage}
+                            onStartEdit={onStartEdit}
                             onImageLoad={handleImageLoad}
                             searchKeyword={searchKeyword}
                         />
