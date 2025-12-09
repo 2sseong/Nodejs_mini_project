@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/AuthContext.jsx';
 import UserSearch from '../components/User/UserSearch.jsx';
 import UserList from '../components/User/UserList.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
+import { useChatNotifications } from '../hooks/useChatNotifications.js';
 import { searchAllUsers, toggleUserPick, getMyProfile } from '../api/usersApi.jsx';
 import '../styles/UserPage.css';
 // 1:1 채팅 API 임포트
@@ -10,7 +11,6 @@ import { checkOneToOneChat } from '../api/chatApi.jsx';
 // 1:1 채팅 모달 임포트
 import OneToOneChatModal from '../components/Room/Modals/OneToOneChatModal.jsx';
 
-// 채팅방을 여는 핵심 함수
 // 채팅방을 여는 핵심 함수
 const openChatRoom = (roomId) => {
     console.log("openChatRoom called with:", roomId);
@@ -35,7 +35,10 @@ export default function UserPage() {
     const { userId, userNickname, username } = useAuth();
     const [filterType, setFilterType] = useState('ALL');
 
-    const { onlineUsers } = useChatSocket({ userId, userNickname });
+    const { socket, onlineUsers, rooms, currentRoomId, selectRoom } = useChatSocket({ userId, userNickname });
+
+    // [추가] 알림 기능 활성화 - 이 페이지에서도 메시지 알림이 표시됩니다
+    useChatNotifications({ socket, userId, rooms, currentRoomId, selectRoom });
 
     const [myUserId, setMyUserId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
