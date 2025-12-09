@@ -1,4 +1,4 @@
-/* ChatSidebar - 카카오톡 스타일 채팅방 목록 */
+/* RoomList - 카카오톡 스타일 채팅방 목록 */
 
 .sidebar {
     display: flex;
@@ -141,19 +141,144 @@
     background-color: var(--color-primary-light);
 }
 
-/* 방 아바타 */
+/* 방 아바타 컨테이너 */
 .room-avatar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
-    background-color: var(--color-primary);
-    color: var(--text-inverse);
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: var(--bg-hover);
+}
+
+/* 아바타 공통 스타일 */
+.room-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-initial {
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--font-size-lg);
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
     font-weight: bold;
-    flex-shrink: 0;
+    font-size: 14px;
+}
+
+/* 1명 - 단일 프로필 */
+.avatar-single {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    font-size: 18px;
+}
+
+.avatar-single img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-single .avatar-initial {
+    font-size: 18px;
+}
+
+/* 2명 - 2열 그리드 */
+.avatar-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+    gap: 1px;
+}
+
+.avatar-grid-2 .avatar-item {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.avatar-grid-2 .avatar-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-grid-2 .avatar-initial {
+    font-size: 12px;
+}
+
+/* 3명 - 상단 1개 + 하단 2개 */
+.avatar-grid-3 {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    gap: 1px;
+}
+
+.avatar-grid-3 .avatar-item.top {
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+}
+
+.avatar-grid-3 .avatar-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    height: 50%;
+}
+
+.avatar-grid-3 .avatar-bottom-row .avatar-item {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.avatar-grid-3 img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-grid-3 .avatar-initial {
+    font-size: 11px;
+}
+
+/* 4명+ - 2x2 그리드 */
+.avatar-grid-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+    gap: 1px;
+}
+
+.avatar-grid-4 .avatar-item {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.avatar-grid-4 img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-grid-4 .avatar-initial {
+    font-size: 10px;
 }
 
 /* 방 정보 */

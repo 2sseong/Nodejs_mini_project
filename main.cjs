@@ -351,12 +351,19 @@ ipcMain.on('open-chat-window', (event, roomId) => {
     title: '채팅방',
     frame: false,
     transparent: false,
+    show: false, // [최적화] 로드 완료 전까지 숨김 (흰 화면 깜빡임 방지)
     webPreferences: {
       session: parentSession,
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     }
+  });
+
+  // [최적화] 로드 완료 시 창 표시 (체감 속도 개선)
+  win.once('ready-to-show', () => {
+    win.show();
+    win.focus();
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {

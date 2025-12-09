@@ -1,9 +1,9 @@
-// src/components/Room/Sidebar/ChatSidebar.jsx
+// src/components/Room/RoomList/RoomList.jsx
 import { useState, useMemo, useEffect, useRef } from 'react';
-import RoomListItem from './RoomListItem.jsx';
-import './ChatSidebar.css';
+import RoomItem from './RoomItem.jsx';
+import './RoomList.css';
 
-export default function ChatSidebar({
+export default function RoomList({
     connected,
     rooms,
     currentRoomId,
@@ -93,7 +93,7 @@ export default function ChatSidebar({
             <ul className="room-list">
                 {filteredRooms.length > 0 ? (
                     filteredRooms.map((room) => (
-                        <RoomListItem
+                        <RoomItem
                             key={room.ROOM_ID}
                             room={room}
                             active={String(room.ROOM_ID) === String(currentRoomId)}
