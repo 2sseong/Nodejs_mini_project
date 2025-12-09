@@ -24,7 +24,7 @@ export default function PopupChatPage() {
         sendMessage, loadMoreMessages, isLoadingMore, hasMoreMessages,
         markAsRead, isInitialLoad, isReadStatusLoaded,
         editMessage, deleteMessage, selectRoom, loadNewerMessages,
-        hasFutureMessages, isLoadingNewer
+        hasFutureMessages, isLoadingNewer, firstUnreadMsgId
     } = chatSocket;
 
     const { handleLeaveRoom, handleSendFile } = useChatHandlers({
@@ -360,6 +360,7 @@ export default function PopupChatPage() {
                             loadNewerMessages={loadNewerMessages}
                             hasFutureMessages={hasFutureMessages}
                             isLoadingNewer={isLoadingNewer}
+                            firstUnreadMsgId={firstUnreadMsgId}
                         />
                     </div>
                     <MessageInput

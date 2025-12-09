@@ -11,6 +11,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     const [isLoadingNewer, setIsLoadingNewer] = useState(false);
     const [hasFutureMessages, setHasFutureMessages] = useState(false);
     const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false);
+    const [firstUnreadMsgId, setFirstUnreadMsgId] = useState(null); // 첫 읽지 않은 메시지 ID
 
     const readStatusMapRef = useRef({});
     const isReadStatusLoadedRef = useRef(false);
@@ -153,9 +154,36 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
                     return [...filtered, ...prev];
                 });
                 isPaginatingRef.current = false;
+                setFirstUnreadMsgId(null); // 페이지네이션에서는 리셋
             } else {
                 setMessages(processedMessages);
                 setIsInitialLoad(true);
+
+                // [수정] 서버에서 보낸 입장 전 마지막 읽음 시간 사용
+                const myId = String(userId).trim().toLowerCase();
+                const myLastRead = data.myLastReadBeforeEntry || 0;
+
+                // 메시지를 시간순으로 정렬 후 첫 읽지 않은 메시지 찾기
+                const sortedMsgs = [...processedMessages].sort((a, b) => {
+                    const aTs = typeof a.SENT_AT === 'number' ? a.SENT_AT : new Date(a.SENT_AT).getTime();
+                    const bTs = typeof b.SENT_AT === 'number' ? b.SENT_AT : new Date(b.SENT_AT).getTime();
+                    return aTs - bTs;
+                });
+
+                let foundId = null;
+                for (const msg of sortedMsgs) {
+                    const senderId = String(msg.SENDER_ID || msg.sender_id || '').trim().toLowerCase();
+                    // 내가 보낸 메시지는 스킵
+                    if (senderId === myId) continue;
+
+                    const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
+                    // 내 마지막 읽음 시점보다 이후의 메시지 = 읽지 않은 메시지
+                    if (msgTs > myLastRead) {
+                        foundId = msg.MSG_ID || msg.msg_id;
+                        break;
+                    }
+                }
+                setFirstUnreadMsgId(foundId);
             }
             setIsLoadingMore(false);
             if (rawMessages.length < CHAT_PAGE_SIZE) setHasMoreMessages(false);
@@ -235,6 +263,7 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
     return {
         messages, isLoadingMore, hasMoreMessages, isInitialLoad, isReadStatusLoaded,
         sendMessage, loadMoreMessages, markAsRead, editMessage, deleteMessage,
-        clearMessages: () => setMessages([]), overrideMessages, loadNewerMessages, isLoadingNewer, hasFutureMessages
+        clearMessages: () => setMessages([]), overrideMessages, loadNewerMessages, isLoadingNewer, hasFutureMessages,
+        firstUnreadMsgId
     };
 }

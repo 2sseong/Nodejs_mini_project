@@ -24,19 +24,24 @@ export default function messageSocket(io, socket) {
         socket.join(String(roomId));
         console.log(`[Socket] User ${userId} joined room channel: ${roomId}`);
         try {
+            // [추가] 읽음 처리 전 현재 사용자의 lastReadTimestamp 조회
+            const memberReadStatusBefore = await messageService.getMemberReadStatus(roomId);
+            const myLastReadBeforeEntry = memberReadStatusBefore[currentUserId] || 0;
+
             // 사용자 입장 시점 이후 메시지만 조회
             const messages = await messageService.getHistory({ roomId, beforeMsgId, limit, userId: currentUserId });
 
             if (!messages || messages.length === 0) {
-                const memberReadStatus = await messageService.getMemberReadStatus(roomId);
                 const membersInRoom = await roomService.getRoomMemberCount(roomId);
                 return socket.emit('chat:history', {
                     messages: [],
                     membersInRoom: membersInRoom || 0,
-                    memberReadStatus: memberReadStatus || {}
+                    memberReadStatus: memberReadStatusBefore || {},
+                    myLastReadBeforeEntry
                 });
             }
 
+            // 초기 로딩 시에만 읽음 처리 (페이지네이션 제외)
             if (messages.length > 0 && !beforeMsgId) {
                 const latestMsg = messages[messages.length - 1];
                 if (latestMsg && latestMsg.SENT_AT) {
@@ -67,7 +72,8 @@ export default function messageSocket(io, socket) {
             socket.emit('chat:history', {
                 messages: messagesWithUnread,
                 membersInRoom: membersInRoom,
-                memberReadStatus: memberReadStatus
+                memberReadStatus: memberReadStatus,
+                myLastReadBeforeEntry // [추가] 입장 전 마지막 읽음 시간
             });
 
         } catch (e) {
