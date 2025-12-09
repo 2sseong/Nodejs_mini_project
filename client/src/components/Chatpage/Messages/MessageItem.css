@@ -23,9 +23,10 @@
 /* 말풍선 공통 */
 .message-bubble {
     display: inline-block;
-    max-width: min(300px, 75%);
-    /* 고정 픽셀로 일관성 유지, 작은 화면은 75%로 반응형 */
-    padding: 8px 12px;
+    /* 입력창과 동일한 너비: 입력 영역(100%) - 버튼들(38+8+38+8+전송버튼52) - 좌우패딩(24) */
+    max-width: calc(100% - 180px);
+    padding: 10px 14px;
+    /* 입력창과 동일한 padding */
     border-radius: 16px;
     word-break: break-word;
     word-wrap: break-word;
@@ -33,7 +34,8 @@
     white-space: pre-wrap;
     box-shadow: var(--shadow-sm);
     font-size: var(--font-size-sm);
-    line-height: 1.5;
+    line-height: 1.4;
+    /* 입력창과 동일한 line-height */
     position: relative;
 }
 
