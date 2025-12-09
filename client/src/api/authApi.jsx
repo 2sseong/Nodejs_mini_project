@@ -163,3 +163,17 @@ export async function getPositions() {
     const data = await response.json();
     return data.data || [];
 }
+
+/**
+ * 비밀번호 찾기 (임시 비밀번호 이메일 발송)
+ * @param {string} email - 가입한 이메일 주소
+ * @returns {Promise<object>} - { success, message }
+ */
+export async function forgotPassword(email) {
+    const response = await fetch(`${API_URL}/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    return response.json();
+}

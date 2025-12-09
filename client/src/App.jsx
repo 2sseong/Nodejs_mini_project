@@ -6,6 +6,7 @@ import RoomPage from './pages/RoomPage.jsx';
 import MyInfoPage from './pages/MyInfoPage.jsx';
 import UserPage from './pages/UserPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import Titlebar from './components/Titlebar/Titlebar.jsx';
 import NotificationWindowPage from './pages/NotificationWindowPage.jsx';
 import { useAuth } from './hooks/AuthContext.jsx';
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/chat" replace />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
                 <Route path="/chat" element={
                     <ProtectedRoute><RoomPage /></ProtectedRoute>

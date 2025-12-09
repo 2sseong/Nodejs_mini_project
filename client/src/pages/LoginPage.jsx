@@ -114,7 +114,7 @@ export default function LoginPage() {
                 </button>
 
                 <div className="help-row">
-                    <a href="#" onClick={(e) => e.preventDefault()}>비밀번호 찾기</a>
+                    <Link to="/forgot-password">비밀번호 찾기</Link>
                     <Link to="/signup">회원가입</Link>
                 </div>
             </form>

@@ -6,6 +6,7 @@ import * as authRepository from './authRepository.js';
 import fs from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import path from 'path';
+import { sendTempPasswordEmail } from '../../utils/emailService.js';
 
 const saltRounds = 10;
 
@@ -220,4 +221,39 @@ export async function getAllPositions() {
     }));
 
     return formatted;
+}
+
+/**
+ * 임시 비밀번호 생성
+ */
+function generateTempPassword(length = 8) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+}
+
+/**
+ * 비밀번호 재설정 (이메일로 임시 비밀번호 발송)
+ */
+export async function resetPassword(email) {
+    // 1. 이메일로 사용자 조회
+    const user = await authRepository.findUserByEmail(email);
+    if (!user) {
+        throw new Error('등록되지 않은 이메일입니다.');
+    }
+
+    // 2. 임시 비밀번호 생성
+    const tempPassword = generateTempPassword();
+
+    // 3. 비밀번호 해시화 및 DB 업데이트
+    const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
+    await authRepository.updateUserPassword(user.USER_ID, hashedPassword);
+
+    // 4. 이메일 발송
+    await sendTempPasswordEmail(email, tempPassword);
+
+    return { success: true };
 }

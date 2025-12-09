@@ -195,3 +195,29 @@ export async function getPositions(req, res) {
         res.status(500).json({ message: '직급 목록 조회 실패' });
     }
 }
+
+/**
+ * 비밀번호 찾기 (임시 비밀번호 이메일 발송)
+ * POST /api/auth/forgot-password
+ */
+export async function forgotPassword(req, res) {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: '이메일을 입력해주세요.' });
+        }
+
+        await authService.resetPassword(email);
+
+        res.json({ success: true, message: '임시 비밀번호가 이메일로 발송되었습니다.' });
+    } catch (error) {
+        console.error('비밀번호 찾기 에러:', error.message);
+
+        if (error.message === '등록되지 않은 이메일입니다.') {
+            return res.status(404).json({ success: false, message: error.message });
+        }
+
+        res.status(500).json({ success: false, message: '비밀번호 재설정 중 오류가 발생했습니다.' });
+    }
+}
