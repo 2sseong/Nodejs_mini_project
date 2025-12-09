@@ -282,7 +282,10 @@ export default function PopupChatPage() {
                                                     {member.NICKNAME?.charAt(0) || '?'}
                                                 </div>
                                             )}
-                                            <span className="member-nickname">{member.NICKNAME}</span>
+                                            <span className="member-nickname">
+                                                {member.USER_ID === userId && <span className="me-badge">나</span>}
+                                                {member.NICKNAME}
+                                            </span>
                                         </div>
                                     ))
                                 )}
