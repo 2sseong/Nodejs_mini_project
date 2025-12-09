@@ -10,18 +10,26 @@ export async function listRoomsForUser({ userId }) {
 }
 
 export async function leaveRoom({ roomId, userId, userNickname }) {
-    const rowsAffected = await roomRepo.deleteMember({ roomId, userId });
-    if (rowsAffected === 0) {
-        throw { status: 404, message: '방 또는 사용자를 찾을 수 없습니다.' };
+    const result = await roomRepo.deleteMember({ roomId, userId });
+
+    if (!result.success) {
+        throw { status: 404, message: result.message || '방 또는 사용자를 찾을 수 없습니다.' };
     }
 
-    // 시스템 메시지 저장
-    const systemMsg = await messageRepo.saveSystemMessage({
-        roomId,
-        content: `${userNickname || '알 수 없음'}님이 나갔습니다.`
-    });
+    // 방이 삭제된 경우 시스템 메시지 저장 안함 (FK 오류 방지)
+    let systemMsg = null;
+    if (!result.roomDeleted) {
+        systemMsg = await messageRepo.saveSystemMessage({
+            roomId,
+            content: `${userNickname || '알 수 없음'}님이 나갔습니다.`
+        });
+    }
 
-    return { rowsAffected, systemMessage: systemMsg };
+    return {
+        rowsAffected: 1,
+        systemMessage: systemMsg,
+        roomDeleted: result.roomDeleted
+    };
 }
 
 // 방인원 확인 (Message Service 등에서도 필요 시 사용)
