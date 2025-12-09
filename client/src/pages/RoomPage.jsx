@@ -7,12 +7,12 @@ import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatNotifications } from '../hooks/useChatNotifications';
 
-import ChatSidebar from '../components/Room/Sidebar/ChatSidebar.jsx';
+import RoomList from '../components/Room/RoomList/RoomList.jsx';
 import CreateRoomModal from '../components/Room/Modals/CreateRoomModal.jsx';
 
 export default function RoomPage() {
     const { authLoaded, userId, userNickname } = useAuth();
-    
+
     // 1. 소켓 연결 및 방 목록 관리
     // (Main 창에서는 채팅방 선택/갱신 기능 직접 사용 X -> 제거)
     const {
@@ -26,10 +26,10 @@ export default function RoomPage() {
     // 2. 알림 로직 (메인 창에서 백그라운드 알림 수신)
     // selectRoom: 알림 클릭 시 동작. 메인 창에서는 클릭 시 팝업을 열도록 설정
     useChatNotifications({
-        socket, 
-        userId, 
-        rooms, 
-        currentRoomId: null, 
+        socket,
+        userId,
+        rooms,
+        currentRoomId: null,
         selectRoom: (roomId) => {
             if (window.electronAPI) {
                 window.electronAPI.openChatWindow(roomId);
@@ -50,9 +50,9 @@ export default function RoomPage() {
     if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
     return (
-        <div className="chat-container" style={{ flexDirection: 'column' }}> 
+        <div className="chat-container" style={{ flexDirection: 'column' }}>
             <div style={{ width: '100%', height: '100%' }}>
-                <ChatSidebar
+                <RoomList
                     userNickname={userNickname}
                     connected={connected}
                     rooms={rooms}
