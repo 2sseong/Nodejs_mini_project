@@ -6,16 +6,16 @@ import * as authService from './authService.js';
  * POST /api/auth/signup 요청 처리
  */
 export async function signup(req, res) {
-    const { email, password, nickname, deptId, posId } = req.body;
+    const { email, password, nickname, deptId, posId, phone, address, addressDetail } = req.body;
 
-    // 필수 입력값 검증
+    // 필수 입력값 검증 (전화번호/주소는 선택)
     if (!email || !password || !nickname || !deptId || !posId) {
         return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
     }
 
     try {
         // 서비스로 전달
-        const newUser = await authService.signupUser({ email, password, nickname, deptId, posId });
+        const newUser = await authService.signupUser({ email, password, nickname, deptId, posId, phone, address, addressDetail });
 
         // 성공 응답
         res.status(201).json({
@@ -104,13 +104,16 @@ export async function verifyPassword(req, res) {
 // 정보 수정
 export async function updateInfo(req, res) {
     try {
-        const { nickname, deptId, posId, newPassword } = req.body;
+        const { nickname, deptId, posId, phone, address, addressDetail, newPassword } = req.body;
         const userId = req.user.userId;
 
         const result = await authService.updateUserInfo(userId, {
             nickname,
             deptId,
             posId,
+            phone,
+            address,
+            addressDetail,
             newPassword
         });
         res.json({ success: true, data: result });

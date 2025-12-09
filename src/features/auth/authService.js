@@ -12,7 +12,7 @@ const saltRounds = 10;
 /**
  * 회원가입 비즈니스 로직
  */
-export async function signupUser({ email, password, nickname, deptId, posId }) {
+export async function signupUser({ email, password, nickname, deptId, posId, phone, address, addressDetail }) {
 
     // 1. 이메일 중복 확인 (Repository 호출)
     const existingUser = await authRepository.findUserByEmail(email);
@@ -28,7 +28,7 @@ export async function signupUser({ email, password, nickname, deptId, posId }) {
     const newUserId = uuidv4();
 
     // 4. DB에 삽입 (Repository 호출)
-    const userData = { userId: newUserId, email, hashedPassword, nickname, deptId, posId };
+    const userData = { userId: newUserId, email, hashedPassword, nickname, deptId, posId, phone, address, addressDetail };
     await authRepository.insertUser(userData);
 
     return {
@@ -144,10 +144,10 @@ export async function updateProfileImage(userId, newFile) {
 }
 
 // 정보 수정
-export async function updateUserInfo(userId, { nickname, deptId, posId, newPassword }) {
-    // 1. 닉네임, 부서, 직급 업데이트
+export async function updateUserInfo(userId, { nickname, deptId, posId, phone, address, addressDetail, newPassword }) {
+    // 1. 닉네임, 부서, 직급, 전화번호, 주소 업데이트
     if (nickname) {
-        await authRepository.updateUserInfo(userId, { nickname, deptId, posId });
+        await authRepository.updateUserInfo(userId, { nickname, deptId, posId, phone, address, addressDetail });
     }
 
     // 2. 비밀번호 변경 요청이 있다면 처리

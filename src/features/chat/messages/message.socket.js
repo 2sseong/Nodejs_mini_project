@@ -24,7 +24,8 @@ export default function messageSocket(io, socket) {
         socket.join(String(roomId));
         console.log(`[Socket] User ${userId} joined room channel: ${roomId}`);
         try {
-            const messages = await messageService.getHistory({ roomId, beforeMsgId, limit });
+            // 사용자 입장 시점 이후 메시지만 조회
+            const messages = await messageService.getHistory({ roomId, beforeMsgId, limit, userId: currentUserId });
 
             if (!messages || messages.length === 0) {
                 const memberReadStatus = await messageService.getMemberReadStatus(roomId);

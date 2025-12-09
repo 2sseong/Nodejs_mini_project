@@ -1,7 +1,7 @@
 import db, { oracledb, executeQuery, executeTransaction, getConnection as getDBConnection } from '../../../../db/oracle.js';
 
-// 1. 메시지 목록 조회
-export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
+// 1. 메시지 목록 조회 (사용자 입장 시점 이후 메시지만)
+export async function getHistory({ roomId, limit = 50, beforeMsgId = null, userId = null }) {
     const binds = { roomId: Number(roomId), limit: Number(limit) };
 
     let innerSql = `
@@ -19,6 +19,12 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
         LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
         WHERE T1.ROOM_ID = :roomId
     `;
+
+    // 사용자 입장 시점 이후 메시지만 조회
+    if (userId) {
+        innerSql += ` AND T1.SENT_AT >= (SELECT JOINED_AT FROM T_ROOM_MEMBER WHERE ROOM_ID = :roomId AND USER_ID = :userId) `;
+        binds.userId = userId;
+    }
 
     if (beforeMsgId) {
         innerSql += ` AND T1.MSG_ID < :beforeMsgId `;
