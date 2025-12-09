@@ -201,3 +201,62 @@
     padding: 40px;
     color: var(--text-muted);
 }
+
+/* 주소 입력 */
+.address-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.address-input-row .address-field {
+    flex: 1;
+}
+
+.btn-address-search {
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--radius-md);
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color var(--transition-fast);
+}
+
+.btn-address-search:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* 주소 검색 모달 */
+.address-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.address-modal-content {
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow-lg);
+}
+
+/* 필수 표시 */
+.required {
+    color: #e74c3c;
+    font-weight: 600;
+}

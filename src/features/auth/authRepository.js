@@ -25,9 +25,9 @@ async function findUserByEmail(email) {
 async function insertUser(userData) {
     const insertSql = `
         INSERT INTO T_USER 
-            (USER_ID, USERNAME, PASSWORD_HASH, NICKNAME, CREATED_AT, DEPT_ID, POS_ID)
+            (USER_ID, USERNAME, PASSWORD_HASH, NICKNAME, CREATED_AT, DEPT_ID, POS_ID, PHONE, ADDRESS, ADDRESS_DETAIL)
         VALUES 
-            (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP, :deptId, :posId)
+            (:userId, :email, :hash, :nickname, CURRENT_TIMESTAMP, :deptId, :posId, :phone, :address, :addressDetail)
     `;
     await executeTransaction(insertSql, {
         userId: userData.userId,
@@ -35,7 +35,10 @@ async function insertUser(userData) {
         hash: userData.hashedPassword,
         nickname: userData.nickname,
         deptId: userData.deptId,
-        posId: userData.posId
+        posId: userData.posId,
+        phone: userData.phone || null,
+        address: userData.address || null,
+        addressDetail: userData.addressDetail || null
     });
 }
 
@@ -72,6 +75,9 @@ export async function findUserById(userId) {
             U.CREATED_AT,
             U.DEPT_ID,
             U.POS_ID,
+            U.PHONE,
+            U.ADDRESS,
+            U.ADDRESS_DETAIL,
             D.DEPT_NAME AS DEPARTMENT, 
             P.POS_NAME AS POSITION
         FROM T_USER U
@@ -97,17 +103,20 @@ export async function updateProfilePic(userId, filePath) {
 }
 
 /**
- * 사용자 정보(닉네임, 부서, 직급) 수정
+ * 사용자 정보(닉네임, 부서, 직급, 전화번호, 주소) 수정
  */
-export async function updateUserInfo(userId, { nickname, deptId, posId }) {
+export async function updateUserInfo(userId, { nickname, deptId, posId, phone, address, addressDetail }) {
     const sql = `
         UPDATE T_USER 
         SET NICKNAME = :nickname,
             DEPT_ID = :deptId,
-            POS_ID = :posId
+            POS_ID = :posId,
+            PHONE = :phone,
+            ADDRESS = :address,
+            ADDRESS_DETAIL = :addressDetail
         WHERE USER_ID = :userId
     `;
-    await executeTransaction(sql, { nickname, deptId, posId, userId });
+    await executeTransaction(sql, { nickname, deptId, posId, phone, address, addressDetail, userId });
 }
 
 // 비밀번호 변경 함수

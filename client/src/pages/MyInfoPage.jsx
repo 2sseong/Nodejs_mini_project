@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DaumPostcode from 'react-daum-postcode';
 import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage, getDepartments, getPositions } from '../api/authApi';
 import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal';
 import '../styles/MyInfoPage.css';
@@ -14,6 +15,10 @@ export default function MyInfoPage() {
     const [posId, setPosId] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [phone, setPhone] = useState('');
+    const [address, setAddress] = useState('');
+    const [addressDetail, setAddressDetail] = useState('');
+    const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
     // 부서/직급 목록
     const [deptList, setDeptList] = useState([]);
@@ -52,6 +57,9 @@ export default function MyInfoPage() {
                 // DEPT_ID, POS_ID로 설정 (서버에서 전달되는 필드명 확인 필요)
                 setDeptId(res.data.DEPT_ID?.toString() || '');
                 setPosId(res.data.POS_ID?.toString() || '');
+                setPhone(res.data.PHONE || '');
+                setAddress(res.data.ADDRESS || '');
+                setAddressDetail(res.data.ADDRESS_DETAIL || '');
             }
         } catch (err) {
             console.error(err);
@@ -104,12 +112,32 @@ export default function MyInfoPage() {
             }
         }
 
+        // 전화번호/주소 필수 검증
+        if (!phone || !address) {
+            openModal('입력 오류', '전화번호와 주소는 필수 입력입니다.', true);
+            return;
+        }
+
+        // 전화번호 포맷팅 (01012345678 -> 010-1234-5678)
+        const formatPhone = (rawPhone) => {
+            const digits = rawPhone.replace(/\D/g, '');
+            if (digits.length === 11) {
+                return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+            } else if (digits.length === 10) {
+                return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+            }
+            return digits;
+        };
+
         try {
             const updateData = {
                 nickname: nicknameInput,
                 deptId: deptId ? Number(deptId) : undefined,
                 posId: posId ? Number(posId) : undefined,
-                newPassword: newPassword || undefined
+                newPassword: newPassword || undefined,
+                phone: formatPhone(phone),
+                address: address,
+                addressDetail: addressDetail || undefined
             };
 
             await updateUserInfo(updateData);
@@ -170,7 +198,7 @@ export default function MyInfoPage() {
                     </label>
                 </div>
                 <h2 className="profile-name">{user.NICKNAME}</h2>
-                <p className="profile-username">@{user.USERNAME}</p>
+                <p className="profile-username">{user.USERNAME}</p>
             </div>
 
             {/* 정보 카드 */}
@@ -184,6 +212,16 @@ export default function MyInfoPage() {
                         <div className="info-row">
                             <span className="info-label">직급</span>
                             <span className="info-value">{user.POSITION || '-'}</span>
+                        </div>
+                        <div className="info-row">
+                            <span className="info-label">전화번호</span>
+                            <span className="info-value">{user.PHONE || '-'}</span>
+                        </div>
+                        <div className="info-row">
+                            <span className="info-label">주소</span>
+                            <span className="info-value">
+                                {user.ADDRESS ? `${user.ADDRESS}${user.ADDRESS_DETAIL ? ' ' + user.ADDRESS_DETAIL : ''}` : '-'}
+                            </span>
                         </div>
                         <button className="btn-edit" onClick={handleEditClick}>
                             <i className="bi bi-pencil"></i> 정보 수정
@@ -244,6 +282,45 @@ export default function MyInfoPage() {
                             </select>
                         </div>
                         <div className="field-group">
+                            <label>전화번호 <span className="required">*</span></label>
+                            <input
+                                type="tel"
+                                className="input-field"
+                                placeholder="01012345678 (- 없이 입력)"
+                                value={phone}
+                                onChange={e => setPhone(e.target.value)}
+                            />
+                        </div>
+                        <div className="field-group">
+                            <label>주소 <span className="required">*</span></label>
+                            <div className="address-input-row">
+                                <input
+                                    type="text"
+                                    className="input-field address-field"
+                                    placeholder="주소 검색을 클릭하세요"
+                                    value={address}
+                                    readOnly
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-address-search"
+                                    onClick={() => setIsAddressModalOpen(true)}
+                                >
+                                    <i className="bi bi-search"></i> 검색
+                                </button>
+                            </div>
+                        </div>
+                        <div className="field-group">
+                            <label>상세주소</label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                placeholder="상세주소 입력"
+                                value={addressDetail}
+                                onChange={e => setAddressDetail(e.target.value)}
+                            />
+                        </div>
+                        <div className="field-group">
                             <label>새 비밀번호 (선택)</label>
                             <input
                                 type="password"
@@ -283,6 +360,22 @@ export default function MyInfoPage() {
                 confirmText="확인"
                 cancelText={null}
             />
+
+            {/* 주소 검색 모달 */}
+            {isAddressModalOpen && (
+                <div className="address-modal-backdrop" onClick={() => setIsAddressModalOpen(false)}>
+                    <div className="address-modal-content" onClick={e => e.stopPropagation()}>
+                        <DaumPostcode
+                            onComplete={(data) => {
+                                setAddress(data.address);
+                                setIsAddressModalOpen(false);
+                            }}
+                            autoClose={false}
+                            style={{ width: '100%', height: '400px' }}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
