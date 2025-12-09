@@ -122,6 +122,18 @@
     background-color: var(--bg-hover);
 }
 
+/* 본인 표시 뱃지 */
+.me-badge {
+    display: inline-block;
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: var(--radius-full);
+    margin-right: 6px;
+}
+
 .member-modal-item .member-avatar {
     width: 36px;
     height: 36px;

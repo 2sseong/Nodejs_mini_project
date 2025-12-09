@@ -221,7 +221,7 @@ export async function listRoomsByUser({ userId }) {
 
     if (rooms.length === 0) return [];
 
-    // 2. 모든 방의 멤버 프로필 정보 조회 (최대 4명)
+    // 2. 모든 방의 멤버 프로필 정보 조회 (본인 제외, 최대 4명)
     const roomIds = rooms.map(r => r.ROOM_ID);
     const memberSql = `
         SELECT * FROM (
@@ -234,11 +234,12 @@ export async function listRoomsByUser({ userId }) {
             FROM T_ROOM_MEMBER rm
             JOIN T_USER u ON rm.USER_ID = u.USER_ID
             WHERE rm.ROOM_ID IN (${roomIds.map((_, i) => `:r${i}`).join(',')})
+              AND rm.USER_ID != :userId
         )
         WHERE rn <= 4
     `;
 
-    const memberBinds = {};
+    const memberBinds = { userId };
     roomIds.forEach((id, i) => { memberBinds[`r${i}`] = id; });
 
     const memberRes = await executeQuery(memberSql, memberBinds);
