@@ -219,6 +219,23 @@ export default function MessageList({
                 if (showDate) lastDate = messageDate;
 
                 const isMine = String(m.SENDER_ID || m.sender_id) === String(userId);
+                const messageType = m.MESSAGE_TYPE || m.message_type;
+
+                // 시스템 메시지 렌더링 (초대/퇴장 등)
+                if (messageType === 'SYSTEM') {
+                    return (
+                        <div key={msgId} className="message-row-container">
+                            {showDate && (
+                                <div className="date-separator">
+                                    <span className="date-text">{messageDate}</span>
+                                </div>
+                            )}
+                            <div className="system-message">
+                                <span className="system-message-text">{m.CONTENT || m.content}</span>
+                            </div>
+                        </div>
+                    );
+                }
 
                 return (
                     <div key={msgId} className="message-row-container">
@@ -234,7 +251,7 @@ export default function MessageList({
                             profilePic={m.PROFILE_PIC || m.profile_pic}
                             sentAt={sentAt}
                             content={m.CONTENT || m.content}
-                            messageType={m.MESSAGE_TYPE || m.message_type}
+                            messageType={messageType}
                             fileUrl={m.FILE_URL || m.file_url}
                             fileName={m.FILE_NAME || m.file_name}
                             unreadCount={m.unreadCount}

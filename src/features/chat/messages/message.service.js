@@ -17,8 +17,8 @@ async function attachUnreadCounts(roomId, messages) {
     });
 }
 
-export async function getHistory({ roomId, limit, beforeMsgId }) {
-    return await messageRepo.getHistory({ roomId, limit, beforeMsgId });
+export async function getHistory({ roomId, limit, beforeMsgId, userId }) {
+    return await messageRepo.getHistory({ roomId, limit, beforeMsgId, userId });
 }
 
 // 텍스트 메시지 저장

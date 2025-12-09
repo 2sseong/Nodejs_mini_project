@@ -1,7 +1,10 @@
 // Electron 메인 프로세스
 
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog, shell, Tray, nativeImage, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
 const { spawn } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -12,9 +15,108 @@ let backendProcess;
 let notificationWindow = null;
 let notifTimeout = null;
 let chatWindows = {}; // 채팅창 관리 객체
+let tray = null; // 시스템 트레이
 
 // 메인 창 관리 배열
 let mainWindows = [];
+
+// 배지 아이콘 동적 생성 함수 (숫자 표시)
+function createBadgeIcon(count) {
+  const size = 16;
+  const canvas = require('canvas');
+  // canvas 모듈이 없으면 간단한 nativeImage 사용
+  // 숫자 배지는 nativeImage.createFromDataURL로 생성
+  const text = count > 99 ? '99+' : String(count);
+
+  // 간단한 빨간 원 SVG 생성
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#FF3B30"/>
+      <text x="${size / 2}" y="${size / 2 + 4}" font-size="10" font-family="Arial" font-weight="bold" fill="white" text-anchor="middle">${text}</text>
+    </svg>
+  `;
+
+  const base64 = Buffer.from(svg).toString('base64');
+  return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${base64}`);
+}
+
+// Overlay 배지 아이콘 (빨간 점) - Buffer로 직접 생성
+function createOverlayIcon() {
+  // 16x16 이미지, 12px 빨간 원 (중앙에 작은 원)
+  const size = 16;
+  const channels = 4; // BGRA (Windows)
+  const buffer = Buffer.alloc(size * size * channels);
+
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const radius = 5; // 더 작은 원 (5px 반지름)
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const index = (y * size + x) * channels;
+      const distance = Math.sqrt((x - centerX + 0.5) ** 2 + (y - centerY + 0.5) ** 2);
+
+      if (distance <= radius) {
+        // 빨간색 - BGRA 순서 (Windows)
+        buffer[index] = 48;      // B
+        buffer[index + 1] = 59;  // G
+        buffer[index + 2] = 255; // R
+        buffer[index + 3] = 255; // A
+      } else {
+        // 투명
+        buffer[index] = 0;
+        buffer[index + 1] = 0;
+        buffer[index + 2] = 0;
+        buffer[index + 3] = 0;
+      }
+    }
+  }
+
+  return nativeImage.createFromBuffer(buffer, { width: size, height: size });
+}
+
+// 트레이 생성 함수
+function createTray() {
+  // 회사 로고 사용
+  const logoPath = path.join(__dirname, 'assets', 'logo.png');
+  const trayIcon = nativeImage.createFromPath(logoPath).resize({ width: 20, height: 20 });
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip('Chat App');
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '열기', click: () => {
+        if (mainWindows.length > 0) {
+          const win = mainWindows[0];
+          if (win.isMinimized()) win.restore();
+          win.show();
+          win.focus();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '종료', click: () => {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    if (mainWindows.length > 0) {
+      const win = mainWindows[0];
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+  });
+
+  console.log('[Main] Tray created');
+}
 
 function startBackendServer() {
   const backendPath = path.join(__dirname, 'src');
@@ -107,7 +209,11 @@ function showCustomNotification(data) {
 }
 
 function createWindow(partition = 'persist:user1') {
+  // 회사 로고 아이콘
+  const logoPath = path.join(__dirname, 'assets', 'logo.png');
+
   let mainWindow = new BrowserWindow({
+    icon: logoPath,
     action: 'auto',
     width: 420,
     height: 700,
@@ -159,6 +265,7 @@ function createWindow(partition = 'persist:user1') {
 }
 
 app.whenReady().then(() => {
+  createTray(); // 시스템 트레이 생성
   startBackendServer();
 });
 
@@ -172,6 +279,29 @@ app.on('activate', () => {
 });
 
 // === IPC 핸들러 ===
+
+// [추가] 배지 업데이트 핸들러 - 각 창에 개별 적용
+ipcMain.on('update-badge', (event, count) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+
+  if (count > 0) {
+    const icon = createOverlayIcon();
+    win.setOverlayIcon(icon, `안 읽은 메시지 ${count}개`);
+  } else {
+    win.setOverlayIcon(null, '');
+  }
+
+  // 트레이 툴팁은 최대 count로 업데이트
+  if (tray && !tray.isDestroyed()) {
+    if (count > 0) {
+      tray.setToolTip(`Chat App - 안 읽은 메시지 ${count}개`);
+    } else {
+      tray.setToolTip('Chat App');
+    }
+  }
+});
+
 ipcMain.on('window-minimize', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.minimize();
@@ -232,19 +362,26 @@ ipcMain.on('open-chat-window', (event, roomId) => {
   const parentSession = event.sender.session;
 
   const win = new BrowserWindow({
-    width: 550,
+    width: 400,
     height: 600,
-    minWidth: 550,
+    minWidth: 400,
     minHeight: 600,
     title: '채팅방',
     frame: false,
     transparent: false,
+    show: false, // [최적화] 로드 완료 전까지 숨김 (흰 화면 깜빡임 방지)
     webPreferences: {
       session: parentSession,
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     }
+  });
+
+  // [최적화] 로드 완료 시 창 표시 (체감 속도 개선)
+  win.once('ready-to-show', () => {
+    win.show();
+    win.focus();
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -303,4 +440,125 @@ ipcMain.on('resize-window', (event, bounds) => {
 ipcMain.handle('get-window-bounds', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   return win ? win.getBounds() : null;
+});
+
+//-------------------------파일 다운로드 및 이미지 미리보기-----------------------------//
+
+// [추가] 이미지 미리보기 창 열기
+ipcMain.on('open-image-preview', (event, { imageUrl, fileName }) => {
+  const parentSession = event.sender.session;
+
+  const previewWin = new BrowserWindow({
+    width: 800,
+    height: 600,
+    minWidth: 400,
+    minHeight: 300,
+    title: fileName || '이미지 미리보기',
+    frame: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      session: parentSession,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  // 이미지 미리보기용 HTML 생성
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${fileName || '이미지 미리보기'}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          background: #1a1a1a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          overflow: hidden;
+        }
+        img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+          cursor: zoom-in;
+        }
+        img.zoomed {
+          max-width: none;
+          max-height: none;
+          cursor: zoom-out;
+        }
+      </style>
+    </head>
+    <body>
+      <img src="${imageUrl}" alt="${fileName}" onclick="this.classList.toggle('zoomed')">
+    </body>
+    </html>
+  `;
+
+  previewWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
+  previewWin.setMenu(null);
+});
+
+// [추가] 파일 다운로드 (저장 대화상자 사용)
+ipcMain.handle('download-file', async (event, { url, fileName }) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+
+    // 저장 다이얼로그 표시
+    const result = await dialog.showSaveDialog(win, {
+      defaultPath: fileName,
+      title: '파일 저장',
+      buttonLabel: '저장'
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, message: '취소됨' };
+    }
+
+    // HTTP(S) 요청으로 파일 다운로드
+    const protocol = url.startsWith('https') ? https : http;
+
+    return new Promise((resolve) => {
+      const fileStream = fs.createWriteStream(result.filePath);
+
+      protocol.get(url, (response) => {
+        // 리다이렉트 처리
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          const redirectProtocol = response.headers.location.startsWith('https') ? https : http;
+          redirectProtocol.get(response.headers.location, (redirectResponse) => {
+            redirectResponse.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close();
+              resolve({ success: true, filePath: result.filePath });
+            });
+          }).on('error', (err) => {
+            fs.unlink(result.filePath, () => { });
+            resolve({ success: false, message: err.message });
+          });
+          return;
+        }
+
+        response.pipe(fileStream);
+        fileStream.on('finish', () => {
+          fileStream.close();
+          resolve({ success: true, filePath: result.filePath });
+        });
+      }).on('error', (err) => {
+        fs.unlink(result.filePath, () => { });
+        resolve({ success: false, message: err.message });
+      });
+    });
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+// [추가] 외부 URL 열기 (브라우저에서)
+ipcMain.on('open-external-url', (event, url) => {
+  shell.openExternal(url);
 });

@@ -181,5 +181,15 @@ export function useChatRooms(socket, userId, connected) {
         };
     }, [socket, userId, connected, refreshRooms]);
 
+    // [추가] 안 읽은 메시지 총합이 변경될 때 Electron 배지 업데이트
+    useEffect(() => {
+        const totalUnread = rooms.reduce((sum, room) => sum + (room.UNREAD_COUNT || 0), 0);
+
+        // Electron 환경에서만 배지 업데이트
+        if (window.electronAPI?.updateBadge) {
+            window.electronAPI.updateBadge(totalUnread);
+        }
+    }, [rooms]);
+
     return { rooms, currentRoomId, selectRoom, refreshRooms };
 }

@@ -6,13 +6,14 @@ import * as authRepository from './authRepository.js';
 import fs from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import path from 'path';
+import { sendTempPasswordEmail } from '../../utils/emailService.js';
 
 const saltRounds = 10;
 
 /**
  * 회원가입 비즈니스 로직
  */
-export async function signupUser({ email, password, nickname, deptId, posId }) {
+export async function signupUser({ email, password, nickname, deptId, posId, phone, address, addressDetail }) {
 
     // 1. 이메일 중복 확인 (Repository 호출)
     const existingUser = await authRepository.findUserByEmail(email);
@@ -28,7 +29,7 @@ export async function signupUser({ email, password, nickname, deptId, posId }) {
     const newUserId = uuidv4();
 
     // 4. DB에 삽입 (Repository 호출)
-    const userData = { userId: newUserId, email, hashedPassword, nickname, deptId, posId };
+    const userData = { userId: newUserId, email, hashedPassword, nickname, deptId, posId, phone, address, addressDetail };
     await authRepository.insertUser(userData);
 
     return {
@@ -144,10 +145,10 @@ export async function updateProfileImage(userId, newFile) {
 }
 
 // 정보 수정
-export async function updateUserInfo(userId, { nickname, department, position, newPassword}) {
-    // 1. 닉네임 업데이트
+export async function updateUserInfo(userId, { nickname, deptId, posId, phone, address, addressDetail, newPassword }) {
+    // 1. 닉네임, 부서, 직급, 전화번호, 주소 업데이트
     if (nickname) {
-        await authRepository.updateUserInfo( nickname, department, position );
+        await authRepository.updateUserInfo(userId, { nickname, deptId, posId, phone, address, addressDetail });
     }
 
     // 2. 비밀번호 변경 요청이 있다면 처리
@@ -220,4 +221,39 @@ export async function getAllPositions() {
     }));
 
     return formatted;
+}
+
+/**
+ * 임시 비밀번호 생성
+ */
+function generateTempPassword(length = 8) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+}
+
+/**
+ * 비밀번호 재설정 (이메일로 임시 비밀번호 발송)
+ */
+export async function resetPassword(email) {
+    // 1. 이메일로 사용자 조회
+    const user = await authRepository.findUserByEmail(email);
+    if (!user) {
+        throw new Error('등록되지 않은 이메일입니다.');
+    }
+
+    // 2. 임시 비밀번호 생성
+    const tempPassword = generateTempPassword();
+
+    // 3. 비밀번호 해시화 및 DB 업데이트
+    const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
+    await authRepository.updateUserPassword(user.USER_ID, hashedPassword);
+
+    // 4. 이메일 발송
+    await sendTempPasswordEmail(email, tempPassword);
+
+    return { success: true };
 }

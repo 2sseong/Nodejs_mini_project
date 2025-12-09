@@ -6,16 +6,16 @@ import * as authService from './authService.js';
  * POST /api/auth/signup 요청 처리
  */
 export async function signup(req, res) {
-    const { email, password, nickname, deptId, posId } = req.body;
+    const { email, password, nickname, deptId, posId, phone, address, addressDetail } = req.body;
 
-    // 필수 입력값 검증
+    // 필수 입력값 검증 (전화번호/주소는 선택)
     if (!email || !password || !nickname || !deptId || !posId) {
         return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
     }
 
     try {
         // 서비스로 전달
-        const newUser = await authService.signupUser({ email, password, nickname, deptId, posId });
+        const newUser = await authService.signupUser({ email, password, nickname, deptId, posId, phone, address, addressDetail });
 
         // 성공 응답
         res.status(201).json({
@@ -104,15 +104,17 @@ export async function verifyPassword(req, res) {
 // 정보 수정
 export async function updateInfo(req, res) {
     try {
-        // 클라이언트에서 nickname, department, position, newPassword를 보냄
-        const { nickname, department, position, newPassword } = req.body;
+        const { nickname, deptId, posId, phone, address, addressDetail, newPassword } = req.body;
         const userId = req.user.userId;
 
-        const result = await authService.updateUserInfo(userId, { 
-            nickname, 
-            department, 
-            position, 
-            newPassword 
+        const result = await authService.updateUserInfo(userId, {
+            nickname,
+            deptId,
+            posId,
+            phone,
+            address,
+            addressDetail,
+            newPassword
         });
         res.json({ success: true, data: result });
     } catch (error) {
@@ -191,5 +193,31 @@ export async function getPositions(req, res) {
     } catch (error) {
         console.error('직급 목록 조회 에러:', error);
         res.status(500).json({ message: '직급 목록 조회 실패' });
+    }
+}
+
+/**
+ * 비밀번호 찾기 (임시 비밀번호 이메일 발송)
+ * POST /api/auth/forgot-password
+ */
+export async function forgotPassword(req, res) {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: '이메일을 입력해주세요.' });
+        }
+
+        await authService.resetPassword(email);
+
+        res.json({ success: true, message: '임시 비밀번호가 이메일로 발송되었습니다.' });
+    } catch (error) {
+        console.error('비밀번호 찾기 에러:', error.message);
+
+        if (error.message === '등록되지 않은 이메일입니다.') {
+            return res.status(404).json({ success: false, message: error.message });
+        }
+
+        res.status(500).json({ success: false, message: '비밀번호 재설정 중 오류가 발생했습니다.' });
     }
 }

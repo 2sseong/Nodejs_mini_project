@@ -4,8 +4,9 @@ import * as ctrl from './room.controller.js';
 const r = Router();
 
 r.post('/create', ctrl.createRoom);
-r.post('/invite', ctrl.inviteUser || ctrl.invite);
+r.post('/invite-multiple', ctrl.inviteUsers);
 r.delete('/exit/:roomId/:userId', ctrl.leaveRoom);
+r.get('/:roomId/members', ctrl.getRoomMembers);
 
 
 // 1. 1:1 채팅방 존재 여부 확인

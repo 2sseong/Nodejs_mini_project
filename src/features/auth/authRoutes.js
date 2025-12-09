@@ -65,4 +65,7 @@ authRouter.post('/profile-image', verifyToken, upload.single('profilePic'), auth
 // 래퍼 미들웨어 적용
 authRouter.post('/profile-image', verifyToken, uploadMiddleware, authController.uploadProfile);
 
+// 비밀번호 찾기 (인증 불필요)
+authRouter.post('/forgot-password', authController.forgotPassword);
+
 export default authRouter;

@@ -1,0 +1,155 @@
+// src/components/Room/RoomList/RoomItem.jsx
+import React from 'react';
+
+const API_BASE_URL = 'http://localhost:1337';
+
+/**
+ * 개별 채팅방 아이템 컴포넌트 (카카오톡 스타일)
+ */
+export default function RoomItem({ room, active, onClick }) {
+    // 시간 포맷
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const isToday = date.toDateString() === now.toDateString();
+
+        if (isToday) {
+            return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    };
+
+    // 프로필 이미지 URL 생성
+    const getProfileUrl = (profilePic) => {
+        if (!profilePic) return null;
+        if (profilePic.startsWith('http')) return profilePic;
+        return `${API_BASE_URL}${profilePic.startsWith('/') ? '' : '/'}${profilePic}`;
+    };
+
+    // 멤버 프로필 렌더링 (최대 4개)
+    const renderAvatarGrid = () => {
+        const profiles = room.MEMBER_PROFILES || [];
+        const count = profiles.length;
+
+        if (count === 0) {
+            // 프로필 없으면 기본 아이콘
+            return (
+                <div className="avatar-single">
+                    <i className="bi bi-chat-dots-fill"></i>
+                </div>
+            );
+        }
+
+        if (count === 1) {
+            // 1명
+            const profile = profiles[0];
+            return (
+                <div className="avatar-single">
+                    {profile.PROFILE_PIC ? (
+                        <img src={getProfileUrl(profile.PROFILE_PIC)} alt={profile.NICKNAME} />
+                    ) : (
+                        <span className="avatar-initial">{profile.NICKNAME?.charAt(0) || '?'}</span>
+                    )}
+                </div>
+            );
+        }
+
+        if (count === 2) {
+            // 2명
+            return (
+                <div className="avatar-grid-2">
+                    {profiles.slice(0, 2).map((p, i) => (
+                        <div key={p.USER_ID || i} className="avatar-item">
+                            {p.PROFILE_PIC ? (
+                                <img src={getProfileUrl(p.PROFILE_PIC)} alt={p.NICKNAME} />
+                            ) : (
+                                <span className="avatar-initial">{p.NICKNAME?.charAt(0) || '?'}</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        if (count === 3) {
+            // 3명 (1 + 2 레이아웃)
+            return (
+                <div className="avatar-grid-3">
+                    <div className="avatar-item top">
+                        {profiles[0].PROFILE_PIC ? (
+                            <img src={getProfileUrl(profiles[0].PROFILE_PIC)} alt={profiles[0].NICKNAME} />
+                        ) : (
+                            <span className="avatar-initial">{profiles[0].NICKNAME?.charAt(0) || '?'}</span>
+                        )}
+                    </div>
+                    <div className="avatar-bottom-row">
+                        {profiles.slice(1, 3).map((p, i) => (
+                            <div key={p.USER_ID || i} className="avatar-item">
+                                {p.PROFILE_PIC ? (
+                                    <img src={getProfileUrl(p.PROFILE_PIC)} alt={p.NICKNAME} />
+                                ) : (
+                                    <span className="avatar-initial">{p.NICKNAME?.charAt(0) || '?'}</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        // 4명 이상 (2x2 그리드)
+        return (
+            <div className="avatar-grid-4">
+                {profiles.slice(0, 4).map((p, i) => (
+                    <div key={p.USER_ID || i} className="avatar-item">
+                        {p.PROFILE_PIC ? (
+                            <img src={getProfileUrl(p.PROFILE_PIC)} alt={p.NICKNAME} />
+                        ) : (
+                            <span className="avatar-initial">{p.NICKNAME?.charAt(0) || '?'}</span>
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    return (
+        <li
+            className={`room-item ${active ? 'active' : ''}`}
+            onClick={() => onClick(room.ROOM_ID)}
+        >
+            {/* 방 아바타 */}
+            <div className="room-avatar">
+                {renderAvatarGrid()}
+            </div>
+
+            {/* 방 정보 */}
+            <div className="room-info">
+                <div className="room-name-row">
+                    <span className="room-name">
+                        {room.ROOM_NAME || '채팅방'}
+                    </span>
+                    {room.MEMBER_COUNT > 1 && (
+                        <span className="member-count">{room.MEMBER_COUNT}</span>
+                    )}
+                </div>
+                <span className="room-last-message">
+                    {room.LAST_MESSAGE || '대화를 시작하세요'}
+                </span>
+            </div>
+
+            {/* 메타 정보 */}
+            <div className="room-meta">
+                <span className="room-time">
+                    {formatTime(room.LAST_MESSAGE_TIME)}
+                </span>
+                {room.UNREAD_COUNT > 0 && (
+                    <span className="room-badge">
+                        {room.UNREAD_COUNT > 99 ? '99+' : room.UNREAD_COUNT}
+                    </span>
+                )}
+            </div>
+        </li>
+    );
+}

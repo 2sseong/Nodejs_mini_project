@@ -48,6 +48,13 @@ export async function isMember({ roomId, userId }) {
     return res.rows?.length > 0;
 }
 
+// 사용자 닉네임 조회 (시스템 메시지용)
+export async function getUserNickname(userId) {
+    const sql = 'SELECT NICKNAME FROM T_USER WHERE USER_ID = :userId';
+    const res = await executeQuery(sql, { userId });
+    return res.rows?.[0]?.NICKNAME || null;
+}
+
 // addMemberTx 수정안 (named bind)
 export async function addMemberTx({ roomId, userId }) {
     let conn;
@@ -160,7 +167,8 @@ export async function countRoomMembers(roomId) {
 }
 
 export async function listRoomsByUser({ userId }) {
-    const sql = `
+    // 1. 기본 방 목록 조회
+    const roomSql = `
         SELECT 
             r.ROOM_ID,
             r.ROOM_NAME,
@@ -208,8 +216,52 @@ export async function listRoomsByUser({ userId }) {
         ORDER BY LAST_MESSAGE_AT DESC
     `;
 
-    const res = await executeQuery(sql, { userId });
-    return res.rows || [];
+    const roomRes = await executeQuery(roomSql, { userId });
+    const rooms = roomRes.rows || [];
+
+    if (rooms.length === 0) return [];
+
+    // 2. 모든 방의 멤버 프로필 정보 조회 (본인 제외, 최대 4명)
+    const roomIds = rooms.map(r => r.ROOM_ID);
+    const memberSql = `
+        SELECT * FROM (
+            SELECT 
+                rm.ROOM_ID,
+                u.USER_ID,
+                u.NICKNAME,
+                u.PROFILE_PIC,
+                ROW_NUMBER() OVER(PARTITION BY rm.ROOM_ID ORDER BY rm.JOINED_AT ASC) as rn
+            FROM T_ROOM_MEMBER rm
+            JOIN T_USER u ON rm.USER_ID = u.USER_ID
+            WHERE rm.ROOM_ID IN (${roomIds.map((_, i) => `:r${i}`).join(',')})
+              AND rm.USER_ID != :userId
+        )
+        WHERE rn <= 4
+    `;
+
+    const memberBinds = { userId };
+    roomIds.forEach((id, i) => { memberBinds[`r${i}`] = id; });
+
+    const memberRes = await executeQuery(memberSql, memberBinds);
+    const members = memberRes.rows || [];
+
+    // 3. 방별로 멤버 프로필 그룹화
+    const membersByRoom = {};
+    members.forEach(m => {
+        const roomId = m.ROOM_ID;
+        if (!membersByRoom[roomId]) membersByRoom[roomId] = [];
+        membersByRoom[roomId].push({
+            USER_ID: m.USER_ID,
+            NICKNAME: m.NICKNAME,
+            PROFILE_PIC: m.PROFILE_PIC
+        });
+    });
+
+    // 4. 방 목록에 멤버 프로필 추가
+    return rooms.map(room => ({
+        ...room,
+        MEMBER_PROFILES: membersByRoom[room.ROOM_ID] || []
+    }));
 }
 
 /**
@@ -319,4 +371,21 @@ export async function createNewOneToOneRoom(myUserId, targetUserId, roomName) {
         if (conn) { try { await conn.close(); } catch (clsErr) { console.error("Close error:", clsErr); } }
     }
 }
-
+/*
+ * 채팅방 멤버 목록 조회
+ */
+export async function getRoomMembers(roomId) {
+    const sql = `
+        SELECT 
+            u.USER_ID,
+            u.NICKNAME,
+            u.PROFILE_PIC,
+            rm.JOINED_AT
+        FROM T_ROOM_MEMBER rm
+        JOIN T_USER u ON rm.USER_ID = u.USER_ID
+        WHERE rm.ROOM_ID = :roomId
+        ORDER BY rm.JOINED_AT ASC
+    `;
+    const result = await executeQuery(sql, [roomId]);
+    return result.rows || [];
+}

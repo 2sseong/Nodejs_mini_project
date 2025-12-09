@@ -1,41 +1,47 @@
-﻿import React, { useState } from 'react';
-import './UserSearch.css'; 
+﻿import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import './UserSearch.css';
 
-function UserSearch( { onQueryChange } ) {
-    // 검색어 상태 관리
+const UserSearch = forwardRef(({ onQueryChange }, ref) => {
     const [inputQuery, setInputQuery] = useState('');
+    const inputRef = useRef(null);
 
-    // 입력값 변경 핸들러
+    // 부모 컴포넌트에서 focus 메서드 호출 가능하게 함
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            inputRef.current?.focus();
+        }
+    }));
+
     const handleInputChange = (e) => {
         const query = e.target.value;
         setInputQuery(query);
-        // 실시간 검색을 위해 상위 컴포넌트의 상태를 업데이트
-        onQueryChange(query); 
+        onQueryChange(query);
     };
 
-    // 검색 버튼 클릭 핸들러
     const handleButtonClick = () => {
-        onQueryChange(inputQuery); 
+        onQueryChange(inputQuery);
     };
 
     return (
         <div className="user-search-container">
-            {/* input과 button을 한 줄로 배치하기 위한 클래스 */}
-            <div className="search-form-flex"> 
+            <div className="search-form-flex">
                 <input
+                    ref={inputRef}
                     type="text"
                     value={inputQuery}
-                    onChange={handleInputChange} 
-                    placeholder="사용자 이름이나 아이디를 입력하세요 !"
+                    onChange={handleInputChange}
+                    placeholder="이름 또는 아이디로 검색"
                 />
                 <button
-                type="button"
-                onClick={handleButtonClick}
-                className="btn-search">검색
-                </button> 
+                    type="button"
+                    onClick={handleButtonClick}
+                    className="btn-search"
+                >
+                    <i className="bi bi-search"></i>
+                </button>
             </div>
         </div>
     );
-}
+});
 
 export default UserSearch;

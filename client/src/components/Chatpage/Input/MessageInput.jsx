@@ -1,38 +1,53 @@
 // src/components/Chatpage/Input/MessageInput.jsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './MessageInput.css';
 
 export default function MessageInput({ onSend, onSendFile, disabled }) {
     const [text, setText] = useState('');
-    // 숨겨진 file input에 접근하기 위한 ref
     const fileInputRef = useRef(null);
+    const textareaRef = useRef(null);
 
     const trySendText = () => {
         const t = text.trim();
         if (!t) return;
-        onSend(t); // 텍스트 메시지 전송
+        onSend(t);
         setText('');
     };
 
-    // 파일 버튼 클릭 시
+    // 키보드 핸들러: Enter=전송, Shift+Enter=줄바꿈
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            trySendText();
+        }
+        // Shift+Enter는 기본 동작(줄바꿈)이 됨
+    };
+
+    // textarea 높이 자동 조절
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            const scrollHeight = textareaRef.current.scrollHeight;
+            // 최대 5줄 높이로 제한 (약 100px)
+            textareaRef.current.style.height = Math.min(scrollHeight, 100) + 'px';
+        }
+    }, [text]);
+
     const handleFileButtonClick = () => {
         fileInputRef.current.click();
     };
 
-    // 파일이 선택되었을 때
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // FileReader를 사용해 파일을 Base64로 인코딩
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => {
-            // 부모 컴포넌트(ChatPage)로 파일 데이터 전송
             onSendFile({
                 fileName: file.name,
                 mimeType: file.type,
-                fileData: reader.result, // Base64 인코딩된 데이터
+                fileData: reader.result,
             });
         };
         reader.onerror = (error) => {
@@ -40,7 +55,6 @@ export default function MessageInput({ onSend, onSendFile, disabled }) {
             alert('파일을 읽는 중 오류가 발생했습니다.');
         };
 
-        // 같은 파일을 다시 선택할 수 있도록 input 값 초기화
         e.target.value = null;
     };
 
@@ -63,13 +77,15 @@ export default function MessageInput({ onSend, onSendFile, disabled }) {
                 style={{ display: 'none' }}
             />
 
-            {/* 텍스트 입력 */}
-            <input
+            {/* 텍스트 입력 (textarea로 변경) */}
+            <textarea
+                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && trySendText()}
+                onKeyDown={handleKeyDown}
                 placeholder="메시지를 입력하세요..."
                 disabled={disabled}
+                rows={1}
             />
 
             {/* 텍스트 전송 버튼 */}

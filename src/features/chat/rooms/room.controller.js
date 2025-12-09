@@ -1,6 +1,7 @@
 // src/features/chat/rooms/room.controller.js
 import * as roomService from './room.service.js';
 import socketGateway from '../../../sockets/socket.gateway.js';
+import { getIoInstance } from '../../../sockets/socketStore.js';
 
 export async function createRoom(req, res, next) {
     try {
@@ -16,40 +17,13 @@ export async function createRoom(req, res, next) {
     } catch (e) { next(e); }
 }
 
-export async function inviteUser(req, res, next) {
-    try {
-        // req.body에서 필요한 정보 추출
-        // (프론트에서 inviterId를 안 보내면 req.user.userId 사용)
-        const { roomId, inviteeId, inviterId } = req.body;
-        const requesterId = inviterId || req.user?.userId;
-
-        await roomService.inviteUserToRoom({
-            roomId,
-            inviteeId,
-            requesterId
-        });
-
-        // 1. 초대받은 사람에게 방 목록 갱신 요청
-        socketGateway.requestRoomsRefresh(inviteeId);
-
-        // 2. [수정됨] 방에 있는 기존 멤버들에게 실시간 인원수 업데이트 (Gateway 사용)
-        const memberCount = await roomService.getRoomMemberCount(roomId);
-        socketGateway.notifyRoomMemberCount(roomId, memberCount);
-
-        res.status(200).json({ success: true, message: '사용자를 성공적으로 초대했습니다.' });
-    } catch (e) {
-        next(e);
-    }
-}
-
 /**
  * [DELETE] 방 나가기 함수 (leaveRoom)
- * @param {any} req
- * @param {any} res
- * @param {function} next - 다음 미들웨어로 에러를 전달하기 위함
  */
 export async function leaveRoom(req, res, next) {
     const { roomId, userId } = req.params;
+    const encodedNickname = req.query.userNickname || req.headers['x-user-nickname'];
+    const userNickname = encodedNickname ? decodeURIComponent(encodedNickname) : null;
 
     if (!roomId || !userId) {
         return res.status(400).json({
@@ -59,7 +33,7 @@ export async function leaveRoom(req, res, next) {
     }
 
     try {
-        const rowsAffected = await roomService.leaveRoom({ roomId, userId });
+        const result = await roomService.leaveRoom({ roomId, userId, userNickname });
 
         // 나간 본인에게 목록 갱신 요청
         socketGateway.requestRoomsRefresh(userId);
@@ -68,10 +42,16 @@ export async function leaveRoom(req, res, next) {
         const memberCount = await roomService.getRoomMemberCount(roomId);
         socketGateway.notifyRoomMemberCount(roomId, memberCount);
 
+        // [추가] 시스템 메시지 브로드캐스트
+        if (result.systemMessage) {
+            const io = getIoInstance();
+            io.to(String(roomId)).emit('chat:message', result.systemMessage);
+        }
+
         return res.status(200).json({
             success: true,
             message: "성공적으로 방을 나갔습니다.",
-            rowsAffected
+            rowsAffected: result.rowsAffected
         });
 
     } catch (error) {
@@ -137,5 +117,68 @@ export async function createChat(req, res, next) {
 
     } catch (e) {
         next(e); // 에러 핸들링 미들웨어로 전달
+    }
+}
+
+/**
+ * [POST] 여러 명 동시 초대
+ */
+export async function inviteUsers(req, res, next) {
+    try {
+        const { roomId, inviteeIds, inviterNickname } = req.body;
+
+        if (!roomId || !Array.isArray(inviteeIds) || inviteeIds.length === 0) {
+            return res.status(400).json({ success: false, message: '유효한 roomId와 inviteeIds 배열이 필요합니다.' });
+        }
+
+        const result = await roomService.inviteUsersToRoom({
+            roomId,
+            inviteeIds,
+            inviterNickname
+        });
+
+        // 초대받은 사람들에게 방 목록 갱신 요청
+        for (const inviteeId of result.successList) {
+            socketGateway.requestRoomsRefresh(inviteeId);
+        }
+
+        // 방에 있는 기존 멤버들에게 실시간 인원수 업데이트
+        const memberCount = await roomService.getRoomMemberCount(roomId);
+        socketGateway.notifyRoomMemberCount(roomId, memberCount);
+
+        // 시스템 메시지 브로드캐스트
+        if (result.systemMessage) {
+            const io = getIoInstance();
+            io.to(String(roomId)).emit('chat:message', result.systemMessage);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `${result.successList.length}명 초대 완료`,
+            successCount: result.successList.length,
+            failCount: result.failList.length,
+            failList: result.failList
+        });
+    } catch (e) {
+        next(e);
+    }
+}
+
+/**
+ * [GET] 채팅방 멤버 목록 조회
+ */
+export async function getRoomMembers(req, res, next) {
+    const { roomId } = req.params;
+
+    if (!roomId) {
+        return res.status(400).json({ success: false, message: '채팅방 ID는 필수입니다.' });
+    }
+
+    try {
+        const members = await roomService.getRoomMembers(roomId);
+        res.status(200).json({ success: true, members });
+    } catch (error) {
+        console.error('Error in getRoomMembers controller:', error);
+        next(error);
     }
 }

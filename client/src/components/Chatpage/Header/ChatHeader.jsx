@@ -4,40 +4,54 @@ import './ChatHeader.css';
 
 export default function ChatHeader({
     title,
-    memberCount, // [추가] 인원수 props
+    memberCount,
     onOpenInvite,
-    onOpenDrawer, // [추가] 서랍 열기 핸들러
+    onOpenDrawer,
     disabled,
     onLeaveRoom,
     onSearch,
     onNextMatch,
     onPrevMatch,
     matchCount,
-    currentMatchIdx
+    currentMatchIdx,
+    onToggleMemberPanel,
+    isMemberPanelOpen
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [isMenuOpen, setIsMenuOpen] = useState(false); // [추가] 메뉴 드롭다운 상태
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [keyword, setKeyword] = useState('');
     const searchInputRef = useRef(null);
 
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
 
-    // [추가] 에러/알림 모달 상태
     const [alertModal, setAlertModal] = useState({
         isOpen: false,
         title: '',
         message: ''
     });
 
-    // 검색 바 포커스
     useEffect(() => {
         if (isSearchOpen && searchInputRef.current) {
             searchInputRef.current.focus();
         }
     }, [isSearchOpen]);
 
-    // 외부 클릭 시 메뉴 닫기 (간단 구현)
+    useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                if (!isSearchOpen) {
+                    setIsSearchOpen(true);
+                }
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [isSearchOpen]);
+
     useEffect(() => {
         const handleClickOutside = () => setIsMenuOpen(false);
         if (isMenuOpen) {
@@ -56,7 +70,6 @@ export default function ChatHeader({
         }
     };
 
-    // 검색 핸들러
     const handleSearchChange = (e) => {
         setKeyword(e.target.value);
         if (onSearch) onSearch(e.target.value);
@@ -66,9 +79,9 @@ export default function ChatHeader({
         if (e.key === 'Enter') {
             e.preventDefault();
             if (e.shiftKey) {
-                if (onNextMatch) onNextMatch();
-            } else {
                 if (onPrevMatch) onPrevMatch();
+            } else {
+                if (onNextMatch) onNextMatch();
             }
         }
     };
@@ -78,7 +91,6 @@ export default function ChatHeader({
         setIsLeaveModalOpen(true);
     };
 
-    // [추가] 알림 모달 닫기
     const closeAlert = () => {
         setAlertModal(prev => ({ ...prev, isOpen: false }));
     };
@@ -93,8 +105,6 @@ export default function ChatHeader({
             setIsLeaving(false);
             setIsLeaveModalOpen(false);
             const errMsg = error.response?.data?.message || '오류가 발생했습니다.';
-
-            // [수정] alert 대신 커스텀 모달 사용
             setAlertModal({
                 isOpen: true,
                 title: '오류 발생',
@@ -107,13 +117,15 @@ export default function ChatHeader({
 
     return (
         <div className="chat-header-container">
-            {/* 1. 메인 헤더 */}
+            {/* 메인 헤더 */}
             <div className="chat-header-main">
-                {/* [수정] 제목 및 인원수 표시 */}
-                <div className="chat-header-info">
-                    <h2 className="room-title">{title || '채팅방'}</h2>
+                <div className="chat-header-info" onClick={onToggleMemberPanel} style={{ cursor: 'pointer' }}>
+                    <h2 className="room-title">
+                        {title || '채팅방'}
+                        <i className={`bi bi-chevron-${isMemberPanelOpen ? 'left' : 'right'}`} style={{ fontSize: '12px', marginLeft: '6px' }}></i>
+                    </h2>
                     {memberCount > 0 && (
-                        <span className="member-count">({memberCount})</span>
+                        <span className="member-count">참여자 {memberCount}명</span>
                     )}
                 </div>
 
@@ -127,7 +139,6 @@ export default function ChatHeader({
                         <i className="bi bi-search"></i>
                     </button>
 
-                    {/* [변경] 메뉴 버튼 (기존 초대/나가기 버튼 대체) */}
                     <div className="menu-container" onClick={(e) => e.stopPropagation()}>
                         <button
                             className="menu-toggle-btn"
@@ -138,7 +149,6 @@ export default function ChatHeader({
                             <i className="bi bi-list"></i>
                         </button>
 
-                        {/* 드롭다운 메뉴 */}
                         {isMenuOpen && (
                             <div className="header-dropdown">
                                 <button onClick={() => { setIsMenuOpen(false); onOpenInvite(); }}>
@@ -157,7 +167,7 @@ export default function ChatHeader({
                 </div>
             </div>
 
-            {/* 2. 하단 검색 바 (기존 유지) */}
+            {/* 검색 바 */}
             {isSearchOpen && (
                 <div className="chat-search-bar">
                     <div className="search-input-wrapper">
@@ -183,7 +193,7 @@ export default function ChatHeader({
                 </div>
             )}
 
-            {/* 3. 나가기 확인 모달 (기존 유지 - 질문형) */}
+            {/* 나가기 확인 모달 */}
             <ConfirmModal
                 isOpen={isLeaveModalOpen}
                 title="방 나가기"
@@ -195,7 +205,7 @@ export default function ChatHeader({
                 onConfirm={handleConfirmLeave}
             />
 
-            {/* [추가] 에러 알림용 모달 (확인형) */}
+            {/* 에러 알림 모달 */}
             <ConfirmModal
                 isOpen={alertModal.isOpen}
                 onClose={closeAlert}
@@ -203,7 +213,7 @@ export default function ChatHeader({
                 title={alertModal.title}
                 message={alertModal.message}
                 confirmText="확인"
-                cancelText={null} // 취소 버튼 숨김
+                cancelText={null}
             />
         </div>
     );

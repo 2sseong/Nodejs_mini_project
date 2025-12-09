@@ -170,3 +170,70 @@
     margin: 0;
     white-space: pre-line;
 }
+
+/* 주소 입력 행 */
+.address-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.address-input-row input {
+    flex: 1;
+}
+
+.address-search-btn {
+    padding: 8px 16px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-inverse);
+    background: var(--color-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.address-search-btn:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+}
+
+.address-search-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 주소 검색 모달 */
+.address-modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.address-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.address-modal-header h4 {
+    margin: 0;
+    font-size: var(--font-size-md);
+}
+
+.address-modal-header button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.address-modal-header button:hover {
+    color: var(--text-primary);
+}

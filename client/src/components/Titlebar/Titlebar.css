@@ -4,7 +4,7 @@
   justify-content: space-between;
   align-items: center;
 
-  height: 32px;
+  height: 24px;
   flex-shrink: 0;
 
   background-color: var(--color-primary);
@@ -70,4 +70,11 @@
   width: 10px;
   height: 10px;
   fill: currentColor;
+}
+
+/* 타이틀바 로고 이미지 */
+.titlebar-logo {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
 }

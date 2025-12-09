@@ -1,7 +1,7 @@
 import db, { oracledb, executeQuery, executeTransaction, getConnection as getDBConnection } from '../../../../db/oracle.js';
 
-// 1. 메시지 목록 조회
-export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
+// 1. 메시지 목록 조회 (사용자 입장 시점 이후 메시지만)
+export async function getHistory({ roomId, limit = 50, beforeMsgId = null, userId = null }) {
     const binds = { roomId: Number(roomId), limit: Number(limit) };
 
     let innerSql = `
@@ -14,11 +14,17 @@ export async function getHistory({ roomId, limit = 50, beforeMsgId = null }) {
                 EXTRACT(SECOND FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
             ) - 32400000 AS SENT_AT, 
             T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME,
-            T2.NICKNAME, T2.PROFILE_PIC 
+            NVL(T2.NICKNAME, 'SYSTEM') AS NICKNAME, T2.PROFILE_PIC 
         FROM T_MESSAGE T1
-        JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+        LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
         WHERE T1.ROOM_ID = :roomId
     `;
+
+    // 사용자 입장 시점 이후 메시지만 조회
+    if (userId) {
+        innerSql += ` AND T1.SENT_AT >= (SELECT JOINED_AT FROM T_ROOM_MEMBER WHERE ROOM_ID = :roomId AND USER_ID = :userId) `;
+        binds.userId = userId;
+    }
 
     if (beforeMsgId) {
         innerSql += ` AND T1.MSG_ID < :beforeMsgId `;
@@ -73,6 +79,51 @@ export async function saveMessageTx(data) {
             };
         } else {
             throw new Error("메시지 저장 실패");
+        }
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) await connection.close();
+    }
+}
+
+// 2-1. 시스템 메시지 저장 (초대/퇴장 알림용)
+export async function saveSystemMessage({ roomId, content }) {
+    const now = new Date();
+    let connection;
+    try {
+        connection = await getDBConnection();
+        const sql = `
+            INSERT INTO T_MESSAGE(ROOM_ID, SENDER_ID, CONTENT, MESSAGE_TYPE, FILE_URL, FILE_NAME, SENT_AT) 
+            VALUES (:roomId, NULL, :content, 'SYSTEM', NULL, NULL, :sentAt)
+            RETURNING MSG_ID, ROOM_ID, CONTENT, MESSAGE_TYPE, SENT_AT
+            INTO :outId, :outRoomId, :outContent, :outMsgType, :outSentAt
+        `;
+        const binds = {
+            roomId: Number(roomId),
+            content,
+            sentAt: now,
+            outId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+            outRoomId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+            outContent: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outMsgType: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            outSentAt: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
+        };
+        const result = await connection.execute(sql, binds, { autoCommit: true });
+
+        if (result.rowsAffected === 1) {
+            const dbTime = result.outBinds.outSentAt[0];
+            return {
+                MSG_ID: result.outBinds.outId[0],
+                ROOM_ID: String(result.outBinds.outRoomId[0]),
+                SENDER_ID: null,
+                CONTENT: result.outBinds.outContent[0],
+                MESSAGE_TYPE: result.outBinds.outMsgType[0],
+                NICKNAME: 'SYSTEM',
+                SENT_AT: dbTime
+            };
+        } else {
+            throw new Error("시스템 메시지 저장 실패");
         }
     } catch (err) {
         throw err;
@@ -169,8 +220,8 @@ export async function searchMessages(roomId, keyword) {
             EXTRACT(MINUTE FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
             EXTRACT(SECOND FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
         ) - 32400000 AS SENT_AT,
-        u.NICKNAME, u.PROFILE_PIC 
-        FROM T_MESSAGE m JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
+        NVL(u.NICKNAME, 'SYSTEM') AS NICKNAME, u.PROFILE_PIC 
+        FROM T_MESSAGE m LEFT JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
         WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID DESC
     `;
     const res = await executeQuery(sql, { roomId: Number(roomId), keyword: `%${keyword}%` });
@@ -194,16 +245,16 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
             SELECT * FROM (
                 SELECT * FROM (
                     SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
-                           T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, T2.NICKNAME, T2.PROFILE_PIC
-                    FROM T_MESSAGE T1 JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                           T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, NVL(T2.NICKNAME, 'SYSTEM') AS NICKNAME, T2.PROFILE_PIC
+                    FROM T_MESSAGE T1 LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
                     WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID < :targetMsgId ORDER BY T1.MSG_ID DESC
                 ) WHERE ROWNUM <= :limitCnt
             ) UNION ALL
             SELECT * FROM (
                 SELECT * FROM (
                     SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
-                           T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, T2.NICKNAME, T2.PROFILE_PIC
-                    FROM T_MESSAGE T1 JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                           T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, NVL(T2.NICKNAME, 'SYSTEM') AS NICKNAME, T2.PROFILE_PIC
+                    FROM T_MESSAGE T1 LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
                     WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID >= :targetMsgId ORDER BY T1.MSG_ID ASC
                 ) WHERE ROWNUM <= :limitCntNext
             )
@@ -227,8 +278,8 @@ export async function getMessagesAfterId(roomId, afterMsgId, limit = 50) {
     const sql = `
         SELECT * FROM (
             SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
-                   T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, T2.NICKNAME, T2.PROFILE_PIC
-            FROM T_MESSAGE T1 JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
+                   T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, NVL(T2.NICKNAME, 'SYSTEM') AS NICKNAME, T2.PROFILE_PIC
+            FROM T_MESSAGE T1 LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
             WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID > :afterMsgId ORDER BY T1.MSG_ID ASC
         ) WHERE ROWNUM <= :limit
     `;
