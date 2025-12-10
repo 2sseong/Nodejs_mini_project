@@ -300,8 +300,31 @@ export default function PopupChatPage() {
     const roomName = currentRoom ? currentRoom.ROOM_NAME : '채팅방';
     const memberCount = currentRoom ? currentRoom.MEMBER_COUNT : 0;
 
+    // 서브 창을 채팅방 창 기준으로 위치 계산하여 열기
+    const openSubWindow = (url, windowName, width = 400, height = 600) => {
+        const currentX = window.screenX || window.screenLeft || 0;
+        const currentY = window.screenY || window.screenTop || 0;
+        const currentWidth = window.outerWidth || window.innerWidth;
+        const screenWidth = window.screen.availWidth;
+
+        // 기본: 채팅방 창의 오른쪽 상단
+        let left = currentX + currentWidth;
+        let top = currentY;
+
+        // 오른쪽 공간이 부족하면 왼쪽 상단에 배치
+        if (left + width > screenWidth) {
+            left = currentX - width;
+            if (left < 0) left = 0;
+        }
+
+        const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+        const win = window.open(url, windowName, features);
+        if (win) win.focus();
+        return win;
+    };
+
     const handleOpenDrawer = () => {
-        window.open(`#/files/${roomId}`, 'FileDrawerWindow', 'width=400,height=600,resizable=yes,scrollbars=yes');
+        openSubWindow(`#/files/${roomId}`, `FileDrawerWindow_${roomId}`);
     };
 
     // 멤버 패널 토글
@@ -386,7 +409,7 @@ export default function PopupChatPage() {
                         onOpenInvite={() => setIsInviteOpen(true)}
                         onOpenDrawer={handleOpenDrawer}
                         onOpenNotices={() => {
-                            window.open(`#/notices/${roomId}`, 'NoticeListWindow', 'width=400,height=600,resizable=yes,scrollbars=yes');
+                            openSubWindow(`#/notices/${roomId}`, `NoticeListWindow_${roomId}`);
                         }}
                         disabled={!connected}
                         onLeaveRoom={async () => {

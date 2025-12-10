@@ -1,5 +1,6 @@
 // src/features/chat/rooms/room.controller.js
 import * as roomService from './room.service.js';
+import * as noticeService from '../notices/notice.service.js';
 import socketGateway from '../../../sockets/socket.gateway.js';
 import { getIoInstance } from '../../../sockets/socketStore.js';
 
@@ -47,6 +48,13 @@ export async function leaveRoom(req, res, next) {
         // 남은 사람들에게 인원수 업데이트 알림 (Gateway 사용)
         const memberCount = await roomService.getRoomMemberCount(roomId);
         socketGateway.notifyRoomMemberCount(roomId, memberCount);
+
+        // [추가] 공지 상태 브로드캐스트 (공지 생성자가 나가면 공지가 삭제됨)
+        if (!result.roomDeleted) {
+            const io = getIoInstance();
+            const currentNotice = await noticeService.getNotice({ roomId });
+            io.to(String(roomId)).emit('room:notice_updated', { roomId, notice: currentNotice });
+        }
 
         // 시스템 메시지 브로드캐스트
         if (result.systemMessage) {

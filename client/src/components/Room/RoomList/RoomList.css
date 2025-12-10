@@ -336,3 +336,40 @@
     font-size: var(--font-size-xs);
     color: var(--text-muted);
 }
+
+/* 채팅방 우클릭 컨텍스트 메뉴 */
+.room-context-menu {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 4px 0;
+    min-width: 120px;
+    z-index: 9999;
+}
+
+.room-context-menu button {
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color var(--transition-fast);
+}
+
+.room-context-menu button:hover {
+    background-color: var(--bg-hover);
+}
+
+.room-context-menu .danger-text {
+    color: var(--color-danger);
+}
+
+.room-context-menu .danger-text:hover {
+    background-color: var(--color-danger-light);
+}

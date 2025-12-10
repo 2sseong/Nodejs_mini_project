@@ -339,6 +339,11 @@ ipcMain.on('window-close', (event) => {
 });
 
 ipcMain.on('req-custom-notification', (event, data) => {
+  // SYSTEM 메시지는 알림 표시하지 않음
+  if (data.nickname === 'SYSTEM') {
+    console.log('[Main] Skipping notification for SYSTEM message');
+    return;
+  }
   showCustomNotification(data);
 });
 

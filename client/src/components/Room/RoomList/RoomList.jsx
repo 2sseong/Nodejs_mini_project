@@ -9,6 +9,7 @@ export default function RoomList({
     currentRoomId,
     onSelectRoom,
     onOpenCreateModal,
+    onLeaveRoom,
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -98,6 +99,7 @@ export default function RoomList({
                             room={room}
                             active={String(room.ROOM_ID) === String(currentRoomId)}
                             onClick={onSelectRoom}
+                            onLeaveRoom={onLeaveRoom}
                         />
                     ))
                 ) : (

@@ -6,6 +6,7 @@ import '../styles/RoomPage.css';
 import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatNotifications } from '../hooks/useChatNotifications';
+import { apiLeaveRoom } from '../api/roomApi';
 
 import RoomList from '../components/Room/RoomList/RoomList.jsx';
 import CreateRoomModal from '../components/Room/Modals/CreateRoomModal.jsx';
@@ -46,6 +47,17 @@ export default function RoomPage() {
         }
     };
 
+    // 4. 방 나가기 핸들러
+    const handleLeaveRoom = async (roomId) => {
+        try {
+            await apiLeaveRoom(roomId, userId, userNickname);
+            // 소켓을 통해 방 목록이 자동으로 갱신됨
+        } catch (error) {
+            console.error('방 나가기 실패:', error);
+            alert(error.response?.data?.message || '방 나가기에 실패했습니다.');
+        }
+    };
+
     if (!authLoaded) return <div>로딩 중...</div>;
     if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
@@ -59,6 +71,7 @@ export default function RoomPage() {
                     currentRoomId={null}
                     onSelectRoom={handleRoomClick}
                     onOpenCreateModal={() => setIsCreateOpen(true)}
+                    onLeaveRoom={handleLeaveRoom}
                 />
             </div>
 

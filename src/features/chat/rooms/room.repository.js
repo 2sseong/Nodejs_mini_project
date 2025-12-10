@@ -87,6 +87,16 @@ export async function deleteMember({ roomId, userId }) {
         // 쿼리를 여러 번 날려야 하므로 autoCommit: false로 묶어야 안전합니다.
 
         // ---------------------------------------------------------
+        // 0. 해당 사용자가 생성한 공지 먼저 삭제 (외래 키 제약 조건 해결)
+        //    CREATED_BY 컬럼에 NOT NULL 제약 조건이 있으므로 DELETE 사용
+        // ---------------------------------------------------------
+        const deleteNoticeSql = `
+            DELETE FROM T_ROOM_NOTICE 
+            WHERE ROOM_ID = :roomId AND CREATED_BY = :userId
+        `;
+        await conn.execute(deleteNoticeSql, { roomId, userId }, { autoCommit: false });
+
+        // ---------------------------------------------------------
         // 1. 멤버 삭제
         // ---------------------------------------------------------
         const deleteMemberSql = `
@@ -120,7 +130,11 @@ export async function deleteMember({ roomId, userId }) {
         if (remainingMembers === 0) {
             console.log(`[INFO] Room ${roomId} is empty. Deleting the room...`);
 
-            //  여기서 방을 지우면, 설정해둔 ON DELETE CASCADE에 의해
+            // 3-1. 방의 공지 먼저 삭제 (외래 키 제약 조건 해결)
+            const deleteNoticesSql = `DELETE FROM T_ROOM_NOTICE WHERE ROOM_ID = :roomId`;
+            await conn.execute(deleteNoticesSql, { roomId }, { autoCommit: false });
+
+            // 3-2. 방을 지우면, 설정해둔 ON DELETE CASCADE에 의해
             //  T_MESSAGE, USERROOMREADSTATUS 데이터도 자동으로 같이 삭제
             const deleteRoomSql = `DELETE FROM T_CHAT_ROOM WHERE ROOM_ID = :roomId`;
             await conn.execute(deleteRoomSql, { roomId }, { autoCommit: false });
