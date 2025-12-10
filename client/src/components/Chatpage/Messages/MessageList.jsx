@@ -31,7 +31,6 @@ export default function MessageList({
     const isAtBottomRef = useRef(true);
     const prevMsgLenRef = useRef(messages.length);
     const prevScrollHeightRef = useRef(0);
-    const isLoadingNewerRef = useRef(false);
     const firstVisibleMsgIdRef = useRef(null); // 스크롤 위치 복원용
     const hasScrolledToInitialRef = useRef(false); // 초기 스크롤 완료 여부
 
@@ -61,25 +60,17 @@ export default function MessageList({
         // B. 하단 스크롤 (미래 메시지 로딩)
         // 감도 150px로 설정
         if (distanceFromBottom < 150 && hasFutureMessages && !isLoadingNewer) {
-            if (!isLoadingNewerRef.current) {
-                isLoadingNewerRef.current = true;
-                if (loadNewerMessages) {
-                    loadNewerMessages().finally(() => {
-                        isLoadingNewerRef.current = false;
-                    });
-                }
+            if (loadNewerMessages) {
+                loadNewerMessages();
             }
         }
     }, [isLoadingMore, hasMoreMessages, onLoadMore, hasFutureMessages, isLoadingNewer, loadNewerMessages]);
 
     // 바닥 근처인데 미래 메시지가 남아있는 경우 강제 로딩 (ex: 메시지 로드 직후 스크롤이 덜 내려갔을 때)
     useEffect(() => {
-        if (isAtBottomRef.current && hasFutureMessages && !isLoadingNewer && !isLoadingNewerRef.current) {
-            isLoadingNewerRef.current = true;
+        if (isAtBottomRef.current && hasFutureMessages && !isLoadingNewer) {
             if (loadNewerMessages) {
-                loadNewerMessages().finally(() => {
-                    isLoadingNewerRef.current = false;
-                });
+                loadNewerMessages();
             }
         }
     }, [messages, hasFutureMessages, isLoadingNewer, loadNewerMessages]);

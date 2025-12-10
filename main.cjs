@@ -237,9 +237,28 @@ function createWindow(partition = 'persist:user1') {
   // 창 제목에 유저 구분 표시 (개발 편의용)
   mainWindow.setTitle(`Chat App - ${partition.split(':')[1]}`);
 
+  // webContents ID를 미리 저장 (closed 이벤트 시점에는 webContents가 destroyed됨)
+  const mainWindowWebContentsId = mainWindow.webContents.id;
+
   mainWindow.on('closed', () => {
+    // 이 메인 창에서 열린 채팅 창들을 모두 닫기
+    Object.keys(chatWindows).forEach(key => {
+      if (key.startsWith(`${mainWindowWebContentsId}:`)) {
+        const chatWin = chatWindows[key];
+        if (chatWin && !chatWin.isDestroyed()) {
+          chatWin.close();
+        }
+        delete chatWindows[key];
+      }
+    });
+
     mainWindows = mainWindows.filter(win => win !== mainWindow);
     mainWindow = null;
+
+    // 모든 메인 창이 닫히면 앱 종료 (Windows/Linux)
+    if (mainWindows.length === 0 && process.platform !== 'darwin') {
+      app.quit();
+    }
   });
 
   // [추가] window.open으로 열리는 새 창(채팅방 등)에 대한 설정

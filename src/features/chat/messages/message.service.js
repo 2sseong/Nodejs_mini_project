@@ -9,6 +9,9 @@ async function attachUnreadCounts(roomId, messages) {
     const membersInRoom = parseInt(count, 10);
     const readCountMap = await getReadCountsForMessages(roomId, messages);
 
+    console.log('[attachUnreadCounts] roomId:', roomId, 'membersInRoom:', membersInRoom);
+    console.log('[attachUnreadCounts] readCountMap:', JSON.stringify(readCountMap));
+
     return await calculateUnreadCounts({
         messages,
         currentUserId: null,
@@ -170,6 +173,11 @@ export async function removeMessage({ msgId, userId }) {
 // 대화 내용 검색 서비스
 export async function searchMessages({ roomId, keyword }) {
     return await messageRepo.searchMessages(roomId, keyword);
+}
+
+// 첫 안읽은 메시지 ID 조회 서비스
+export async function getFirstUnreadMsgId(roomId, userId, lastReadTimestamp) {
+    return await messageRepo.getFirstUnreadMsgId(roomId, userId, lastReadTimestamp);
 }
 
 // 특정 메시지 기준 문맥 조회 서비스

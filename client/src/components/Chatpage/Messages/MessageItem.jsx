@@ -20,7 +20,8 @@ export default function MessageItem(props) {
         onEdit,
         onDelete,
         onStartEdit,
-        onImageLoad
+        onImageLoad,
+        searchKeyword
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
@@ -164,7 +165,24 @@ export default function MessageItem(props) {
         }
 
         // 일반 텍스트 메시지
-        return <div className="message-content">{content?.trim()}</div>;
+        return <div className="message-content">{highlightKeyword(content?.trim())}</div>;
+    };
+
+    // 검색 키워드 하이라이트 함수
+    const highlightKeyword = (text) => {
+        if (!text || !searchKeyword || searchKeyword.trim() === '') {
+            return text;
+        }
+
+        const keyword = searchKeyword.trim();
+        const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        const parts = text.split(regex);
+
+        return parts.map((part, index) =>
+            regex.test(part) ? (
+                <mark key={index} className="search-highlight">{part}</mark>
+            ) : part
+        );
     };
 
     const displayCount = unreadCount > 0 ? unreadCount : null;
