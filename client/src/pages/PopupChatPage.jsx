@@ -44,6 +44,7 @@ export default function PopupChatPage() {
     const [searchMatches, setSearchMatches] = useState([]);
     const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
     const [scrollToMsgId, setScrollToMsgId] = useState(null);
+    const [searchKeyword, setSearchKeyword] = useState(''); // 검색 키워드 상태 추가
     const lastSearchReqId = useRef(0);
 
     // --- [메시지 수정 상태] ---
@@ -160,7 +161,9 @@ export default function PopupChatPage() {
 
     // ... (이하 handleServerSearch 등 기존 로직 동일하게 유지) ...
     const handleServerSearch = async (keyword) => {
-        // ... (기존 코드)
+        // 키워드 상태 저장 (하이라이트용)
+        setSearchKeyword(keyword);
+
         if (!keyword.trim()) {
             setSearchMatches([]);
             setCurrentMatchIndex(-1);
@@ -225,14 +228,14 @@ export default function PopupChatPage() {
 
     const handlePrevMatch = () => {
         if (searchMatches.length === 0) return;
-        // 이전(위로) = 더 오래된 메시지 = 인덱스 증가
-        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
+        // 이전(위로) = 더 오래된 메시지 = 인덱스 감소
+        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
     };
 
     const handleNextMatch = () => {
         if (searchMatches.length === 0) return;
-        // 다음(아래로) = 더 최근 메시지 = 인덱스 감소
-        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
+        // 다음(아래로) = 더 최근 메시지 = 인덱스 증가
+        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
     };
 
     useEffect(() => {
@@ -361,6 +364,7 @@ export default function PopupChatPage() {
                             hasFutureMessages={hasFutureMessages}
                             isLoadingNewer={isLoadingNewer}
                             firstUnreadMsgId={firstUnreadMsgId}
+                            searchKeyword={searchKeyword}
                         />
                     </div>
                     <MessageInput

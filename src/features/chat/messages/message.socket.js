@@ -69,11 +69,15 @@ export default function messageSocket(io, socket) {
                 readCountMap
             });
 
+            // [추가] 첫 안읽은 메시지 ID 조회
+            const firstUnreadMsgId = await messageService.getFirstUnreadMsgId(roomId, currentUserId, myLastReadBeforeEntry);
+
             socket.emit('chat:history', {
                 messages: messagesWithUnread,
                 membersInRoom: membersInRoom,
                 memberReadStatus: memberReadStatus,
-                myLastReadBeforeEntry // [추가] 입장 전 마지막 읽음 시간
+                myLastReadBeforeEntry, // [추가] 입장 전 마지막 읽음 시간
+                firstUnreadMsgId // [추가] 첫 안읽은 메시지 ID
             });
 
         } catch (e) {

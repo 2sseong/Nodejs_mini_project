@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getNewerMessagesApi } from '../../api/chatApi';
+import { getNewerMessagesApi, getMessagesContextApi } from '../../api/chatApi';
 
 const CHAT_PAGE_SIZE = 50;
 
@@ -42,23 +42,54 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         });
     }, [socket, userId, currentRoomId]);
 
-    const loadNewerMessages = useCallback(async () => {
-        if (!currentRoomId || isLoadingNewer || !hasFutureMessages) return;
-        const newest = messagesRef.current[messagesRef.current.length - 1];
-        if (!newest) return;
+    // Ref for immediate loading state check (prevents duplicate calls)
+    const isLoadingNewerRef = useRef(false);
 
+    const loadNewerMessages = useCallback(async () => {
+        // Use ref for immediate check (state update is async)
+        if (!currentRoomId || isLoadingNewerRef.current || !hasFutureMessages) {
+            return;
+        }
+        const newest = messagesRef.current[messagesRef.current.length - 1];
+        if (!newest) {
+            return;
+        }
+
+        const newestMsgId = newest.MSG_ID || newest.msg_id;
+        console.log('[loadNewerMessages] Loading newer from msgId:', newestMsgId);
+
+        // Set ref immediately to prevent duplicate calls
+        isLoadingNewerRef.current = true;
         setIsLoadingNewer(true);
+
         try {
-            const res = await getNewerMessagesApi(currentRoomId, newest.MSG_ID || newest.msg_id);
+            const res = await getNewerMessagesApi(currentRoomId, newestMsgId);
             const newItems = res.data?.data || [];
-            if (newItems.length > 0) setMessages(prev => [...prev, ...newItems]);
-            if (newItems.length < CHAT_PAGE_SIZE) setHasFutureMessages(false);
+            console.log('[loadNewerMessages] Received:', newItems.length, 'items');
+            if (newItems.length > 0) {
+                console.log('[loadNewerMessages] First item unreadCount:', newItems[0].unreadCount);
+            }
+
+            if (newItems.length > 0) {
+                // Deduplicate messages by MSG_ID
+                setMessages(prev => {
+                    const existingIds = new Set(prev.map(m => String(m.MSG_ID || m.msg_id)));
+                    const uniqueNewItems = newItems.filter(m => !existingIds.has(String(m.MSG_ID || m.msg_id)));
+                    return uniqueNewItems.length > 0 ? [...prev, ...uniqueNewItems] : prev;
+                });
+            }
+
+            if (newItems.length < CHAT_PAGE_SIZE) {
+                console.log('[loadNewerMessages] No more future messages');
+                setHasFutureMessages(false);
+            }
         } catch (err) {
-            console.error(err);
+            console.error('[loadNewerMessages] Error:', err);
         } finally {
+            isLoadingNewerRef.current = false;
             setIsLoadingNewer(false);
         }
-    }, [currentRoomId, isLoadingNewer, hasFutureMessages]);
+    }, [currentRoomId, hasFutureMessages]);
 
     const sendMessage = useCallback(({ text }) => {
         const trimmed = text.trim();
@@ -156,34 +187,62 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
                 isPaginatingRef.current = false;
                 setFirstUnreadMsgId(null); // 페이지네이션에서는 리셋
             } else {
-                setMessages(processedMessages);
-                setIsInitialLoad(true);
+                // [수정] 서버에서 제공하는 firstUnreadMsgId 사용
+                const serverFirstUnreadMsgId = data.firstUnreadMsgId || null;
 
-                // [수정] 서버에서 보낸 입장 전 마지막 읽음 시간 사용
-                const myId = String(userId).trim().toLowerCase();
-                const myLastRead = data.myLastReadBeforeEntry || 0;
+                // 서버 제공 firstUnreadMsgId가 로드된 메시지에 있는지 확인
+                if (serverFirstUnreadMsgId) {
+                    const isInLoadedMessages = processedMessages.some(
+                        m => String(m.MSG_ID || m.msg_id) === String(serverFirstUnreadMsgId)
+                    );
 
-                // 메시지를 시간순으로 정렬 후 첫 읽지 않은 메시지 찾기
-                const sortedMsgs = [...processedMessages].sort((a, b) => {
-                    const aTs = typeof a.SENT_AT === 'number' ? a.SENT_AT : new Date(a.SENT_AT).getTime();
-                    const bTs = typeof b.SENT_AT === 'number' ? b.SENT_AT : new Date(b.SENT_AT).getTime();
-                    return aTs - bTs;
-                });
-
-                let foundId = null;
-                for (const msg of sortedMsgs) {
-                    const senderId = String(msg.SENDER_ID || msg.sender_id || '').trim().toLowerCase();
-                    // 내가 보낸 메시지는 스킵
-                    if (senderId === myId) continue;
-
-                    const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
-                    // 내 마지막 읽음 시점보다 이후의 메시지 = 읽지 않은 메시지
-                    if (msgTs > myLastRead) {
-                        foundId = msg.MSG_ID || msg.msg_id;
-                        break;
+                    if (isInLoadedMessages) {
+                        // 로드된 메시지에 있으면 바로 사용
+                        setMessages(processedMessages);
+                        setIsInitialLoad(true);
+                        setFirstUnreadMsgId(serverFirstUnreadMsgId);
+                        setHasFutureMessages(true); // 더 최신 메시지가 있을 수 있음
+                    } else {
+                        // 로드된 메시지에 없으면 해당 메시지 컨텍스트 로드
+                        console.log('[useChatMessages] First unread msg not in loaded messages, loading context:', serverFirstUnreadMsgId);
+                        getMessagesContextApi(currentRoomId, serverFirstUnreadMsgId)
+                            .then(res => {
+                                const contextMessages = res.data?.data || [];
+                                if (contextMessages.length > 0) {
+                                    // 컨텍스트 메시지에 readBy 정보 추가
+                                    const processedContextMsgs = contextMessages.map(msg => {
+                                        const msgTs = typeof msg.SENT_AT === 'number' ? msg.SENT_AT : new Date(msg.SENT_AT).getTime();
+                                        const readBy = [];
+                                        Object.keys(readMap).forEach(memberId => {
+                                            const readerId = String(memberId).trim().toLowerCase();
+                                            const lastRead = readMap[readerId];
+                                            if (lastRead >= msgTs - 2000) {
+                                                readBy.push(readerId);
+                                            }
+                                        });
+                                        return { ...msg, readBy, unreadCount: typeof msg.unreadCount === 'number' ? msg.unreadCount : 0 };
+                                    });
+                                    setMessages(processedContextMsgs);
+                                    setHasMoreMessages(true);
+                                    setHasFutureMessages(true);
+                                }
+                                setIsInitialLoad(true);
+                                setFirstUnreadMsgId(serverFirstUnreadMsgId);
+                            })
+                            .catch(err => {
+                                console.error('[useChatMessages] Failed to load context:', err);
+                                // 실패 시 기존 메시지 사용
+                                setMessages(processedMessages);
+                                setIsInitialLoad(true);
+                                setFirstUnreadMsgId(null);
+                            });
                     }
+                } else {
+                    // 안읽은 메시지 없음 - 바닥으로 스크롤
+                    setMessages(processedMessages);
+                    setIsInitialLoad(true);
+                    setFirstUnreadMsgId(null);
                 }
-                setFirstUnreadMsgId(foundId);
             }
             setIsLoadingMore(false);
             if (rawMessages.length < CHAT_PAGE_SIZE) setHasMoreMessages(false);
