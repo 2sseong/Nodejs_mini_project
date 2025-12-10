@@ -42,23 +42,51 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
         });
     }, [socket, userId, currentRoomId]);
 
-    const loadNewerMessages = useCallback(async () => {
-        if (!currentRoomId || isLoadingNewer || !hasFutureMessages) return;
-        const newest = messagesRef.current[messagesRef.current.length - 1];
-        if (!newest) return;
+    // Ref for immediate loading state check (prevents duplicate calls)
+    const isLoadingNewerRef = useRef(false);
 
+    const loadNewerMessages = useCallback(async () => {
+        // Use ref for immediate check (state update is async)
+        if (!currentRoomId || isLoadingNewerRef.current || !hasFutureMessages) {
+            return;
+        }
+        const newest = messagesRef.current[messagesRef.current.length - 1];
+        if (!newest) {
+            return;
+        }
+
+        const newestMsgId = newest.MSG_ID || newest.msg_id;
+        console.log('[loadNewerMessages] Loading newer from msgId:', newestMsgId);
+
+        // Set ref immediately to prevent duplicate calls
+        isLoadingNewerRef.current = true;
         setIsLoadingNewer(true);
+
         try {
-            const res = await getNewerMessagesApi(currentRoomId, newest.MSG_ID || newest.msg_id);
+            const res = await getNewerMessagesApi(currentRoomId, newestMsgId);
             const newItems = res.data?.data || [];
-            if (newItems.length > 0) setMessages(prev => [...prev, ...newItems]);
-            if (newItems.length < CHAT_PAGE_SIZE) setHasFutureMessages(false);
+            console.log('[loadNewerMessages] Received:', newItems.length, 'items');
+
+            if (newItems.length > 0) {
+                // Deduplicate messages by MSG_ID
+                setMessages(prev => {
+                    const existingIds = new Set(prev.map(m => String(m.MSG_ID || m.msg_id)));
+                    const uniqueNewItems = newItems.filter(m => !existingIds.has(String(m.MSG_ID || m.msg_id)));
+                    return uniqueNewItems.length > 0 ? [...prev, ...uniqueNewItems] : prev;
+                });
+            }
+
+            if (newItems.length < CHAT_PAGE_SIZE) {
+                console.log('[loadNewerMessages] No more future messages');
+                setHasFutureMessages(false);
+            }
         } catch (err) {
-            console.error(err);
+            console.error('[loadNewerMessages] Error:', err);
         } finally {
+            isLoadingNewerRef.current = false;
             setIsLoadingNewer(false);
         }
-    }, [currentRoomId, isLoadingNewer, hasFutureMessages]);
+    }, [currentRoomId, hasFutureMessages]);
 
     const sendMessage = useCallback(({ text }) => {
         const trimmed = text.trim();

@@ -225,14 +225,14 @@ export default function PopupChatPage() {
 
     const handlePrevMatch = () => {
         if (searchMatches.length === 0) return;
-        // 이전(위로) = 더 오래된 메시지 = 인덱스 증가
-        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
+        // 이전(위로) = 더 오래된 메시지 = 인덱스 감소
+        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
     };
 
     const handleNextMatch = () => {
         if (searchMatches.length === 0) return;
-        // 다음(아래로) = 더 최근 메시지 = 인덱스 감소
-        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
+        // 다음(아래로) = 더 최근 메시지 = 인덱스 증가
+        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
     };
 
     useEffect(() => {

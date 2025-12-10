@@ -210,7 +210,7 @@ export async function getRoomReadStatus(roomId) {
     return res.rows || [];
 }
 
-// 6. 메시지 검색
+// 6. 메시지 검색 (오래된 순으로 정렬: 인덱스 0 = 가장 오래된, 마지막 = 가장 최신)
 export async function searchMessages(roomId, keyword) {
     const sql = `
         SELECT m.MSG_ID, m.CONTENT, 
@@ -222,7 +222,7 @@ export async function searchMessages(roomId, keyword) {
         ) - 32400000 AS SENT_AT,
         NVL(u.NICKNAME, 'SYSTEM') AS NICKNAME, u.PROFILE_PIC 
         FROM T_MESSAGE m LEFT JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
-        WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID DESC
+        WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID ASC
     `;
     const res = await executeQuery(sql, { roomId: Number(roomId), keyword: `%${keyword}%` });
     return res.rows || [];
