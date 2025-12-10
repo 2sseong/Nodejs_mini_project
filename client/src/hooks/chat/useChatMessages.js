@@ -66,6 +66,9 @@ export function useChatMessages(socket, userId, userNickname, currentRoomId) {
             const res = await getNewerMessagesApi(currentRoomId, newestMsgId);
             const newItems = res.data?.data || [];
             console.log('[loadNewerMessages] Received:', newItems.length, 'items');
+            if (newItems.length > 0) {
+                console.log('[loadNewerMessages] First item unreadCount:', newItems[0].unreadCount);
+            }
 
             if (newItems.length > 0) {
                 // Deduplicate messages by MSG_ID

@@ -9,6 +9,9 @@ async function attachUnreadCounts(roomId, messages) {
     const membersInRoom = parseInt(count, 10);
     const readCountMap = await getReadCountsForMessages(roomId, messages);
 
+    console.log('[attachUnreadCounts] roomId:', roomId, 'membersInRoom:', membersInRoom);
+    console.log('[attachUnreadCounts] readCountMap:', JSON.stringify(readCountMap));
+
     return await calculateUnreadCounts({
         messages,
         currentUserId: null,

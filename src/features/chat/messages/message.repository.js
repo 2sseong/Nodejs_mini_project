@@ -141,6 +141,7 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
     messageIds.forEach((id, index) => { bindVars[`id${index}`] = id; });
     const inClause = messageIds.map((_, index) => `:id${index}`).join(', ');
 
+    // SENT_AT을 JS 밀리초 타임스탬프로 변환하여 비교
     const sql = `
         SELECT 
             m.MSG_ID,
@@ -149,12 +150,12 @@ export async function countReadStatusByMessageIds(roomId, messageIds) {
         JOIN T_ROOM_MEMBER rm ON m.ROOM_ID = rm.ROOM_ID
         LEFT JOIN UserRoomReadStatus r 
             ON m.ROOM_ID = r.ROOM_ID AND rm.USER_ID = r.USER_ID
-            AND m.SENT_AT <= (
-                TO_DATE('1970-01-01', 'YYYY-MM-DD') 
-                + (r.LASTREADTIMESTAMP / 86400000) 
-                + (9 / 24) 
-                + (2 / 86400)
-            )
+            AND (
+                EXTRACT(DAY FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+                EXTRACT(HOUR FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+                EXTRACT(MINUTE FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+                EXTRACT(SECOND FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+            ) - 32400000 <= r.LASTREADTIMESTAMP + 2000
         WHERE m.ROOM_ID = :roomId AND m.MSG_ID IN (${inClause})
         GROUP BY m.MSG_ID
     `;
@@ -181,7 +182,12 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
 
         console.log(`[Repository] upsertReadStatus: userId=${userId}, roomId=${numericRoomId}, newTs=${ts}, existingTs=${existingTs}`);
 
-        // 2. 항상 업데이트 실행
+        // 2. 새 타임스탬프가 기존보다 클 때만 업데이트 (과거로 리셋 방지)
+        if (ts <= existingTs) {
+            console.log(`[Repository] Skipping update - new timestamp is not newer`);
+            return { updated: false, timestamp: existingTs };
+        }
+
         const sql = `
         MERGE INTO USERROOMREADSTATUS target 
         USING (SELECT :userId AS U_ID, :roomId AS R_ID, :ts AS TS FROM DUAL) source 
@@ -191,9 +197,8 @@ export async function upsertReadStatus(userId, roomId, lastReadTimestamp) {
         `;
         await connection.execute(sql, { userId, roomId: numericRoomId, ts }, { autoCommit: true });
 
-        // 3. 새로운 타임스탬프가 기존보다 크면 브로드캐스트 필요
-        const shouldBroadcast = ts > existingTs;
-        return { updated: shouldBroadcast, timestamp: ts };
+        // 3. 업데이트 성공
+        return { updated: true, timestamp: ts };
     } catch (err) {
         console.error('[Repository] upsertReadStatus error:', err);
         throw err;
