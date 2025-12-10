@@ -100,3 +100,44 @@
     background: var(--color-primary-light);
     color: var(--color-primary);
 }
+
+/* 반응형 스타일 */
+@media (max-width: 480px) {
+    .file-drawer-container {
+        min-width: 100%;
+    }
+
+    .drawer-header {
+        padding: 10px 12px;
+    }
+
+    .drawer-header h2 {
+        font-size: var(--font-size-md);
+    }
+
+    .file-item {
+        padding: 8px 12px;
+    }
+
+    .file-icon {
+        font-size: var(--font-size-lg);
+        margin-right: 10px;
+    }
+}
+
+@media (max-width: 320px) {
+    .file-drawer-container {
+        min-width: 100%;
+    }
+
+    .drawer-header {
+        padding: 8px 10px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .file-item {
+        padding: 6px 10px;
+    }
+}

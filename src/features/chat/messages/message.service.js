@@ -171,8 +171,8 @@ export async function removeMessage({ msgId, userId }) {
 }
 
 // 대화 내용 검색 서비스
-export async function searchMessages({ roomId, keyword }) {
-    return await messageRepo.searchMessages(roomId, keyword);
+export async function searchMessages({ roomId, keyword, userId }) {
+    return await messageRepo.searchMessages(roomId, keyword, userId);
 }
 
 // 첫 안읽은 메시지 ID 조회 서비스
@@ -181,8 +181,8 @@ export async function getFirstUnreadMsgId(roomId, userId, lastReadTimestamp) {
 }
 
 // 특정 메시지 기준 문맥 조회 서비스
-export async function getMessagesContext({ roomId, msgId }) {
-    const messages = await messageRepo.getMessagesAroundId(roomId, msgId);
+export async function getMessagesContext({ roomId, msgId, userId }) {
+    const messages = await messageRepo.getMessagesAroundId(roomId, msgId, 25, userId);
     return await attachUnreadCounts(roomId, messages);
 }
 

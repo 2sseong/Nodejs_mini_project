@@ -12,6 +12,7 @@ import NotificationWindowPage from './pages/NotificationWindowPage.jsx';
 import { useAuth } from './hooks/AuthContext.jsx';
 import PopupChatPage from './pages/PopupChatPage.jsx';
 import FileDrawerPage from './pages/FileDrawerPage.jsx';
+import NoticeListPage from './pages/NoticeListPage.jsx';
 import './App.css';
 
 // 보호된 라우트
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/notification" element={<NotificationWindowPage />} />
             <Route path="/popup/:roomId" element={<PopupChatPage />} />
             <Route path="/files/:roomId" element={<FileDrawerPage />} />
+            <Route path="/notices/:roomId" element={<NoticeListPage />} />
 
             {/* 메인 앱 라우트 */}
             <Route element={<MainLayout />}>

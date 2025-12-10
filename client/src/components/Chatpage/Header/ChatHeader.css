@@ -51,6 +51,23 @@
     color: var(--color-primary);
 }
 
+/* 공지 토글 버튼 */
+.notice-toggle-btn {
+    background: none;
+    border: none;
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
+}
+
+.notice-toggle-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--color-primary);
+}
+
 /* 검색 바 영역 */
 .chat-search-bar {
     display: flex;

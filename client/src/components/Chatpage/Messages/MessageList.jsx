@@ -22,7 +22,7 @@ export default function MessageList({
     messages, userId, onLoadMore, isLoadingMore, hasMoreMessages,
     isInitialLoad, markAsRead,
     onEditMessage, onDeleteMessage, onStartEdit, scrollToMsgId, searchKeyword,
-    loadNewerMessages, hasFutureMessages, isLoadingNewer, firstUnreadMsgId
+    loadNewerMessages, hasFutureMessages, isLoadingNewer, firstUnreadMsgId, onSetNotice
 }) {
     const listRef = useRef(null);
     const [previewMsg, setPreviewMsg] = useState(null); // 미리보기 메시지 상태
@@ -273,6 +273,7 @@ export default function MessageList({
                             onStartEdit={onStartEdit}
                             onImageLoad={handleImageLoad}
                             searchKeyword={searchKeyword}
+                            onSetNotice={onSetNotice}
                         />
                     </div>
                 );

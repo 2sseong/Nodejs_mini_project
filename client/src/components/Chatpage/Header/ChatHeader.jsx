@@ -7,6 +7,7 @@ export default function ChatHeader({
     memberCount,
     onOpenInvite,
     onOpenDrawer,
+    onOpenNotices,
     disabled,
     onLeaveRoom,
     onSearch,
@@ -15,7 +16,10 @@ export default function ChatHeader({
     matchCount,
     currentMatchIdx,
     onToggleMemberPanel,
-    isMemberPanelOpen
+    isMemberPanelOpen,
+    hasNotice,
+    isNoticeVisible,
+    onToggleNotice
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -130,6 +134,17 @@ export default function ChatHeader({
                 </div>
 
                 <div className="chat-header-buttons">
+                    {/* 공지 토글 버튼 - 공지가 있고 숨겨져 있을 때만 표시 */}
+                    {hasNotice && !isNoticeVisible && (
+                        <button
+                            className="notice-toggle-btn"
+                            onClick={onToggleNotice}
+                            title="공지 표시"
+                            disabled={disabled}
+                        >
+                            <i className="bi bi-megaphone"></i>
+                        </button>
+                    )}
                     <button
                         className={`search-toggle-btn ${isSearchOpen ? 'active' : ''}`}
                         onClick={toggleSearch}
@@ -156,6 +171,9 @@ export default function ChatHeader({
                                 </button>
                                 <button onClick={() => { setIsMenuOpen(false); onOpenDrawer(); }}>
                                     <i className="bi bi-folder2-open"></i> 채팅방 서랍
+                                </button>
+                                <button onClick={() => { setIsMenuOpen(false); if (onOpenNotices) onOpenNotices(); }}>
+                                    <i className="bi bi-megaphone"></i> 공지 목록
                                 </button>
                                 <div className="divider"></div>
                                 <button onClick={() => { setIsMenuOpen(false); handleLeaveClick(); }} className="danger-text">

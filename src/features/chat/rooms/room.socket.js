@@ -1,4 +1,5 @@
 import * as roomService from './room.service.js';
+import * as noticeService from '../notices/notice.service.js';
 
 export default function roomSocket(io, socket) {
     // 1. 인증 미들웨어에서 가져온 userId 확인
@@ -72,6 +73,78 @@ export default function roomSocket(io, socket) {
             } catch (err) {
                 console.error(`[Socket] Failed to mark room ${roomId} read:`, err);
             }
+        }
+    });
+
+    // ===== 공지사항 이벤트 =====
+
+    // 공지 설정
+    socket.on('room:set_notice', async ({ roomId, msgId, content }) => {
+        if (!roomId || !content) return;
+
+        try {
+            console.log(`[Socket] room:set_notice - roomId: ${roomId}, userId: ${userId}`);
+            const notice = await noticeService.setNotice({ roomId, msgId, content, userId });
+
+            // 해당 방의 모든 사용자에게 브로드캐스트
+            io.to(String(roomId)).emit('room:notice_updated', { roomId, notice });
+        } catch (err) {
+            console.error('[Socket] room:set_notice error:', err);
+        }
+    });
+
+    // 공지 해제
+    socket.on('room:clear_notice', async ({ roomId }) => {
+        if (!roomId) return;
+
+        try {
+            console.log(`[Socket] room:clear_notice - roomId: ${roomId}`);
+            await noticeService.clearNotice({ roomId });
+
+            // 해당 방의 모든 사용자에게 브로드캐스트
+            io.to(String(roomId)).emit('room:notice_updated', { roomId, notice: null });
+        } catch (err) {
+            console.error('[Socket] room:clear_notice error:', err);
+        }
+    });
+
+    // 공지 조회
+    socket.on('room:get_notice', async ({ roomId }) => {
+        if (!roomId) return;
+
+        try {
+            const notice = await noticeService.getNotice({ roomId });
+            socket.emit('room:notice', { roomId, notice });
+        } catch (err) {
+            console.error('[Socket] room:get_notice error:', err);
+        }
+    });
+
+    // 전체 공지 목록 조회
+    socket.on('room:get_all_notices', async ({ roomId }) => {
+        if (!roomId) return;
+
+        try {
+            const notices = await noticeService.getAllNotices({ roomId });
+            socket.emit('room:all_notices', { roomId, notices });
+        } catch (err) {
+            console.error('[Socket] room:get_all_notices error:', err);
+        }
+    });
+
+    // 개별 공지 삭제
+    socket.on('room:delete_notice', async ({ roomId, noticeId }) => {
+        if (!roomId || !noticeId) return;
+
+        try {
+            await noticeService.deleteNotice({ noticeId });
+            // 삭제 후 최신 목록 및 활성 공지 브로드캐스트
+            const notices = await noticeService.getAllNotices({ roomId });
+            const activeNotice = await noticeService.getNotice({ roomId });
+            io.to(String(roomId)).emit('room:all_notices', { roomId, notices });
+            io.to(String(roomId)).emit('room:notice_updated', { roomId, notice: activeNotice });
+        } catch (err) {
+            console.error('[Socket] room:delete_notice error:', err);
         }
     });
 }
