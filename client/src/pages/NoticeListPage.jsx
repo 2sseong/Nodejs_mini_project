@@ -8,13 +8,24 @@ import '../styles/NoticeListPage.css';
 
 export default function NoticeListPage() {
     const { roomId } = useParams();
-    const { userId } = useAuth();
-    const { socket, connected } = useChatSocket({ userId, roomId });
+    const { userId, userNickname } = useAuth();
+    const { socket, connected } = useChatSocket({ userId, userNickname, roomId });
 
     const [notices, setNotices] = useState([]);
     const [selectedNotice, setSelectedNotice] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState(null);
+
+    // 소켓 연결 시 room 채널에 join
+    useEffect(() => {
+        if (!socket || !connected || !roomId) return;
+
+        socket.emit('room:join', { roomId });
+
+        return () => {
+            socket.emit('room:leave', { roomId });
+        };
+    }, [socket, connected, roomId]);
 
     // 공지 목록 요청
     useEffect(() => {

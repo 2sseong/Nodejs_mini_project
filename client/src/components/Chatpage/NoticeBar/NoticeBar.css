@@ -5,7 +5,7 @@
     padding: 10px 16px;
     background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--bg-card) 100%);
     border-bottom: 1px solid var(--border-color);
-    min-height: 40px;
+    min-height: 20px;
     max-height: 150px;
     transition: all var(--transition-normal);
 }

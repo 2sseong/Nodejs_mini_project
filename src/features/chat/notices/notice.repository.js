@@ -69,7 +69,15 @@ export async function getAllNotices(roomId) {
 
 // 개별 공지 삭제
 export async function deleteNotice(noticeId) {
-    const sql = `DELETE FROM T_ROOM_NOTICE WHERE NOTICE_ID = :noticeId`;
-    await executeQuery(sql, { noticeId: Number(noticeId) });
-    return true;
+    const connection = await getConnection();
+    try {
+        const sql = `DELETE FROM T_ROOM_NOTICE WHERE NOTICE_ID = :noticeId`;
+        await connection.execute(sql, { noticeId: Number(noticeId) }, { autoCommit: true });
+        return true;
+    } catch (err) {
+        console.error('[NoticeRepo] deleteNotice error:', err);
+        throw err;
+    } finally {
+        if (connection) await connection.close();
+    }
 }
