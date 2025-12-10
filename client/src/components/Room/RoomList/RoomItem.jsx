@@ -1,12 +1,16 @@
 // src/components/Room/RoomList/RoomItem.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../Chatpage/Modals/ConfirmModal';
 
 const API_BASE_URL = 'http://localhost:1337';
 
 /**
  * 개별 채팅방 아이템 컴포넌트 (카카오톡 스타일)
  */
-export default function RoomItem({ room, active, onClick }) {
+export default function RoomItem({ room, active, onClick, onLeaveRoom }) {
+    const [contextMenu, setContextMenu] = useState(null);
+    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+
     // 시간 포맷
     const formatTime = (timestamp) => {
         if (!timestamp) return '';
@@ -25,6 +29,34 @@ export default function RoomItem({ room, active, onClick }) {
         if (!profilePic) return null;
         if (profilePic.startsWith('http')) return profilePic;
         return `${API_BASE_URL}${profilePic.startsWith('/') ? '' : '/'}${profilePic}`;
+    };
+
+    // 우클릭 메뉴 핸들러
+    const handleContextMenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.pageX, y: e.pageY });
+    };
+
+    // 클릭 시 컨텍스트 메뉴 닫기
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+
+    // 나가기 클릭
+    const handleLeaveClick = () => {
+        setContextMenu(null);
+        setIsLeaveModalOpen(true);
+    };
+
+    // 나가기 확인
+    const handleConfirmLeave = () => {
+        setIsLeaveModalOpen(false);
+        if (onLeaveRoom) {
+            onLeaveRoom(room.ROOM_ID);
+        }
     };
 
     // 멤버 프로필 렌더링 (최대 4개)
@@ -115,41 +147,67 @@ export default function RoomItem({ room, active, onClick }) {
     };
 
     return (
-        <li
-            className={`room-item ${active ? 'active' : ''}`}
-            onClick={() => onClick(room.ROOM_ID)}
-        >
-            {/* 방 아바타 */}
-            <div className="room-avatar">
-                {renderAvatarGrid()}
-            </div>
+        <>
+            <li
+                className={`room-item ${active ? 'active' : ''}`}
+                onClick={() => onClick(room.ROOM_ID)}
+                onContextMenu={handleContextMenu}
+            >
+                {/* 방 아바타 */}
+                <div className="room-avatar">
+                    {renderAvatarGrid()}
+                </div>
 
-            {/* 방 정보 */}
-            <div className="room-info">
-                <div className="room-name-row">
-                    <span className="room-name">
-                        {room.ROOM_NAME || '채팅방'}
+                {/* 방 정보 */}
+                <div className="room-info">
+                    <div className="room-name-row">
+                        <span className="room-name">
+                            {room.ROOM_NAME || '채팅방'}
+                        </span>
+                        {room.MEMBER_COUNT > 1 && (
+                            <span className="member-count">{room.MEMBER_COUNT}</span>
+                        )}
+                    </div>
+                    <span className="room-last-message">
+                        {room.LAST_MESSAGE || '대화를 시작하세요'}
                     </span>
-                    {room.MEMBER_COUNT > 1 && (
-                        <span className="member-count">{room.MEMBER_COUNT}</span>
+                </div>
+
+                {/* 메타 정보 */}
+                <div className="room-meta">
+                    <span className="room-time">
+                        {formatTime(room.LAST_MESSAGE_TIME)}
+                    </span>
+                    {room.UNREAD_COUNT > 0 && (
+                        <span className="room-badge">
+                            {room.UNREAD_COUNT > 99 ? '99+' : room.UNREAD_COUNT}
+                        </span>
                     )}
                 </div>
-                <span className="room-last-message">
-                    {room.LAST_MESSAGE || '대화를 시작하세요'}
-                </span>
-            </div>
+            </li>
 
-            {/* 메타 정보 */}
-            <div className="room-meta">
-                <span className="room-time">
-                    {formatTime(room.LAST_MESSAGE_TIME)}
-                </span>
-                {room.UNREAD_COUNT > 0 && (
-                    <span className="room-badge">
-                        {room.UNREAD_COUNT > 99 ? '99+' : room.UNREAD_COUNT}
-                    </span>
-                )}
-            </div>
-        </li>
+            {/* 우클릭 컨텍스트 메뉴 */}
+            {contextMenu && (
+                <div
+                    className="room-context-menu"
+                    style={{ top: contextMenu.y, left: contextMenu.x, position: 'fixed' }}
+                >
+                    <button className="danger-text" onClick={handleLeaveClick}>
+                        <i className="bi bi-box-arrow-right"></i> 나가기
+                    </button>
+                </div>
+            )}
+
+            {/* 나가기 확인 모달 */}
+            <ConfirmModal
+                isOpen={isLeaveModalOpen}
+                onClose={() => setIsLeaveModalOpen(false)}
+                onConfirm={handleConfirmLeave}
+                title="채팅방 나가기"
+                message={`'${room.ROOM_NAME || '채팅방'}'에서 나가시겠습니까?`}
+                confirmText="나가기"
+                isDanger={true}
+            />
+        </>
     );
 }

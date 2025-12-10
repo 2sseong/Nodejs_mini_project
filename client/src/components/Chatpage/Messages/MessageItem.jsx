@@ -43,8 +43,9 @@ export default function MessageItem(props) {
     };
 
     const handleContextMenu = (e) => {
-        // 파일 메시지는 우클릭 메뉴 제외 (공지로 등록 불가)
-        if (messageType === 'FILE') return;
+        // 본인 메시지만 우클릭 메뉴 표시 (수정/삭제)
+        // 파일 메시지는 삭제만 가능, 텍스트 메시지는 수정/삭제/공지 등록 가능
+        if (!mine) return;
         e.preventDefault();
         setContextMenu({ x: e.pageX, y: e.pageY });
     };
