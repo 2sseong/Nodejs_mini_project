@@ -35,7 +35,7 @@ export default function UserPage() {
     const { userId, userNickname, username } = useAuth();
     const [filterType, setFilterType] = useState('ALL');
 
-    const { socket, onlineUsers, rooms, currentRoomId, selectRoom } = useChatSocket({ userId, userNickname });
+    const { socket, onlineUsers, rooms, currentRoomId, selectRoom, addRoomToState } = useChatSocket({ userId, userNickname });
 
     // [추가] 알림 기능 활성화 - 이 페이지에서도 메시지 알림이 표시됩니다
     useChatNotifications({ socket, userId, rooms, currentRoomId, selectRoom });
@@ -127,14 +127,17 @@ export default function UserPage() {
 
     // 모달에서 새 채팅방 개설을 확정했을 때 처리 (Modal -> UserPage)
     const handleCreateChatConfirmed = (roomId, roomName) => {
-        // 모달에서 방 생성 API 호출이 완료되었으므로, 받은 ID로 채팅방 열기
 
         // 1. 모달 닫기 및 상태 초기화
         setIsOneToOneModalOpen(false);
         setTargetUserForChat(null);
 
         // 2. 생성된 방 열기
-        openChatRoom(roomId);
+        // 서버에서 room:force_join이벤트를 보내고 프론트가 구독하는데 시간이 필요하기 때문에
+        // setTimeout을 사용하여 0.3초 후에 채팅방을 열도록 함
+        setTimeout(() => {
+            openChatRoom(roomId);
+        }, 300); // 0.3초 후에 채팅방 열기(소켓동기화 대기용)
     };
 
 

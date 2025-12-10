@@ -108,6 +108,41 @@ export async function createChat(req, res, next) {
 
         // Service 호출: 새 1:1 채팅방 생성
         const newRoomInfo = await roomService.createNewOneToOneChat(myUserId, targetId, roomName);
+        const newRoomId = String(newRoomInfo.roomId);
+
+        // Socket.IO io 인스턴스 가져오기
+        const io = getIoInstance();
+
+        if (io) {
+            //  상대방(targetId)의 모든 소켓을 새로운 방에 자동 join
+            //    io.in(String(targetId)).socketsJoin(newRoomId)는 작동하지 않을 수 있으므로,
+            //    대신 상대방에게 강제 join 이벤트를 전송
+            io.to(String(targetId)).emit('room:force_join', {
+                roomId: newRoomId,
+                roomName: roomName,
+                fromUserId: myUserId,
+                message: '새로운 일대일 채팅이 시작되었습니다'
+            });
+
+            // 3. 약간의 지연 후, 양쪽에 "방 생성 완료" 알림
+            setTimeout(() => {
+                io.to(newRoomId).emit('room:new_created', {
+                    ROOM_ID: newRoomId,
+                    roomId: newRoomId,
+                    roomName: roomName,
+                    makerId: myUserId,
+                    memberCount: 2,
+                    MESSAGE_TYPE: 'SYSTEM',
+                    CONTENT: '채팅방이 생성되었습니다'
+                });
+            }, 100);
+
+            console.log(` [One-to-One Room Created]
+                - Room ID: ${newRoomId}
+                - Creator: ${myUserId}
+                - Target: ${targetId}
+                - Room Name: ${roomName}`);
+        }
 
         // 1. [소켓 알림] 새로 생성된 방 목록 갱신 요청 (나와 상대방 모두)
         // Note: 새로운 1:1 채팅이므로, 두 사용자 모두에게 방 목록 갱신을 요청합니다.
@@ -125,6 +160,8 @@ export async function createChat(req, res, next) {
         next(e); // 에러 핸들링 미들웨어로 전달
     }
 }
+
+
 
 /**
  * [POST] 여러 명 동시 초대

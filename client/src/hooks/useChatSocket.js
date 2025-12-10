@@ -15,6 +15,7 @@ export function useChatSocket({ userId, userNickname, roomId: initialRoomId = nu
         currentRoomId: stateCurrentRoomId, // 이름 변경 (충돌 방지)
         selectRoom,
         refreshRooms,
+        addRoomToState // useChatRooms에서 addRoomToState를 받음
     } = useChatRooms(socket, userId, connected);
 
     // [핵심] URL로 받은 roomId가 있으면 그걸 쓰고, 아니면 내부 상태(stateCurrentRoomId)를 씀
@@ -51,6 +52,7 @@ export function useChatSocket({ userId, userNickname, roomId: initialRoomId = nu
         messages,
         selectRoom,
         refreshRooms,
+        addRoomToState, // 외부 컴포넌트(UserPage)에서 사용할 수 있도록 노출
         sendMessage,
         loadMoreMessages,
         markAsRead,

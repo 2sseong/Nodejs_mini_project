@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 export function useChatRooms(socket, userId, connected) {
     const [rooms, setRooms] = useState([]);
     const [currentRoomId, setCurrentRoomId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     // 이벤트 리스너 내부에서 최신 state를 참조하기 위한 Ref
     const currentRoomIdRef = useRef(currentRoomId);
@@ -30,12 +31,25 @@ export function useChatRooms(socket, userId, connected) {
         }
     }, [currentRoomId, socket, userId]);
 
+
     // 방 목록 요청
     const refreshRooms = useCallback(() => {
         if (!socket || !userId) return;
         const authToken = localStorage.getItem('authToken');
         socket.emit('rooms:fetch', { userId, authToken });
     }, [socket, userId]);
+
+    // [추가]: 외부에서 새 방 정보를 받아 rooms 상태에 추가하는 함수
+    const addRoomToState = (newRoom) => {
+        setRooms(prevRooms => {
+            // 중복 방지
+            if (prevRooms.some(room => String(room.roomId) === String(newRoom.roomId))) {
+                return prevRooms; // 이미 존재하는 방이면 업데이트하지 않음
+            }
+            // 새 방을 목록 맨 앞에 추가하고, 기존 목록과 합침
+            return [newRoom, ...prevRooms];
+        });
+    };
 
     // 방 선택
     const selectRoom = useCallback((roomId) => {
@@ -161,6 +175,32 @@ export function useChatRooms(socket, userId, connected) {
             });
         };
 
+        const onForceJoin = (data) => {
+            const { roomId, roomName, fromUserId, message } = data;
+
+            console.log(` [Force Join Event] 새로운 1:1 채팅이 생성되었습니다!`);
+            console.log(`   Room: ${roomName} (ID: ${roomId})`);
+            console.log(`   From: ${fromUserId}`);
+
+            // 1. 즉시 방에 join (클라이언트 구독 시작)
+            socket.emit('room:join', { roomId, userId });
+
+            // 2. rooms 배열에 새 방 추가
+            if (addRoomToState) {
+                addRoomToState({
+                    ROOM_ID: String(roomId),
+                    roomId: String(roomId),
+                    roomName: roomName,
+                    UNREAD_COUNT: 0,
+                    LAST_MESSAGE: message || '채팅방이 생성되었습니다',
+                    MEMBER_COUNT: 2,
+                    createdAt: new Date()
+                });
+            }
+
+            console.log(` [room:force_join] 방을 자동으로 구독했습니다: ${roomId}`);
+        };
+
         // 리스너 추가
         socket.on('rooms:list', onRoomsList);
         socket.on('rooms:refresh', onRoomsRefresh);
@@ -169,6 +209,7 @@ export function useChatRooms(socket, userId, connected) {
         socket.on('room:read_complete', onReadComplete);
         socket.on('chat:read_update', onReadUpdate);
         socket.on('room:update_count', onRoomUpdateCount);
+        socket.on('room:force_join', onForceJoin);
 
         return () => {
             socket.off('rooms:list', onRoomsList);
@@ -178,6 +219,7 @@ export function useChatRooms(socket, userId, connected) {
             socket.off('room:read_complete', onReadComplete);
             socket.off('chat:read_update', onReadUpdate);
             socket.off('room:update_count', onRoomUpdateCount);
+            socket.off('room:force_join', onForceJoin);
         };
     }, [socket, userId, connected, refreshRooms]);
 
@@ -191,5 +233,12 @@ export function useChatRooms(socket, userId, connected) {
         }
     }, [rooms]);
 
-    return { rooms, currentRoomId, selectRoom, refreshRooms };
+    return {
+        rooms,
+        currentRoomId,
+        selectRoom,
+        refreshRooms, // 목록 새로고침 함수
+        addRoomToState, // 새 방 추가 함수 > useChatSocket으로 전달할 함수
+        isLoading
+    };
 }
