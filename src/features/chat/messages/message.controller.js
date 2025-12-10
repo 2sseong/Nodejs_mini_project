@@ -5,9 +5,12 @@ export async function searchRoomMessages(req, res, next) {
     try {
         const { roomId } = req.params;
         const { keyword } = req.query;
+        const userId = req.user?.userId; // 인증된 사용자 ID
 
-        // 서비스 함수 호출
-        const results = await messageService.searchMessages({ roomId, keyword });
+        console.log('[searchRoomMessages] roomId:', roomId, 'keyword:', keyword, 'userId:', userId);
+
+        // 서비스 함수 호출 (userId 전달시 입장 이후 메시지만 검색)
+        const results = await messageService.searchMessages({ roomId, keyword, userId });
 
         res.json({ success: true, data: results });
     } catch (e) {
@@ -18,10 +21,11 @@ export async function searchRoomMessages(req, res, next) {
 // 문맥 이동 API 핸들러
 export async function getMessageContext(req, res, next) {
     try {
-        const { roomId, msgId } = req.params; // URL 파라미터 확인 필요 (:roomId, :msgId)
+        const { roomId, msgId } = req.params;
+        const userId = req.user?.userId; // 인증된 사용자 ID
 
-        // 서비스 함수 호출
-        const messages = await messageService.getMessagesContext({ roomId, msgId });
+        // 서비스 함수 호출 (userId 전달시 입장 이후 메시지만 조회)
+        const messages = await messageService.getMessagesContext({ roomId, msgId, userId });
 
         // 디버깅: 첫 번째 메시지의 unreadCount 확인
         if (messages && messages.length > 0) {
