@@ -1,0 +1,117 @@
+.notice-list-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: var(--bg-page);
+}
+
+.notice-list-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.no-notices {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px 16px;
+    font-size: var(--font-size-sm);
+}
+
+.notice-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.notice-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    border: 1px solid var(--border-color);
+}
+
+.notice-item:hover {
+    background: var(--bg-hover);
+}
+
+.notice-item.active {
+    border-left: 3px solid var(--color-primary);
+}
+
+.notice-item.expanded {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+}
+
+.notice-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.notice-item-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.active-badge {
+    background: var(--color-primary);
+    color: white;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.notice-author {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.notice-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.notice-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    opacity: 0.6;
+}
+
+.notice-delete-btn:hover {
+    background: var(--color-danger-light);
+    opacity: 1;
+}
+
+.notice-item-content {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.notice-item-content.truncated {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
