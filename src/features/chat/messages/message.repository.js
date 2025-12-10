@@ -228,7 +228,33 @@ export async function searchMessages(roomId, keyword) {
     return res.rows || [];
 }
 
-// 7. 특정 메시지 주변 컨텍스트 조회
+// 6-1. 첫 안읽은 메시지 ID 조회 (입장 시 스크롤 위치 결정용)
+export async function getFirstUnreadMsgId(roomId, userId, lastReadTimestamp) {
+    // lastReadTimestamp를 Oracle TIMESTAMP로 변환
+    // JavaScript timestamp (ms) -> Oracle TIMESTAMP
+    const sql = `
+        SELECT MSG_ID FROM (
+            SELECT m.MSG_ID
+            FROM T_MESSAGE m
+            WHERE m.ROOM_ID = :roomId
+            AND m.SENDER_ID != :userId
+            AND (
+                EXTRACT(DAY FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
+                EXTRACT(HOUR FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 3600000 +
+                EXTRACT(MINUTE FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 60000 +
+                EXTRACT(SECOND FROM (m.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 1000
+            ) - 32400000 > :lastReadTs
+            ORDER BY m.MSG_ID ASC
+        ) WHERE ROWNUM = 1
+    `;
+    const res = await executeQuery(sql, {
+        roomId: Number(roomId),
+        userId: userId,
+        lastReadTs: Number(lastReadTimestamp)
+    });
+    return res.rows?.[0]?.MSG_ID || null;
+}
+
 export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
     const limitPlusOne = Number(offset) + 1;
     const binds = { roomId: Number(roomId), targetMsgId, limitCnt: offset, limitCntNext: limitPlusOne };
