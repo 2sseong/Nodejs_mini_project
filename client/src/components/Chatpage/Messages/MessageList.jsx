@@ -246,6 +246,19 @@ export default function MessageList({
                 const isMine = String(m.SENDER_ID || m.sender_id) === String(userId);
                 const messageType = m.MESSAGE_TYPE || m.message_type;
 
+                // 메시지 그룹핑: 같은 발신자 + 같은 시:분이면 프로필 숨김
+                const prevMsg = i > 0 ? messages[i - 1] : null;
+                const prevMsgType = prevMsg ? (prevMsg.MESSAGE_TYPE || prevMsg.message_type) : null;
+                const isSameSenderAsPrev = prevMsg &&
+                    String(prevMsg.SENDER_ID || prevMsg.sender_id) === String(m.SENDER_ID || m.sender_id);
+                const prevSentAt = prevMsg ? (prevMsg.SENT_AT || prevMsg.sent_at) : null;
+                const isSameMinute = prevSentAt && sentAt &&
+                    new Date(prevSentAt).getHours() === new Date(sentAt).getHours() &&
+                    new Date(prevSentAt).getMinutes() === new Date(sentAt).getMinutes();
+                const prevIsSystem = prevMsgType === 'SYSTEM';
+                // 프로필 표시 조건: 첫 메시지이거나, 다른 발신자이거나, 다른 시:분이거나, 이전이 시스템 메시지
+                const showProfile = !isSameSenderAsPrev || !isSameMinute || showDate || prevIsSystem;
+
                 // 시스템 메시지 렌더링 (초대/퇴장 등)
                 if (messageType === 'SYSTEM') {
                     return (
@@ -286,6 +299,7 @@ export default function MessageList({
                             onImageLoad={handleImageLoad}
                             searchKeyword={searchKeyword}
                             onSetNotice={onSetNotice}
+                            showProfile={showProfile}
                         />
                     </div>
                 );

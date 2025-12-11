@@ -17,12 +17,12 @@ export default function MessageItem(props) {
         fileUrl,
         fileName,
         unreadCount,
-        onEdit,
         onDelete,
         onStartEdit,
         onImageLoad,
         searchKeyword,
-        onSetNotice
+        onSetNotice,
+        showProfile = true, // 기본값: 프로필 표시
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
@@ -209,23 +209,27 @@ export default function MessageItem(props) {
     const avatarUrl = getAvatarUrl(profilePic);
 
     return (
-        <div className={`message-item ${mine ? 'mine' : 'theirs'}`} id={`msg-${msgId}`}>
+        <div className={`message-item ${mine ? 'mine' : 'theirs'} ${!showProfile && !mine ? 'grouped' : ''}`} id={`msg-${msgId}`}>
             {!mine ? (
                 <>
-                    <div className="sender-nickname">{nickname}</div>
+                    {showProfile && <div className="sender-nickname">{nickname}</div>}
                     <div className="message-row-theirs">
-                        {avatarUrl ? (
-                            <img
-                                key={avatarUrl} // [핵심] URL 변경 시 강제 리렌더링으로 즉시 업데이트 반영
-                                src={avatarUrl}
-                                alt={nickname}
-                                className="chat-profile-img"
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                            />
+                        {showProfile ? (
+                            avatarUrl ? (
+                                <img
+                                    key={avatarUrl}
+                                    src={avatarUrl}
+                                    alt={nickname}
+                                    className="chat-profile-img"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                            ) : (
+                                <div className="chat-profile-initials">
+                                    {getInitials(nickname)}
+                                </div>
+                            )
                         ) : (
-                            <div className="chat-profile-initials">
-                                {getInitials(nickname)}
-                            </div>
+                            <div className="chat-profile-placeholder"></div>
                         )}
 
                         <div className={`message-bubble theirs ${messageType === 'FILE' && isImageFile(fileName) ? 'is-file' : ''}`} onContextMenu={handleContextMenu} ref={bubbleRef}>

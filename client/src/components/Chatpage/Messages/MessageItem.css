@@ -76,7 +76,6 @@
 
 .message-row-theirs {
     display: flex;
-    align-items: flex-end;
     justify-content: flex-start;
     gap: 6px;
     width: 100%;
@@ -120,6 +119,18 @@
     font-weight: bold;
     font-size: var(--font-size-sm);
     flex-shrink: 0;
+}
+
+/* 프로필 숨김 시 placeholder (같은 너비 유지) */
+.chat-profile-placeholder {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+/* 그룹화된 메시지 (연속 메시지) */
+.message-item.grouped {
+    margin-top: -4px;
 }
 
 /* 시간 및 읽음 확인 */
