@@ -389,3 +389,26 @@ export async function getRoomMembers(roomId) {
     const result = await executeQuery(sql, [roomId]);
     return result.rows || [];
 }
+
+/**
+ * [추가] 1:1 채팅방에서 현재 사용자의 상대방 닉네임만 조회
+ * @param {number} roomId - 1:1 채팅방 ID
+ * @param {number} currentUserId - 현재 로그인 사용자 ID
+ * @returns {string | null} 상대방 닉네임
+ */
+export async function getOtherUserNickname({ roomId, currentUserId }) {
+    // 본인을 제외한 (USER_ID != :currentUserId) 한 명의 닉네임만 조회
+    const sql = `
+        SELECT
+            u.NICKNAME
+        FROM T_ROOM_MEMBER rm
+        JOIN T_USER u ON rm.USER_ID = u.USER_ID
+        WHERE rm.ROOM_ID = :roomId
+          AND rm.USER_ID != :currentUserId 
+        FETCH FIRST 1 ROW ONLY
+    `;
+
+    const result = await executeQuery(sql, { roomId, currentUserId });
+
+    return result.rows?.[0]?.NICKNAME || null;
+}

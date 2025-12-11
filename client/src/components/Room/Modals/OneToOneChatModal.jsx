@@ -58,10 +58,21 @@ export default function OneToOneChatModal({ isOpen, onClose, userId, targetUser,
             return;
         }
 
+        // 1) 현재 입력된 이름이 모달이 처음 열릴 때 설정된 기본 이름과 같은지 비교
+        const currentDefaultName = targetUser ? `${targetUser.userNickname}님과의 대화` : '';
+
+        let nameToSend = trimmedName; // 기본값: 사용자가 입력한 이름 그대로 전송
+
+        // 2) 만약 현재 입력된 이름이 기본 이름과 같다면, 서버에 null로 전송하여
+        // 사용자 지정 이름이 없음을 알림
+        if (trimmedName === currentDefaultName) {
+            nameToSend = currentDefaultName;
+            // 기본 이름 ("XXX님과의 대화") 문자열 그대로 전송 > 서버로
+        }
         setIsCreating(true);
         try {
             // 2. [수정] apiCreateRoom 모듈 함수 사용
-            const res = await createOneToOneChat(targetUserId, trimmedName);
+            const res = await createOneToOneChat(targetUserId, nameToSend);
 
             if (res.roomId) { // API 응답 구조를 roomId로 체크 (res.data?.success 대신))
                 onClose(); // 성공

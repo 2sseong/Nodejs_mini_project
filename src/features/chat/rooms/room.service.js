@@ -5,8 +5,41 @@ export async function createRoom({ roomName, creatorId }) {
     return await roomRepo.createRoomWithCreatorTx({ roomName, creatorId });
 }
 
+// 1:1 채팅방 이름을 위해 로직 수정(기본패턴일 때 상대방 이름 가져오기)
+// export async function listRoomsForUser({ userId }) {
+//     return await roomRepo.listRoomsByUser({ userId });
+// }
+
 export async function listRoomsForUser({ userId }) {
-    return await roomRepo.listRoomsByUser({ userId });
+    // 1. Repository에서 기본 방 목록을 가져옴 (기존 기능 그대로 호출)
+    const rooms = await roomRepo.listRoomsByUser({ userId });
+
+    // 2. 1:1 채팅방 이름 동적 결정 로직 삽입
+    for (const room of rooms) {
+        // 1:1 채팅방이고, 방 이름이 설정되지 않았거나 기본 패턴일 때만 대체
+        if (room.ROOM_TYPE === '1_TO_1') {
+
+            const storedName = room.ROOM_NAME;
+            // 프론트엔드 로직에서 요구하는 이름 대체 조건
+            const isDefaultPattern = storedName === null || storedName?.match(/^(.+)님과의 대화$/);
+
+            if (isDefaultPattern) {
+
+                // 새로 만든 안전한 함수로 상대방 닉네임 조회
+                const otherNickname = await roomRepo.getOtherUserNickname({
+                    roomId: room.ROOM_ID,
+                    currentUserId: userId
+                });
+
+                if (otherNickname) {
+                    // ROOM_NAME 필드를 상대방 닉네임으로 덮어씀
+                    room.ROOM_NAME = `${otherNickname}님과의 대화`;
+                }
+            }
+        }
+    }
+    // 3. 보강된 데이터 반환
+    return rooms;
 }
 
 export async function leaveRoom({ roomId, userId, userNickname }) {
@@ -72,6 +105,7 @@ export async function createNewOneToOneChat(myUserId, targetUserId, roomName) {
     if (!exists) throw { status: 404, message: '대상 사용자를 찾을 수 없습니다.' };
 
     // 2. Repository를 호출하여 채팅방 생성 및 멤버 추가 트랜잭션 실행
+    // roomName이 null이면 DB에 null이 저장되어 프론트에서 동적으로 이름을 표시하는 기반
     const newRoomInfo = await roomRepo.createNewOneToOneRoom(myUserId, targetUserId, roomName);
     return newRoomInfo;
 }

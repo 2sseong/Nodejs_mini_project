@@ -1,5 +1,5 @@
 // src/pages/RoomPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import '../styles/RoomPage.css';
 
@@ -20,6 +20,26 @@ export default function RoomPage() {
         rooms,
         socket
     } = useChatSocket({ userId, userNickname });
+
+    useEffect(() => {
+        if (rooms && rooms.length > 0) {
+            console.log("========================================");
+            console.log("🏠 ROOM PAGE: Total Rooms Count:", rooms.length);
+
+            rooms.forEach((room, index) => {
+                const memberCount = room.MEMBER_PROFILES?.length;
+
+                // ⭐️ [보강된 디버깅] 모든 방의 ROOM_ID, ROOM_TYPE, MEMBER_COUNT를 출력합니다.
+                console.log(`[Room ${index}] ID:${room.ROOM_ID}, TYPE:${room.ROOM_TYPE}, MEMBERS:${memberCount}`);
+
+                if (memberCount === 2) {
+                    console.log("✅ 1:1 Room Found! NAME:", room.ROOM_NAME);
+                    console.log("   PROFILES:", room.MEMBER_PROFILES); // 1:1 방의 프로필만 상세 출력
+                }
+            });
+            console.log("========================================");
+        }
+    }, [rooms]); // ⭐️ rooms 배열이 변경될 때만 실행
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -49,6 +69,13 @@ export default function RoomPage() {
     if (!authLoaded) return <div>로딩 중...</div>;
     if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
+    // [추가] currentUser 객체 생성 (RoomItem에서 필요한 형식)
+    const currentUser = {
+        userId: userId,
+        userNickname: userNickname,
+        // 필요하다면 다른 사용자 정보(프로필 사진 등)도 추가 가능
+    };
+
     return (
         <div className="chat-container" style={{ flexDirection: 'column' }}>
             <div style={{ width: '100%', height: '100%' }}>
@@ -59,6 +86,7 @@ export default function RoomPage() {
                     currentRoomId={null}
                     onSelectRoom={handleRoomClick}
                     onOpenCreateModal={() => setIsCreateOpen(true)}
+                    currentUser={currentUser}
                 />
             </div>
 

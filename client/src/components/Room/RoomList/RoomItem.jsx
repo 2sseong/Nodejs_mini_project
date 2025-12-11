@@ -6,7 +6,58 @@ const API_BASE_URL = 'http://localhost:1337';
 /**
  * 개별 채팅방 아이템 컴포넌트 (카카오톡 스타일)
  */
-export default function RoomItem({ room, active, onClick }) {
+export default function RoomItem({ room, active, onClick, currentUser }) {
+
+    // [추가/수정] 채팅방 이름을 동적으로 결정하는 로직
+    const getRoomDisplayName = () => {
+
+        const storedName = room.ROOM_NAME;
+
+        // 1. 현재 사용자 ID를 String으로 안전하게 준비
+        const currentUserIdString = String(currentUser?.userId);
+
+        // 2. 1:1 채팅방 (1_TO_1)인지 확인
+        if (room.ROOM_TYPE === '1_TO_1' && currentUser && room.MEMBER_PROFILES?.length === 2) {
+
+            // --- 2-1. 상대방 찾기 (핵심 로직) ---
+            // MEMBER_PROFILES에서 현재 사용자의 ID와 일치하지 않는 프로필을 찾습니다.
+            const otherUser = room.MEMBER_PROFILES.find(
+                (profile) => String(profile.USER_ID) !== currentUserIdString
+            );
+
+            if (otherUser) {
+                // --- 2-2. 동적 이름 표시 조건 확인 ---
+
+                // A. 저장된 이름이 NULL인 경우 (이전 데이터)
+                if (storedName === null) {
+                    return otherUser.NICKNAME;
+                }
+
+                // B. 저장된 이름이 기본 이름 패턴인 경우 (현재 데이터: "XXX님과의 대화")
+                // storedName이 null이 아니므로 .match()를 안전하게 호출
+                const isDefaultPattern = storedName?.match(/^(.+)님과의 대화$/);
+
+                if (isDefaultPattern) {
+                    // 기본 이름 패턴이라면, 저장된 이름을 무시하고 상대방 닉네임을 반환
+                    return `${otherUser.NICKNAME}님과의 대화`;
+                }
+
+                // C. 저장된 이름이 NULL도 아니고 기본 이름 패턴도 아니면, 사용자 지정 이름으로 간주하고 그대로 반환
+                return storedName;
+            }
+        }
+
+        // 3. 그룹 채팅이거나, 1:1인데 멤버를 못 찾은 경우, 또는 기본값이 저장된 경우
+        if (storedName) {
+            return storedName;
+        }
+
+        // 4. 최종 예외 처리
+        return '채팅방';
+    };
+
+    const roomDisplayName = getRoomDisplayName(); // 동적 이름 계산   
+
     // 시간 포맷
     const formatTime = (timestamp) => {
         if (!timestamp) return '';
@@ -128,7 +179,9 @@ export default function RoomItem({ room, active, onClick }) {
             <div className="room-info">
                 <div className="room-name-row">
                     <span className="room-name">
-                        {room.ROOM_NAME || '채팅방'}
+                        {/* {room.ROOM_NAME || '채팅방'} */}
+                        {/* DB 값 대신 동적으로 계산된 이름을 사용 */}
+                        {roomDisplayName}
                     </span>
                     {room.MEMBER_COUNT > 1 && (
                         <span className="member-count">{room.MEMBER_COUNT}</span>
