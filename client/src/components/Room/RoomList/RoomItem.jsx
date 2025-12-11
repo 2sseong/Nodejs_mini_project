@@ -5,9 +5,9 @@ import ConfirmModal from '../../Chatpage/Modals/ConfirmModal';
 const API_BASE_URL = 'http://localhost:1337';
 
 /**
- * 개별 채팅방 아이템 컴포넌트 (카카오톡 스타일)
+ * 개별 채팅방 아이템 컴포넌트
  */
-export default function RoomItem({ room, active, onClick, onLeaveRoom }) {
+export default function RoomItem({ room, active, onClick, onLeaveRoom, onToggleNotification }) {
     const [contextMenu, setContextMenu] = useState(null);
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
 
@@ -167,6 +167,9 @@ export default function RoomItem({ room, active, onClick, onLeaveRoom }) {
                         {room.MEMBER_COUNT > 1 && (
                             <span className="member-count">{room.MEMBER_COUNT}</span>
                         )}
+                        {room.NOTIFICATION_ENABLED === 0 && (
+                            <i className="bi bi-bell-slash notification-off-icon" title="알림 꺼짐"></i>
+                        )}
                     </div>
                     <span className="room-last-message">
                         {room.LAST_MESSAGE || '대화를 시작하세요'}
@@ -192,6 +195,15 @@ export default function RoomItem({ room, active, onClick, onLeaveRoom }) {
                     className="room-context-menu"
                     style={{ top: contextMenu.y, left: contextMenu.x, position: 'fixed' }}
                 >
+                    <button onClick={() => {
+                        setContextMenu(null);
+                        if (onToggleNotification) {
+                            onToggleNotification(room.ROOM_ID, room.NOTIFICATION_ENABLED !== 0);
+                        }
+                    }}>
+                        <i className={`bi ${room.NOTIFICATION_ENABLED === 0 ? 'bi-bell' : 'bi-bell-slash'}`}></i>
+                        {room.NOTIFICATION_ENABLED === 0 ? ' 알림 켜기' : ' 알림 끄기'}
+                    </button>
                     <button className="danger-text" onClick={handleLeaveClick}>
                         <i className="bi bi-box-arrow-right"></i> 나가기
                     </button>

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-export function useChatNotifications({ 
-    socket, 
-    userId, 
-    rooms, 
-    currentRoomId, 
-    selectRoom 
+export function useChatNotifications({
+    socket,
+    userId,
+    rooms,
+    currentRoomId,
+    selectRoom
 }) {
     // 리스너 내부에서 최신 state를 참조하기 위한 Refs
     // (Socket 이벤트 핸들러가 클로저 문제 없이 최신 값을 읽으려면 Ref가 필요합니다)
@@ -35,12 +35,12 @@ export function useChatNotifications({
             // [Electron] 메인 프로세스로 데이터 전송
             window.electronAPI.sendCustomNotification({
                 id: Date.now(),
-                title,              
-                content: body,  
+                title,
+                content: body,
                 roomName: title.split(' - ')[0]?.replace('💬 ', '') || '채팅방',
                 nickname: title.split(' - ')[1] || '상대방',
                 roomId,
-                type: 'TEXT' 
+                type: 'TEXT'
             });
         } else {
             // [Web Browser] 브라우저 알림 Fallback
@@ -68,7 +68,7 @@ export function useChatNotifications({
 
             // 1. 내가 보낸 메시지는 알림 X
             if (msgSenderId === myId) return;
-            
+
             // ✅ [수정된 로직]
             // 조건: "해당 방을 보고 있음" AND "창이 활성화(Focus) 되어 있음"
             // 이 두 가지가 모두 충족될 때만 알림을 무시합니다.
@@ -90,9 +90,15 @@ export function useChatNotifications({
 
             const targetRoom = roomsRef.current.find(r => String(r.ROOM_ID) === msgRoomId);
             const roomName = targetRoom ? targetRoom.ROOM_NAME : '새로운 메시지';
-            
-            let contentText = msg.MESSAGE_TYPE === 'FILE' 
-                ? `📄 파일: ${msg.FILE_NAME || '전송됨'}` 
+
+            // 해당 채팅방의 알림이 꺼져 있으면 알림 생략
+            if (targetRoom && targetRoom.NOTIFICATION_ENABLED === 0) {
+                console.log('🔕 해당 채팅방의 알림이 꺼져 있어 생략:', roomName);
+                return;
+            }
+
+            let contentText = msg.MESSAGE_TYPE === 'FILE'
+                ? `📄 파일: ${msg.FILE_NAME || '전송됨'}`
                 : (msg.CONTENT || msg.TEXT || '');
 
             if (contentText.length > 150) {

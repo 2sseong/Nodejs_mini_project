@@ -204,3 +204,48 @@ export async function getRoomMembers(req, res, next) {
         next(error);
     }
 }
+
+/**
+ * [GET] 채팅방 알림 설정 조회
+ */
+export async function getNotificationSetting(req, res, next) {
+    const { roomId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!roomId || !userId) {
+        return res.status(400).json({ success: false, message: '채팅방 ID와 사용자 정보가 필요합니다.' });
+    }
+
+    try {
+        const enabled = await roomService.getNotificationEnabled({ roomId, userId });
+        res.status(200).json({ success: true, enabled });
+    } catch (error) {
+        console.error('Error in getNotificationSetting controller:', error);
+        next(error);
+    }
+}
+
+/**
+ * [PUT] 채팅방 알림 설정 변경
+ */
+export async function updateNotificationSetting(req, res, next) {
+    const { roomId } = req.params;
+    const userId = req.user?.userId;
+    const { enabled } = req.body;
+
+    if (!roomId || !userId) {
+        return res.status(400).json({ success: false, message: '채팅방 ID와 사용자 정보가 필요합니다.' });
+    }
+
+    if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'enabled 값은 boolean이어야 합니다.' });
+    }
+
+    try {
+        const result = await roomService.setNotificationEnabled({ roomId, userId, enabled });
+        res.status(200).json({ success: true, updated: result, enabled });
+    } catch (error) {
+        console.error('Error in updateNotificationSetting controller:', error);
+        next(error);
+    }
+}

@@ -187,6 +187,7 @@ export async function listRoomsByUser({ userId }) {
             r.ROOM_ID,
             r.ROOM_NAME,
             r.ROOM_TYPE,
+            rm.NOTIFICATION_ENABLED,
             CASE 
                 WHEN lm.MESSAGE_TYPE = 'FILE' THEN '(파일 전송)'
                 -- [Fix] CLOB 컬럼을 DBMS_LOB.SUBSTR로 감싸서 VARCHAR2로 변환
@@ -402,4 +403,42 @@ export async function getRoomMembers(roomId) {
     `;
     const result = await executeQuery(sql, [roomId]);
     return result.rows || [];
+}
+
+/**
+ * 채팅방 알림 설정 조회
+ */
+export async function getNotificationEnabled({ roomId, userId }) {
+    const sql = `
+        SELECT NOTIFICATION_ENABLED 
+        FROM T_ROOM_MEMBER 
+        WHERE ROOM_ID = :roomId AND USER_ID = :userId
+    `;
+    const result = await executeQuery(sql, { roomId, userId });
+    if (result.rows && result.rows.length > 0) {
+        return result.rows[0].NOTIFICATION_ENABLED === 1;
+    }
+    return true; // 기본값: 켜짐
+}
+
+/**
+ * 채팅방 알림 설정 변경
+ */
+export async function setNotificationEnabled({ roomId, userId, enabled }) {
+    const connection = await getConnection();
+    try {
+        const sql = `
+            UPDATE T_ROOM_MEMBER 
+            SET NOTIFICATION_ENABLED = :enabled 
+            WHERE ROOM_ID = :roomId AND USER_ID = :userId
+        `;
+        const result = await connection.execute(sql, {
+            roomId,
+            userId,
+            enabled: enabled ? 1 : 0
+        }, { autoCommit: true });
+        return result.rowsAffected > 0;
+    } finally {
+        if (connection) await connection.close();
+    }
 }

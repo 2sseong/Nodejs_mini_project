@@ -6,7 +6,7 @@ import '../styles/RoomPage.css';
 import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatNotifications } from '../hooks/useChatNotifications';
-import { apiLeaveRoom } from '../api/roomApi';
+import { apiLeaveRoom, apiSetNotificationSetting } from '../api/roomApi';
 
 import RoomList from '../components/Room/RoomList/RoomList.jsx';
 import CreateRoomModal from '../components/Room/Modals/CreateRoomModal.jsx';
@@ -58,6 +58,19 @@ export default function RoomPage() {
         }
     };
 
+    // 5. 알림 토글 핸들러
+    const handleToggleNotification = async (roomId, currentEnabled) => {
+        try {
+            const newEnabled = !currentEnabled;
+            const res = await apiSetNotificationSetting(roomId, newEnabled);
+            if (res.data?.success && socket) {
+                socket.emit('room:notification_changed', { roomId, enabled: newEnabled, userId });
+            }
+        } catch (error) {
+            console.error('알림 설정 변경 실패:', error);
+        }
+    };
+
     if (!authLoaded) return <div>로딩 중...</div>;
     if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
@@ -72,6 +85,7 @@ export default function RoomPage() {
                     onSelectRoom={handleRoomClick}
                     onOpenCreateModal={() => setIsCreateOpen(true)}
                     onLeaveRoom={handleLeaveRoom}
+                    onToggleNotification={handleToggleNotification}
                 />
             </div>
 

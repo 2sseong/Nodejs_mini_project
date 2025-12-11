@@ -64,3 +64,22 @@ export const apiInviteUsers = (roomId, inviteeIds, inviterNickname) => {
         inviterNickname,
     });
 };
+
+/**
+ * [GET] 채팅방 알림 설정 조회
+ * @param {string|number} roomId
+ * @returns {Promise}
+ */
+export const apiGetNotificationSetting = (roomId) => {
+    return api.get(`/chats/${roomId}/notification`);
+};
+
+/**
+ * [PUT] 채팅방 알림 설정 변경
+ * @param {string|number} roomId
+ * @param {boolean} enabled
+ * @returns {Promise}
+ */
+export const apiSetNotificationSetting = (roomId, enabled) => {
+    return api.put(`/chats/${roomId}/notification`, { enabled });
+};

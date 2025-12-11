@@ -114,3 +114,20 @@
     opacity: 1;
     visibility: visible;
 }
+
+/* 알림 토글 버튼 */
+.notification-toggle.enabled {
+    color: var(--text-inverse);
+}
+
+.notification-toggle.enabled i {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.notification-toggle.disabled {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.notification-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

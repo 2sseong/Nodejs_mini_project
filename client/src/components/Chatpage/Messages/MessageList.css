@@ -125,3 +125,34 @@
     border-radius: var(--radius-lg);
     text-align: center;
 }
+
+/* 공지 토글 플로팅 버튼 */
+.notice-toggle-floating-btn {
+    position: sticky;
+    top: -6px;
+    z-index: 100;
+
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-fast);
+}
+
+.notice-toggle-floating-btn:hover {
+    background-color: var(--color-primary-hover);
+    transform: scale(1.1);
+}
+
+.notice-toggle-floating-btn i {
+    font-size: 16px;
+}

@@ -51,8 +51,8 @@
     color: var(--color-primary);
 }
 
-/* 공지 토글 버튼 */
-.notice-toggle-btn {
+/* 채팅방 알림 토글 버튼 */
+.notification-toggle-btn {
     background: none;
     border: none;
     font-size: var(--font-size-lg);
@@ -60,12 +60,24 @@
     padding: 6px;
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
+}
+
+.notification-toggle-btn.enabled {
     color: var(--text-secondary);
 }
 
-.notice-toggle-btn:hover {
+.notification-toggle-btn.enabled:hover {
     background-color: var(--bg-hover);
     color: var(--color-primary);
+}
+
+.notification-toggle-btn.disabled {
+    color: var(--text-muted);
+}
+
+.notification-toggle-btn.disabled:hover {
+    background-color: var(--bg-hover);
+    color: var(--color-danger);
 }
 
 /* 검색 바 영역 */
