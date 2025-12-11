@@ -7,7 +7,7 @@ export default defineConfig({
     base: './',
     build: {
         // 빌드 결과 폴더가 'dist'가 아니라면 여기서 'outDir'을 수정해야 합니다.
-        outDir: 'dist', 
+        outDir: 'dist',
     },
     server: {
         proxy: {
