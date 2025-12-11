@@ -23,6 +23,7 @@ export default function MessageItem(props) {
         searchKeyword,
         onSetNotice,
         showProfile = true, // 기본값: 프로필 표시
+        showTime = true, // 기본값: 시간 표시
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
@@ -238,9 +239,11 @@ export default function MessageItem(props) {
 
                         <div className="message-info theirs">
                             {displayCount && <span className="unread-count">{displayCount}</span>}
-                            <span className="timestamp">
-                                {sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </span>
+                            {showTime && (
+                                <span className="timestamp">
+                                    {sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </>
@@ -248,9 +251,11 @@ export default function MessageItem(props) {
                 <div className="message-row-mine">
                     <div className="message-info mine">
                         {displayCount && <span className="unread-count">{displayCount}</span>}
-                        <span className="timestamp">
-                            {sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
+                        {showTime && (
+                            <span className="timestamp">
+                                {sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                        )}
                     </div>
                     <div className={`message-bubble mine ${messageType === 'FILE' && isImageFile(fileName) ? 'is-file' : ''}`} onContextMenu={handleContextMenu} ref={bubbleRef}>
                         {renderMessageContent()}
