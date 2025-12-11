@@ -1,13 +1,13 @@
 {
   "name": "node-vs2019-app",
   "version": "1.0.0",
-  "main": "main.cjs",
+  "main": "Electron/main.cjs",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node Server/src/server.js",
     "start-electron": "electron .",
-    "dev": "node src/server.js"
+    "dev": "node Server/src/server.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

@@ -1,11 +1,17 @@
-// src/server.js
-import 'dotenv/config'
+// Server/src/server.js
+import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
+import path from 'path'
+import fs from 'fs' // 파일 시스템 모듈 추가
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
-import fs from 'fs' // [필수] 파일 시스템 모듈 추가
-import { fileURLToPath } from 'url'
 import http from 'http'
+
+// .env 파일 경로 설정 (Server 폴더)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.join(__dirname, '..', '.env') })
+
 import { initialize as initOracleDB } from '../db/oracle.js'
 
 import authRouter from './features/auth/authRoutes.js'
@@ -21,9 +27,7 @@ const PORT = process.env.PORT || 1337
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
 // 1. [중요] 경로 설정 (절대 경로로 확실하게 잡기)
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const PROJECT_ROOT = path.join(__dirname, '..'); // src의 상위 폴더 (프로젝트 루트)
+const PROJECT_ROOT = path.join(__dirname, '..'); // src의 상위 폴더 (Server 폴더)
 
 const PUBLIC_UPLOADS_DIR = path.join(PROJECT_ROOT, 'public', 'uploads');
 const PUBLIC_PROFILE_DIR = path.join(PROJECT_ROOT, 'public', 'profile');
@@ -69,7 +73,7 @@ app.use('/users', searchRouter)
 app.use('/api/users', userRoutes)
 
 // 프론트엔드 빌드 파일
-const publicPath = path.join(__dirname, '../client/dist')
+const publicPath = path.join(PROJECT_ROOT, '..', 'Client', 'dist')
 app.use(express.static(publicPath, { extensions: ['html'], maxAge: 60 * 60 * 24 * 1000 }))
 
 // 서버 시작

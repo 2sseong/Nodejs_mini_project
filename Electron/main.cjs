@@ -6,7 +6,7 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', 'Server', '.env') });
 
 // [수정 1] 윈도우 투명 창 버그 방지를 위해 하드웨어 가속 끄기 (필수 권장)
 app.disableHardwareAcceleration();
@@ -119,7 +119,7 @@ function createTray() {
 }
 
 function startBackendServer() {
-  const backendPath = path.join(__dirname, 'src');
+  const backendPath = path.join(__dirname, '..', 'Server', 'src');
 
   // 윈도우에서는 shell: true가 필요한 경우가 많음
   backendProcess = spawn('node', ['server.js'], {
@@ -440,7 +440,7 @@ ipcMain.on('open-chat-window', (event, roomId) => {
 
   const startUrl = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true'
     ? `http://localhost:5173/#/popup/${roomId}`
-    : `file://${path.join(__dirname, '../client/dist/index.html')}#/popup/${roomId}`;
+    : `file://${path.join(__dirname, '..', 'Client', 'dist', 'index.html')}#/popup/${roomId}`;
 
   win.loadURL(startUrl);
 
