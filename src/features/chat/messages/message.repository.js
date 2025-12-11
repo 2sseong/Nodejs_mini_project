@@ -216,7 +216,16 @@ export async function getRoomReadStatus(roomId) {
 }
 
 // 6. 메시지 검색 (오래된 순으로 정렬: 인덱스 0 = 가장 오래된, 마지막 = 가장 최신)
-export async function searchMessages(roomId, keyword) {
+// userId가 제공되면 해당 사용자의 입장 시점 이후 메시지만 검색
+export async function searchMessages(roomId, keyword, userId = null) {
+    let joinedAtFilter = '';
+    const binds = { roomId: Number(roomId), keyword: `%${keyword}%` };
+
+    if (userId) {
+        joinedAtFilter = ` AND m.SENT_AT >= (SELECT JOINED_AT FROM T_ROOM_MEMBER WHERE ROOM_ID = :roomId AND USER_ID = :userId) `;
+        binds.userId = userId;
+    }
+
     const sql = `
         SELECT m.MSG_ID, m.CONTENT, 
         (
@@ -227,9 +236,12 @@ export async function searchMessages(roomId, keyword) {
         ) - 32400000 AS SENT_AT,
         NVL(u.NICKNAME, 'SYSTEM') AS NICKNAME, u.PROFILE_PIC 
         FROM T_MESSAGE m LEFT JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
-        WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword) ORDER BY m.MSG_ID ASC
+        WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword)${joinedAtFilter}
+        ORDER BY m.MSG_ID ASC
     `;
-    const res = await executeQuery(sql, { roomId: Number(roomId), keyword: `%${keyword}%` });
+    console.log('[searchMessages] userId:', userId, 'joinedAtFilter:', joinedAtFilter ? 'applied' : 'none');
+    const res = await executeQuery(sql, binds);
+    console.log('[searchMessages] Results count:', res.rows?.length || 0);
     return res.rows || [];
 }
 
@@ -260,9 +272,16 @@ export async function getFirstUnreadMsgId(roomId, userId, lastReadTimestamp) {
     return res.rows?.[0]?.MSG_ID || null;
 }
 
-export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
+// userId가 제공되면 해당 사용자의 입장 시점 이후 메시지만 조회
+export async function getMessagesAroundId(roomId, targetMsgId, offset = 25, userId = null) {
     const limitPlusOne = Number(offset) + 1;
     const binds = { roomId: Number(roomId), targetMsgId, limitCnt: offset, limitCntNext: limitPlusOne };
+
+    let joinedAtFilter = '';
+    if (userId) {
+        joinedAtFilter = ` AND T1.SENT_AT >= (SELECT JOINED_AT FROM T_ROOM_MEMBER WHERE ROOM_ID = :roomId AND USER_ID = :userId) `;
+        binds.userId = userId;
+    }
 
     const timeExtract = `(
         EXTRACT(DAY FROM (T1.SENT_AT - TIMESTAMP '1970-01-01 00:00:00')) * 86400000 +
@@ -278,7 +297,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                     SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
                            T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, NVL(T2.NICKNAME, 'SYSTEM') AS NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1 LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-                    WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID < :targetMsgId ORDER BY T1.MSG_ID DESC
+                    WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID < :targetMsgId${joinedAtFilter} ORDER BY T1.MSG_ID DESC
                 ) WHERE ROWNUM <= :limitCnt
             ) UNION ALL
             SELECT * FROM (
@@ -286,7 +305,7 @@ export async function getMessagesAroundId(roomId, targetMsgId, offset = 25) {
                     SELECT T1.MSG_ID, T1.ROOM_ID, T1.SENDER_ID, T1.CONTENT, ${timeExtract},
                            T1.MESSAGE_TYPE, T1.FILE_URL, T1.FILE_NAME, NVL(T2.NICKNAME, 'SYSTEM') AS NICKNAME, T2.PROFILE_PIC
                     FROM T_MESSAGE T1 LEFT JOIN T_USER T2 ON T1.SENDER_ID = T2.USER_ID
-                    WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID >= :targetMsgId ORDER BY T1.MSG_ID ASC
+                    WHERE T1.ROOM_ID = :roomId AND T1.MSG_ID >= :targetMsgId${joinedAtFilter} ORDER BY T1.MSG_ID ASC
                 ) WHERE ROWNUM <= :limitCntNext
             )
         ) ORDER BY SENT_AT ASC

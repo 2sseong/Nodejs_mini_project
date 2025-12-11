@@ -21,7 +21,8 @@ export default function MessageItem(props) {
         onDelete,
         onStartEdit,
         onImageLoad,
-        searchKeyword
+        searchKeyword,
+        onSetNotice
     } = props;
 
     const [contextMenu, setContextMenu] = useState(null);
@@ -42,7 +43,9 @@ export default function MessageItem(props) {
     };
 
     const handleContextMenu = (e) => {
-        if (!mine) return; // 내 메시지만 우클릭 메뉴 표시
+        // 본인 메시지만 우클릭 메뉴 표시 (수정/삭제)
+        // 파일 메시지는 삭제만 가능, 텍스트 메시지는 수정/삭제/공지 등록 가능
+        if (!mine) return;
         e.preventDefault();
         setContextMenu({ x: e.pageX, y: e.pageY });
     };
@@ -71,6 +74,14 @@ export default function MessageItem(props) {
     const handleConfirmDelete = () => {
         onDelete(msgId);
         setIsDeleteModalOpen(false);
+    };
+
+    // 공지로 등록 클릭 시
+    const handleClickSetNotice = () => {
+        if (onSetNotice && content) {
+            onSetNotice(msgId, content);
+        }
+        setContextMenu(null);
     };
 
     // [추가] 이미지 로딩 완료 시 부모에게 알림 (스크롤 조정용)
@@ -246,10 +257,16 @@ export default function MessageItem(props) {
             {contextMenu && (
                 <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x, position: 'fixed' }}>
                     {/* 파일 메시지가 아닐 때만 수정 버튼 표시 */}
-                    {messageType !== 'FILE' && (
+                    {mine && messageType !== 'FILE' && (
                         <button onClick={handleClickEdit}>수정</button>
                     )}
-                    <button className="delete-option" onClick={handleClickDelete}>삭제</button>
+                    {mine && (
+                        <button className="delete-option" onClick={handleClickDelete}>삭제</button>
+                    )}
+                    {/* 공지로 등록 - 텍스트 메시지만 */}
+                    {messageType !== 'FILE' && (
+                        <button onClick={handleClickSetNotice}>공지로 등록</button>
+                    )}
                 </div>
             )}
 

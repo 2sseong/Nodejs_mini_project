@@ -7,6 +7,7 @@ export default function ChatHeader({
     memberCount,
     onOpenInvite,
     onOpenDrawer,
+    onOpenNotices,
     disabled,
     onLeaveRoom,
     onSearch,
@@ -15,7 +16,8 @@ export default function ChatHeader({
     matchCount,
     currentMatchIdx,
     onToggleMemberPanel,
-    isMemberPanelOpen
+    isRoomNotificationEnabled,
+    onToggleRoomNotification,
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -122,7 +124,7 @@ export default function ChatHeader({
                 <div className="chat-header-info" onClick={onToggleMemberPanel} style={{ cursor: 'pointer' }}>
                     <h2 className="room-title">
                         {title || '채팅방'}
-                        <i className={`bi bi-chevron-${isMemberPanelOpen ? 'left' : 'right'}`} style={{ fontSize: '12px', marginLeft: '6px' }}></i>
+
                     </h2>
                     {memberCount > 0 && (
                         <span className="member-count">참여자 {memberCount}명</span>
@@ -130,6 +132,16 @@ export default function ChatHeader({
                 </div>
 
                 <div className="chat-header-buttons">
+                    {/* 채팅방 알림 켜기/끄기 */}
+                    <button
+                        className={`notification-toggle-btn ${isRoomNotificationEnabled ? 'enabled' : 'disabled'}`}
+                        onClick={onToggleRoomNotification}
+                        title={isRoomNotificationEnabled ? '알림 끄기' : '알림 켜기'}
+                        disabled={disabled}
+                    >
+                        <i className={`bi ${isRoomNotificationEnabled ? 'bi-bell-fill' : 'bi-bell-slash'}`}></i>
+                    </button>
+
                     <button
                         className={`search-toggle-btn ${isSearchOpen ? 'active' : ''}`}
                         onClick={toggleSearch}
@@ -156,6 +168,9 @@ export default function ChatHeader({
                                 </button>
                                 <button onClick={() => { setIsMenuOpen(false); onOpenDrawer(); }}>
                                     <i className="bi bi-folder2-open"></i> 채팅방 서랍
+                                </button>
+                                <button onClick={() => { setIsMenuOpen(false); if (onOpenNotices) onOpenNotices(); }}>
+                                    <i className="bi bi-megaphone"></i> 공지 목록
                                 </button>
                                 <div className="divider"></div>
                                 <button onClick={() => { setIsMenuOpen(false); handleLeaveClick(); }} className="danger-text">

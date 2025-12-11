@@ -8,8 +8,9 @@ import ChatHeader from '../components/Chatpage/Header/ChatHeader.jsx';
 import MessageList from '../components/Chatpage/Messages/MessageList.jsx';
 import MessageInput from '../components/Chatpage/Input/MessageInput.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
+import NoticeBar from '../components/Chatpage/NoticeBar/NoticeBar.jsx';
 import { searchMessagesApi, getMessagesContextApi } from '../api/chatApi';
-import { apiGetRoomMembers } from '../api/roomApi';
+import { apiGetRoomMembers, apiGetNotificationSetting, apiSetNotificationSetting } from '../api/roomApi';
 import Titlebar from '../components/Titlebar/Titlebar.jsx';
 
 import '../styles/PopupChatPage.css';
@@ -49,6 +50,55 @@ export default function PopupChatPage() {
 
     // --- [메시지 수정 상태] ---
     const [editingMessage, setEditingMessage] = useState(null); // { msgId, content }
+
+    // --- [공지 상태] ---
+    const [roomNotice, setRoomNotice] = useState(null);
+    const [isNoticeVisible, setIsNoticeVisible] = useState(true); // 공지 표시 여부
+
+    // --- [채팅방 알림 상태] ---
+    const [isRoomNotificationEnabled, setIsRoomNotificationEnabled] = useState(true);
+
+    // 채팅방 알림 상태 조회
+    useEffect(() => {
+        if (roomId) {
+            apiGetNotificationSetting(roomId)
+                .then(res => {
+                    if (res.data?.success) {
+                        setIsRoomNotificationEnabled(res.data.enabled);
+                    }
+                })
+                .catch(err => console.error('알림 설정 조회 실패:', err));
+        }
+    }, [roomId]);
+
+    // 다른 창에서 알림 설정 변경 시 현재 창 상태 갱신
+    useEffect(() => {
+        if (!socket) return;
+        const handleNotificationUpdated = ({ roomId: updatedRoomId, enabled }) => {
+            if (String(updatedRoomId) === String(roomId)) {
+                setIsRoomNotificationEnabled(enabled);
+            }
+        };
+        socket.on('room:notification_updated', handleNotificationUpdated);
+        return () => socket.off('room:notification_updated', handleNotificationUpdated);
+    }, [socket, roomId]);
+
+    // 채팅방 알림 토글 핸들러
+    const handleToggleRoomNotification = async () => {
+        const newEnabled = !isRoomNotificationEnabled;
+        try {
+            const res = await apiSetNotificationSetting(roomId, newEnabled);
+            if (res.data?.success) {
+                setIsRoomNotificationEnabled(newEnabled);
+                // 소켓을 통해 방 목록 갱신 요청 (자신 포함 모든 창에서 반영)
+                if (socket) {
+                    socket.emit('room:notification_changed', { roomId, enabled: newEnabled, userId });
+                }
+            }
+        } catch (err) {
+            console.error('알림 설정 변경 실패:', err);
+        }
+    };
 
     // 수정 시작 핸들러 (MessageItem에서 호출)
     const handleStartEdit = ({ msgId, content }) => {
@@ -159,6 +209,53 @@ export default function PopupChatPage() {
     // [END] 읽음 처리 최적화 로직
     // =========================================================
 
+    // =========================================================
+    // [START] 공지사항 로직
+    // =========================================================
+
+    // 방 입장 시 공지 조회
+    useEffect(() => {
+        if (!socket || !connected || !roomId) return;
+
+        socket.emit('room:get_notice', { roomId });
+    }, [socket, connected, roomId]);
+
+    // 공지 이벤트 리스너
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNotice = ({ roomId: rid, notice }) => {
+            if (String(rid) === String(roomId)) {
+                setRoomNotice(notice);
+            }
+        };
+
+        const handleNoticeUpdated = ({ roomId: rid, notice }) => {
+            if (String(rid) === String(roomId)) {
+                setRoomNotice(notice);
+            }
+        };
+
+        socket.on('room:notice', handleNotice);
+        socket.on('room:notice_updated', handleNoticeUpdated);
+
+        return () => {
+            socket.off('room:notice', handleNotice);
+            socket.off('room:notice_updated', handleNoticeUpdated);
+        };
+    }, [socket, roomId]);
+
+    // 공지 설정 핸들러 (MessageItem에서 호출)
+    const handleSetNotice = (msgId, content) => {
+        if (socket && roomId) {
+            socket.emit('room:set_notice', { roomId, msgId, content });
+        }
+    };
+
+    // =========================================================
+    // [END] 공지사항 로직
+    // =========================================================
+
     // ... (이하 handleServerSearch 등 기존 로직 동일하게 유지) ...
     const handleServerSearch = async (keyword) => {
         // 키워드 상태 저장 (하이라이트용)
@@ -248,8 +345,31 @@ export default function PopupChatPage() {
     const roomName = currentRoom ? currentRoom.ROOM_NAME : '채팅방';
     const memberCount = currentRoom ? currentRoom.MEMBER_COUNT : 0;
 
+    // 서브 창을 채팅방 창 기준으로 위치 계산하여 열기
+    const openSubWindow = (url, windowName, width = 400, height = 600) => {
+        const currentX = window.screenX || window.screenLeft || 0;
+        const currentY = window.screenY || window.screenTop || 0;
+        const currentWidth = window.outerWidth || window.innerWidth;
+        const screenWidth = window.screen.availWidth;
+
+        // 기본: 채팅방 창의 오른쪽 상단
+        let left = currentX + currentWidth;
+        let top = currentY;
+
+        // 오른쪽 공간이 부족하면 왼쪽 상단에 배치
+        if (left + width > screenWidth) {
+            left = currentX - width;
+            if (left < 0) left = 0;
+        }
+
+        const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+        const win = window.open(url, windowName, features);
+        if (win) win.focus();
+        return win;
+    };
+
     const handleOpenDrawer = () => {
-        window.open(`#/files/${roomId}`, 'FileDrawerWindow', 'width=400,height=600,resizable=yes,scrollbars=yes');
+        openSubWindow(`#/files/${roomId}`, `FileDrawerWindow_${roomId}`);
     };
 
     // 멤버 패널 토글
@@ -333,6 +453,9 @@ export default function PopupChatPage() {
                         memberCount={memberCount}
                         onOpenInvite={() => setIsInviteOpen(true)}
                         onOpenDrawer={handleOpenDrawer}
+                        onOpenNotices={() => {
+                            openSubWindow(`#/notices/${roomId}`, `NoticeListWindow_${roomId}`);
+                        }}
                         disabled={!connected}
                         onLeaveRoom={async () => {
                             const success = await handleLeaveRoom();
@@ -345,7 +468,22 @@ export default function PopupChatPage() {
                         currentMatchIdx={currentMatchIndex}
                         onToggleMemberPanel={handleToggleMemberPanel}
                         isMemberPanelOpen={isMemberPanelOpen}
+                        isRoomNotificationEnabled={isRoomNotificationEnabled}
+                        onToggleRoomNotification={handleToggleRoomNotification}
                     />
+                    {/* 공지 바 */}
+                    {isNoticeVisible && (
+                        <NoticeBar
+                            notice={roomNotice}
+                            onClear={() => {
+                                if (socket) {
+                                    socket.emit('room:clear_notice', { roomId });
+                                }
+                            }}
+                            onClose={() => setIsNoticeVisible(false)}
+                            isOwner={true}
+                        />
+                    )}
                     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                         <MessageList
                             messages={messages}
@@ -365,6 +503,10 @@ export default function PopupChatPage() {
                             isLoadingNewer={isLoadingNewer}
                             firstUnreadMsgId={firstUnreadMsgId}
                             searchKeyword={searchKeyword}
+                            onSetNotice={handleSetNotice}
+                            hasNotice={!!roomNotice}
+                            isNoticeVisible={isNoticeVisible}
+                            onToggleNotice={() => setIsNoticeVisible(!isNoticeVisible)}
                         />
                     </div>
                     <MessageInput

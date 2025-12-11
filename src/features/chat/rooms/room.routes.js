@@ -8,6 +8,9 @@ r.post('/invite-multiple', ctrl.inviteUsers);
 r.delete('/exit/:roomId/:userId', ctrl.leaveRoom);
 r.get('/:roomId/members', ctrl.getRoomMembers);
 
+// 채팅방 알림 설정
+r.get('/:roomId/notification', ctrl.getNotificationSetting);
+r.put('/:roomId/notification', ctrl.updateNotificationSetting);
 
 // 1. 1:1 채팅방 존재 여부 확인
 // GET /api/chat/rooms/checkOneToOne?targetId={targetId}

@@ -49,4 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // [추가] 배지 업데이트 (안 읽은 메시지 수)
   updateBadge: (count) => ipcRenderer.send('update-badge', count),
+
+  // [추가] 알림 활성화/비활성화 설정
+  setNotificationEnabled: (enabled) => ipcRenderer.send('set-notification-enabled', enabled),
 });

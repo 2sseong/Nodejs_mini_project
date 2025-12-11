@@ -338,7 +338,25 @@ ipcMain.on('window-close', (event) => {
   if (win) win.close();
 });
 
+// [추가] 알림 활성화 상태 (기본값: true)
+let isNotificationEnabled = true;
+
+ipcMain.on('set-notification-enabled', (event, enabled) => {
+  isNotificationEnabled = enabled;
+  console.log(`[Main] Notification ${enabled ? 'enabled' : 'disabled'}`);
+});
+
 ipcMain.on('req-custom-notification', (event, data) => {
+  // 알림이 비활성화된 경우 알림 표시하지 않음
+  if (!isNotificationEnabled) {
+    console.log('[Main] Skipping notification - notifications disabled');
+    return;
+  }
+  // SYSTEM 메시지는 알림 표시하지 않음
+  if (data.nickname === 'SYSTEM') {
+    console.log('[Main] Skipping notification for SYSTEM message');
+    return;
+  }
   showCustomNotification(data);
 });
 

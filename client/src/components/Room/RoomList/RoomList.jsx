@@ -10,6 +10,8 @@ export default function RoomList({
     onSelectRoom,
     onOpenCreateModal,
     currentUser,
+    onLeaveRoom,
+    onToggleNotification,
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -125,6 +127,8 @@ export default function RoomList({
                             active={String(room.ROOM_ID) === String(currentRoomId)}
                             onClick={onSelectRoom}
                             currentUser={currentUser} // RoomItem으로 전달
+                            onLeaveRoom={onLeaveRoom}
+                            onToggleNotification={onToggleNotification}
                         />
                     ))
                 ) : (

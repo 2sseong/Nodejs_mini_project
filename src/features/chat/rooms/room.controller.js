@@ -1,5 +1,6 @@
 // src/features/chat/rooms/room.controller.js
 import * as roomService from './room.service.js';
+import * as noticeService from '../notices/notice.service.js';
 import socketGateway from '../../../sockets/socket.gateway.js';
 import { getIoInstance } from '../../../sockets/socketStore.js';
 
@@ -47,6 +48,13 @@ export async function leaveRoom(req, res, next) {
         // 남은 사람들에게 인원수 업데이트 알림 (Gateway 사용)
         const memberCount = await roomService.getRoomMemberCount(roomId);
         socketGateway.notifyRoomMemberCount(roomId, memberCount);
+
+        // [추가] 공지 상태 브로드캐스트 (공지 생성자가 나가면 공지가 삭제됨)
+        if (!result.roomDeleted) {
+            const io = getIoInstance();
+            const currentNotice = await noticeService.getNotice({ roomId });
+            io.to(String(roomId)).emit('room:notice_updated', { roomId, notice: currentNotice });
+        }
 
         // 시스템 메시지 브로드캐스트
         if (result.systemMessage) {
@@ -230,6 +238,51 @@ export async function getRoomMembers(req, res, next) {
         res.status(200).json({ success: true, members });
     } catch (error) {
         console.error('Error in getRoomMembers controller:', error);
+        next(error);
+    }
+}
+
+/**
+ * [GET] 채팅방 알림 설정 조회
+ */
+export async function getNotificationSetting(req, res, next) {
+    const { roomId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!roomId || !userId) {
+        return res.status(400).json({ success: false, message: '채팅방 ID와 사용자 정보가 필요합니다.' });
+    }
+
+    try {
+        const enabled = await roomService.getNotificationEnabled({ roomId, userId });
+        res.status(200).json({ success: true, enabled });
+    } catch (error) {
+        console.error('Error in getNotificationSetting controller:', error);
+        next(error);
+    }
+}
+
+/**
+ * [PUT] 채팅방 알림 설정 변경
+ */
+export async function updateNotificationSetting(req, res, next) {
+    const { roomId } = req.params;
+    const userId = req.user?.userId;
+    const { enabled } = req.body;
+
+    if (!roomId || !userId) {
+        return res.status(400).json({ success: false, message: '채팅방 ID와 사용자 정보가 필요합니다.' });
+    }
+
+    if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'enabled 값은 boolean이어야 합니다.' });
+    }
+
+    try {
+        const result = await roomService.setNotificationEnabled({ roomId, userId, enabled });
+        res.status(200).json({ success: true, updated: result, enabled });
+    } catch (error) {
+        console.error('Error in updateNotificationSetting controller:', error);
         next(error);
     }
 }

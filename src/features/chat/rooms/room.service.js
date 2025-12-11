@@ -155,3 +155,13 @@ export async function inviteUsersToRoom({ roomId, inviteeIds, inviterNickname })
 export async function getRoomMembers(roomId) {
     return await roomRepo.getRoomMembers(roomId);
 }
+
+// 채팅방 알림 설정 조회
+export async function getNotificationEnabled({ roomId, userId }) {
+    return await roomRepo.getNotificationEnabled({ roomId, userId });
+}
+
+// 채팅방 알림 설정 변경
+export async function setNotificationEnabled({ roomId, userId, enabled }) {
+    return await roomRepo.setNotificationEnabled({ roomId, userId, enabled });
+}

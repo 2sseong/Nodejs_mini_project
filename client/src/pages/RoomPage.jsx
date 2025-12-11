@@ -6,6 +6,7 @@ import '../styles/RoomPage.css';
 import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatNotifications } from '../hooks/useChatNotifications';
+import { apiLeaveRoom, apiSetNotificationSetting } from '../api/roomApi';
 
 import RoomList from '../components/Room/RoomList/RoomList.jsx';
 import CreateRoomModal from '../components/Room/Modals/CreateRoomModal.jsx';
@@ -20,26 +21,6 @@ export default function RoomPage() {
         rooms,
         socket
     } = useChatSocket({ userId, userNickname });
-
-    useEffect(() => {
-        if (rooms && rooms.length > 0) {
-            console.log("========================================");
-            console.log("🏠 ROOM PAGE: Total Rooms Count:", rooms.length);
-
-            rooms.forEach((room, index) => {
-                const memberCount = room.MEMBER_PROFILES?.length;
-
-                // ⭐️ [보강된 디버깅] 모든 방의 ROOM_ID, ROOM_TYPE, MEMBER_COUNT를 출력합니다.
-                console.log(`[Room ${index}] ID:${room.ROOM_ID}, TYPE:${room.ROOM_TYPE}, MEMBERS:${memberCount}`);
-
-                if (memberCount === 2) {
-                    console.log("✅ 1:1 Room Found! NAME:", room.ROOM_NAME);
-                    console.log("   PROFILES:", room.MEMBER_PROFILES); // 1:1 방의 프로필만 상세 출력
-                }
-            });
-            console.log("========================================");
-        }
-    }, [rooms]); // ⭐️ rooms 배열이 변경될 때만 실행
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -66,6 +47,30 @@ export default function RoomPage() {
         }
     };
 
+    // 4. 방 나가기 핸들러
+    const handleLeaveRoom = async (roomId) => {
+        try {
+            await apiLeaveRoom(roomId, userId, userNickname);
+            // 소켓을 통해 방 목록이 자동으로 갱신됨
+        } catch (error) {
+            console.error('방 나가기 실패:', error);
+            alert(error.response?.data?.message || '방 나가기에 실패했습니다.');
+        }
+    };
+
+    // 5. 알림 토글 핸들러
+    const handleToggleNotification = async (roomId, currentEnabled) => {
+        try {
+            const newEnabled = !currentEnabled;
+            const res = await apiSetNotificationSetting(roomId, newEnabled);
+            if (res.data?.success && socket) {
+                socket.emit('room:notification_changed', { roomId, enabled: newEnabled, userId });
+            }
+        } catch (error) {
+            console.error('알림 설정 변경 실패:', error);
+        }
+    };
+
     if (!authLoaded) return <div>로딩 중...</div>;
     if (!userId || !userNickname) return <Navigate to="/login" replace />;
 
@@ -87,6 +92,8 @@ export default function RoomPage() {
                     onSelectRoom={handleRoomClick}
                     onOpenCreateModal={() => setIsCreateOpen(true)}
                     currentUser={currentUser}
+                    onLeaveRoom={handleLeaveRoom}
+                    onToggleNotification={handleToggleNotification}
                 />
             </div>
 
