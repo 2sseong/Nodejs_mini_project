@@ -89,3 +89,19 @@ body {
     width: 100%;
     background-color: transparent;
 }
+
+/* ===== Custom Scrollbar ===== */
+/* 스크롤바 색상 변경 (Electron/Windows) */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary-hover);
+}
