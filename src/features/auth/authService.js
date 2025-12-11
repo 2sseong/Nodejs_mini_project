@@ -65,7 +65,7 @@ export async function loginUser({ email, password }) {
     const token = jwt.sign(
         { userId: user.USER_ID, username: user.USERNAME },
         JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '24h' } // 토큰 만료 시간(임시로 연장)
     );
 
     // 4. LAST_LOGIN 시간 업데이트 (Repository 호출)
