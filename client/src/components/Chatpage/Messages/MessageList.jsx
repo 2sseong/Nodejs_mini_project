@@ -252,12 +252,27 @@ export default function MessageList({
                 const isSameSenderAsPrev = prevMsg &&
                     String(prevMsg.SENDER_ID || prevMsg.sender_id) === String(m.SENDER_ID || m.sender_id);
                 const prevSentAt = prevMsg ? (prevMsg.SENT_AT || prevMsg.sent_at) : null;
-                const isSameMinute = prevSentAt && sentAt &&
+                const isSameMinuteAsPrev = prevSentAt && sentAt &&
                     new Date(prevSentAt).getHours() === new Date(sentAt).getHours() &&
                     new Date(prevSentAt).getMinutes() === new Date(sentAt).getMinutes();
                 const prevIsSystem = prevMsgType === 'SYSTEM';
                 // 프로필 표시 조건: 첫 메시지이거나, 다른 발신자이거나, 다른 시:분이거나, 이전이 시스템 메시지
-                const showProfile = !isSameSenderAsPrev || !isSameMinute || showDate || prevIsSystem;
+                const showProfile = !isSameSenderAsPrev || !isSameMinuteAsPrev || showDate || prevIsSystem;
+
+                // 시간 표시 조건: 다음 메시지가 다른 발신자이거나, 다른 시:분이거나, 마지막 메시지일 때만 표시
+                const nextMsg = i < messages.length - 1 ? messages[i + 1] : null;
+                const nextMsgType = nextMsg ? (nextMsg.MESSAGE_TYPE || nextMsg.message_type) : null;
+                const nextSentAt = nextMsg ? (nextMsg.SENT_AT || nextMsg.sent_at) : null;
+                const nextMessageDate = nextMsg ? getFormattedDate(nextSentAt) : null;
+                const isSameSenderAsNext = nextMsg &&
+                    String(nextMsg.SENDER_ID || nextMsg.sender_id) === String(m.SENDER_ID || m.sender_id);
+                const isSameMinuteAsNext = nextSentAt && sentAt &&
+                    new Date(nextSentAt).getHours() === new Date(sentAt).getHours() &&
+                    new Date(nextSentAt).getMinutes() === new Date(sentAt).getMinutes();
+                const nextIsSystem = nextMsgType === 'SYSTEM';
+                const nextIsNewDate = nextMessageDate && nextMessageDate !== messageDate;
+                // 시간 표시: 마지막 메시지이거나, 다음이 다른 발신자이거나, 다른 시:분이거나, 다음이 시스템 메시지이거나, 날짜가 바뀜
+                const showTime = !nextMsg || !isSameSenderAsNext || !isSameMinuteAsNext || nextIsSystem || nextIsNewDate;
 
                 // 시스템 메시지 렌더링 (초대/퇴장 등)
                 if (messageType === 'SYSTEM') {
@@ -300,6 +315,7 @@ export default function MessageList({
                             searchKeyword={searchKeyword}
                             onSetNotice={onSetNotice}
                             showProfile={showProfile}
+                            showTime={showTime}
                         />
                     </div>
                 );
