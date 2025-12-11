@@ -10,7 +10,7 @@ import MessageInput from '../components/Chatpage/Input/MessageInput.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import NoticeBar from '../components/Chatpage/NoticeBar/NoticeBar.jsx';
 import { searchMessagesApi, getMessagesContextApi } from '../api/chatApi';
-import { apiGetRoomMembers } from '../api/roomApi';
+import { apiGetRoomMembers, apiGetNotificationSetting, apiSetNotificationSetting } from '../api/roomApi';
 import Titlebar from '../components/Titlebar/Titlebar.jsx';
 
 import '../styles/PopupChatPage.css';
@@ -54,6 +54,51 @@ export default function PopupChatPage() {
     // --- [공지 상태] ---
     const [roomNotice, setRoomNotice] = useState(null);
     const [isNoticeVisible, setIsNoticeVisible] = useState(true); // 공지 표시 여부
+
+    // --- [채팅방 알림 상태] ---
+    const [isRoomNotificationEnabled, setIsRoomNotificationEnabled] = useState(true);
+
+    // 채팅방 알림 상태 조회
+    useEffect(() => {
+        if (roomId) {
+            apiGetNotificationSetting(roomId)
+                .then(res => {
+                    if (res.data?.success) {
+                        setIsRoomNotificationEnabled(res.data.enabled);
+                    }
+                })
+                .catch(err => console.error('알림 설정 조회 실패:', err));
+        }
+    }, [roomId]);
+
+    // 다른 창에서 알림 설정 변경 시 현재 창 상태 갱신
+    useEffect(() => {
+        if (!socket) return;
+        const handleNotificationUpdated = ({ roomId: updatedRoomId, enabled }) => {
+            if (String(updatedRoomId) === String(roomId)) {
+                setIsRoomNotificationEnabled(enabled);
+            }
+        };
+        socket.on('room:notification_updated', handleNotificationUpdated);
+        return () => socket.off('room:notification_updated', handleNotificationUpdated);
+    }, [socket, roomId]);
+
+    // 채팅방 알림 토글 핸들러
+    const handleToggleRoomNotification = async () => {
+        const newEnabled = !isRoomNotificationEnabled;
+        try {
+            const res = await apiSetNotificationSetting(roomId, newEnabled);
+            if (res.data?.success) {
+                setIsRoomNotificationEnabled(newEnabled);
+                // 소켓을 통해 방 목록 갱신 요청 (자신 포함 모든 창에서 반영)
+                if (socket) {
+                    socket.emit('room:notification_changed', { roomId, enabled: newEnabled, userId });
+                }
+            }
+        } catch (err) {
+            console.error('알림 설정 변경 실패:', err);
+        }
+    };
 
     // 수정 시작 핸들러 (MessageItem에서 호출)
     const handleStartEdit = ({ msgId, content }) => {
@@ -423,9 +468,8 @@ export default function PopupChatPage() {
                         currentMatchIdx={currentMatchIndex}
                         onToggleMemberPanel={handleToggleMemberPanel}
                         isMemberPanelOpen={isMemberPanelOpen}
-                        hasNotice={!!roomNotice}
-                        isNoticeVisible={isNoticeVisible}
-                        onToggleNotice={() => setIsNoticeVisible(!isNoticeVisible)}
+                        isRoomNotificationEnabled={isRoomNotificationEnabled}
+                        onToggleRoomNotification={handleToggleRoomNotification}
                     />
                     {/* 공지 바 */}
                     {isNoticeVisible && (
@@ -460,6 +504,9 @@ export default function PopupChatPage() {
                             firstUnreadMsgId={firstUnreadMsgId}
                             searchKeyword={searchKeyword}
                             onSetNotice={handleSetNotice}
+                            hasNotice={!!roomNotice}
+                            isNoticeVisible={isNoticeVisible}
+                            onToggleNotice={() => setIsNoticeVisible(!isNoticeVisible)}
                         />
                     </div>
                     <MessageInput

@@ -1,33 +1,36 @@
 config:
-  target: "http://localhost:1337" # 서버 주소 및 포트 (실제 환경에 맞게 수정)
+  target: "http://localhost:1337"
   phases:
-    - duration: 60  # 60초 동안 테스트 진행
-      arrivalRate: 10 # 1초당 10명씩 진입 (총 600명 진입 시도, 동시 접속 100명 이상 유지 가능)
-      name: "Warm up & Sustain"
+    - duration: 20   # 20초 동안 천천히 부하를 올림 (급격한 스파이크 방지)
+      arrivalRate: 20
+      rampTo: 200    # 목표: 초당 200명 진입 (기존 100명 -> 200명 상향)
+      name: "Ramp up to 200 users/sec"
+    - duration: 60   # 60초 동안 부하 유지
+      arrivalRate: 200
+      name: "Sustain 200 users/sec"
   engines:
-    socketio: {} # socket.io 엔진 사용
+    socketio: {}
 
 scenarios:
-  - name: "채팅방 입장 및 메시지 전송"
+  - name: "채팅방 입장 및 지속적 대화"
     engine: "socketio"
     flow:
       # 1. 소켓 연결 및 방 입장
       - emit:
-          channel: "chat:get_history" # 기존 코드의 히스토리 요청 이벤트 (입장 처리)
-          data: { "roomId": "61", "limit": 50 } # 테스트할 방 ID (DB에 존재하는 방 ID여야 함)
+          channel: "chat:get_history"
+          data: { "roomId": "1", "limit": 50 }
       
-      # 2. 잠시 대기 (사용자가 메시지를 읽는 시간 시뮬레이션)
-      - think: 1
+      - think: 2 # 입장 후 채팅방 내역을 읽는 시간 (2초)
 
-      # 3. 메시지 전송
-      - emit:
-          channel: "chat:message"
-          data: 
-            ROOM_ID: "61"
-            SENDER_ID: "TEST_USER" # 테스트용 ID
-            NICKNAME: "LoadTester"
-            CONTENT: "부하 테스트 메시지입니다."
-            TEMP_ID: "test_temp_id"
-      
-      # 4. 추가 대기 후 연결 종료
-      - think: 5
+      # 2. 메시지 반복 전송 (세션 유지 시간 연장 및 DB 쓰기 부하 증가)
+      - loop:
+        - emit:
+            channel: "chat:message"
+            data: 
+              ROOM_ID: "1"
+              SENDER_ID: "TEST_USER" # 필요 시 {{ $randomString() }} 등으로 동적 할당 가능
+              NICKNAME: "LoadTester"
+              CONTENT: "부하 테스트 메시지입니다. (반복)"
+              TEMP_ID: "test_temp_id"
+        - think: 3 # 메시지 사이 입력 대기 시간 (3초)
+        count: 5 # 1인당 총 5회 메시지 전송 (총 세션 시간 약 17초+a 로 증가)

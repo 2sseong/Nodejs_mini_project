@@ -147,4 +147,13 @@ export default function roomSocket(io, socket) {
             console.error('[Socket] room:delete_notice error:', err);
         }
     });
+
+    // 채팅방 알림 설정 변경 핸들러
+    socket.on('room:notification_changed', async ({ roomId, enabled, userId: targetUserId }) => {
+        console.log(`[Socket] room:notification_changed - roomId: ${roomId}, enabled: ${enabled}, userId: ${targetUserId}`);
+        // 해당 사용자의 모든 창에 방 목록 갱신 요청
+        io.to(String(targetUserId)).emit('rooms:refresh');
+        // 해당 사용자에게 알림 상태 변경 이벤트 전송 (팝업 채팅 창에서 사용)
+        io.to(String(targetUserId)).emit('room:notification_updated', { roomId, enabled });
+    });
 }

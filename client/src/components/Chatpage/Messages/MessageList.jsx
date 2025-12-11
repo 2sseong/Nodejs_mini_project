@@ -22,7 +22,8 @@ export default function MessageList({
     messages, userId, onLoadMore, isLoadingMore, hasMoreMessages,
     isInitialLoad, markAsRead,
     onEditMessage, onDeleteMessage, onStartEdit, scrollToMsgId, searchKeyword,
-    loadNewerMessages, hasFutureMessages, isLoadingNewer, firstUnreadMsgId, onSetNotice
+    loadNewerMessages, hasFutureMessages, isLoadingNewer, firstUnreadMsgId, onSetNotice,
+    hasNotice, isNoticeVisible, onToggleNotice
 }) {
     const listRef = useRef(null);
     const [previewMsg, setPreviewMsg] = useState(null); // 미리보기 메시지 상태
@@ -216,6 +217,17 @@ export default function MessageList({
 
     return (
         <div className="message-area" ref={listRef} onScroll={handleScroll}>
+            {/* 공지 토글 버튼 - 공지가 있고 숨겨져 있을 때만 표시 */}
+            {hasNotice && !isNoticeVisible && (
+                <button
+                    className="notice-toggle-floating-btn"
+                    onClick={onToggleNotice}
+                    title="공지 표시"
+                >
+                    <i className="bi bi-megaphone"></i>
+                </button>
+            )}
+
             {isLoadingMore && <div className="loading-spinner">Wait...</div>}
 
             {!isLoadingMore && !hasMoreMessages && messages.length > 0 && (

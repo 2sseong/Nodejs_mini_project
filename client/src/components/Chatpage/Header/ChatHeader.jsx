@@ -16,10 +16,8 @@ export default function ChatHeader({
     matchCount,
     currentMatchIdx,
     onToggleMemberPanel,
-    isMemberPanelOpen,
-    hasNotice,
-    isNoticeVisible,
-    onToggleNotice
+    isRoomNotificationEnabled,
+    onToggleRoomNotification,
 }) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -126,7 +124,7 @@ export default function ChatHeader({
                 <div className="chat-header-info" onClick={onToggleMemberPanel} style={{ cursor: 'pointer' }}>
                     <h2 className="room-title">
                         {title || '채팅방'}
-                        <i className={`bi bi-chevron-${isMemberPanelOpen ? 'left' : 'right'}`} style={{ fontSize: '12px', marginLeft: '6px' }}></i>
+
                     </h2>
                     {memberCount > 0 && (
                         <span className="member-count">참여자 {memberCount}명</span>
@@ -134,17 +132,16 @@ export default function ChatHeader({
                 </div>
 
                 <div className="chat-header-buttons">
-                    {/* 공지 토글 버튼 - 공지가 있고 숨겨져 있을 때만 표시 */}
-                    {hasNotice && !isNoticeVisible && (
-                        <button
-                            className="notice-toggle-btn"
-                            onClick={onToggleNotice}
-                            title="공지 표시"
-                            disabled={disabled}
-                        >
-                            <i className="bi bi-megaphone"></i>
-                        </button>
-                    )}
+                    {/* 채팅방 알림 켜기/끄기 */}
+                    <button
+                        className={`notification-toggle-btn ${isRoomNotificationEnabled ? 'enabled' : 'disabled'}`}
+                        onClick={onToggleRoomNotification}
+                        title={isRoomNotificationEnabled ? '알림 끄기' : '알림 켜기'}
+                        disabled={disabled}
+                    >
+                        <i className={`bi ${isRoomNotificationEnabled ? 'bi-bell-fill' : 'bi-bell-slash'}`}></i>
+                    </button>
+
                     <button
                         className={`search-toggle-btn ${isSearchOpen ? 'active' : ''}`}
                         onClick={toggleSearch}
