@@ -34,7 +34,7 @@ const PUBLIC_PROFILE_DIR = path.join(PROJECT_ROOT, 'public', 'profile');
 
 
 // 3. 미들웨어 설정
-app.use(cors({ origin: CLIENT_URL, credentials: true }))
+app.use(cors({ origin: [CLIENT_URL, 'http://192.168.0.20:8081'], credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
