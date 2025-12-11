@@ -72,14 +72,8 @@ export const sendMessage = async (roomId: number, content: string, msgType: stri
 // ============ 파일 ============
 
 // 파일 업로드
-export const uploadFile = async (roomId: number, uri: string, fileName: string, fileType: string): Promise<any> => {
-    const formData = new FormData();
-    formData.append('file', {
-        uri,
-        name: fileName,
-        type: fileType,
-    } as any);
-
+export const uploadFile = async (formData: FormData): Promise<any> => {
+    const roomId = formData.get('roomId');
     const response = await api.post(`/chats/rooms/${roomId}/files`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data',

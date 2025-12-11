@@ -11,7 +11,11 @@ interface UseChatSocketReturn {
     isLoading: boolean;
     isLoadingMore: boolean;
     hasMoreMessages: boolean;
+    currentNotice: any | null;
     sendMessage: (content: string, msgType?: string) => void;
+    editMessage: (msgId: number, content: string) => void;
+    deleteMessage: (msgId: number) => void;
+    setNotice: (msgId: number, content: string) => void;
     joinRoom: (roomId: number) => void;
     leaveRoom: () => void;
     loadMoreMessages: () => void;
@@ -27,6 +31,7 @@ export function useChatSocket(roomId: number | null): UseChatSocketReturn {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [currentNotice, setCurrentNotice] = useState<any | null>(null);
 
     const currentRoomId = useRef<number | null>(null);
     const userDataRef = useRef<any>(null);
@@ -183,11 +188,42 @@ export function useChatSocket(roomId: number | null): UseChatSocketReturn {
             }));
         };
 
+        // 메시지 수정 이벤트
+        const onMessageUpdated = (data: { msgId: number; content: string; updatedAt: string }) => {
+            if (!data || !data.msgId) return;
+            console.log('[useChatSocket] Message updated:', data.msgId);
+            setMessages(prev => prev.map(msg =>
+                (msg.MSG_ID || (msg as any).msg_id) === data.msgId
+                    ? { ...msg, CONTENT: data.content, UPDATED_AT: data.updatedAt, IS_EDITED: true }
+                    : msg
+            ));
+        };
+
+        // 메시지 삭제 이벤트
+        const onMessageDeleted = (data: { msgId: number }) => {
+            if (!data || !data.msgId) return;
+            console.log('[useChatSocket] Message deleted:', data.msgId);
+            setMessages(prev => prev.filter(msg =>
+                (msg.MSG_ID || (msg as any).msg_id) !== data.msgId
+            ));
+        };
+
+        // 공지 업데이트 이벤트
+        const onNoticeUpdated = (data: { roomId: number; notice: any }) => {
+            if (String(data.roomId) === String(currentRoomId.current)) {
+                console.log('[useChatSocket] Notice updated:', data.notice);
+                setCurrentNotice(data.notice);
+            }
+        };
+
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);
         socket.on('chat:history', onChatHistory);
         socket.on('chat:message', onNewMessage);
         socket.on('chat:read_update', onReadUpdate);
+        socket.on('chat:message_updated', onMessageUpdated);
+        socket.on('chat:message_deleted', onMessageDeleted);
+        socket.on('room:notice_updated', onNoticeUpdated);
 
         // 연결 상태 확인
         if (socket.connected) {
@@ -200,6 +236,9 @@ export function useChatSocket(roomId: number | null): UseChatSocketReturn {
             socket.off('chat:history', onChatHistory);
             socket.off('chat:message', onNewMessage);
             socket.off('chat:read_update', onReadUpdate);
+            socket.off('chat:message_updated', onMessageUpdated);
+            socket.off('chat:message_deleted', onMessageDeleted);
+            socket.off('room:notice_updated', onNoticeUpdated);
         };
     }, [socket]);
 
@@ -329,6 +368,41 @@ export function useChatSocket(roomId: number | null): UseChatSocketReturn {
         socket.emit('chat:message', msg);
     }, [socket]);
 
+    // 메시지 수정
+    const editMessage = useCallback((msgId: number, content: string) => {
+        if (!socket || !currentRoomId.current) return;
+
+        console.log('[useChatSocket] Editing message:', msgId);
+        socket.emit('chat:edit_message', {
+            roomId: currentRoomId.current,
+            msgId,
+            content: content.trim()
+        });
+    }, [socket]);
+
+    // 메시지 삭제
+    const deleteMessage = useCallback((msgId: number) => {
+        if (!socket || !currentRoomId.current) return;
+
+        console.log('[useChatSocket] Deleting message:', msgId);
+        socket.emit('chat:delete_message', {
+            roomId: currentRoomId.current,
+            msgId
+        });
+    }, [socket]);
+
+    // 공지 설정
+    const setNotice = useCallback((msgId: number, content: string) => {
+        if (!socket || !currentRoomId.current) return;
+
+        console.log('[useChatSocket] Setting notice:', msgId);
+        socket.emit('room:set_notice', {
+            roomId: currentRoomId.current,
+            msgId,
+            content
+        });
+    }, [socket]);
+
     return {
         socket,
         connected,
@@ -336,7 +410,11 @@ export function useChatSocket(roomId: number | null): UseChatSocketReturn {
         isLoading,
         isLoadingMore,
         hasMoreMessages,
+        currentNotice,
         sendMessage,
+        editMessage,
+        deleteMessage,
+        setNotice,
         joinRoom,
         leaveRoom,
         loadMoreMessages,

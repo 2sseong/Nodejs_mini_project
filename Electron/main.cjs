@@ -446,7 +446,7 @@ ipcMain.on('open-chat-window', (event, roomId) => {
 
   // [수정] 채팅방 팝업이 열릴 때 개발자 도구(F12)도 같이 열리도록 설정
   // mode: 'detach'는 별도 창으로 띄우는 옵션입니다.
-  win.webContents.openDevTools({ mode: 'detach' });
+  // win.webContents.openDevTools({ mode: 'detach' });
 
   chatWindows[windowKey] = win;
 
