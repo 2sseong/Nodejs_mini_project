@@ -599,3 +599,19 @@ ipcMain.handle('download-file', async (event, { url, fileName }) => {
 ipcMain.on('open-external-url', (event, url) => {
   shell.openExternal(url);
 });
+
+// [추가] 로그아웃 시 해당 창에서 열린 모든 채팅 창 닫기
+ipcMain.on('close-all-chat-windows', (event) => {
+  const parentId = event.sender.id;
+  console.log(`[Main] Closing all chat windows for parent: ${parentId}`);
+
+  Object.keys(chatWindows).forEach(key => {
+    if (key.startsWith(`${parentId}:`)) {
+      const chatWin = chatWindows[key];
+      if (chatWin && !chatWin.isDestroyed()) {
+        chatWin.close();
+      }
+      delete chatWindows[key];
+    }
+  });
+});

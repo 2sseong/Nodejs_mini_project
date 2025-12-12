@@ -5,10 +5,11 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    min-height: 100%;
+    height: 100%;
     background: var(--bg-card);
     padding: 24px;
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .signup-card {

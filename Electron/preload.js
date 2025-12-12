@@ -52,4 +52,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // [추가] 알림 활성화/비활성화 설정
   setNotificationEnabled: (enabled) => ipcRenderer.send('set-notification-enabled', enabled),
+
+  // [추가] 로그아웃 시 모든 채팅 창 닫기
+  closeAllChatWindows: () => ipcRenderer.send('close-all-chat-windows'),
 });

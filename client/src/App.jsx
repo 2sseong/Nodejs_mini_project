@@ -23,6 +23,20 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
+// 인증 레이아웃 (사이드바 없음 - 로그인/회원가입/비밀번호찾기)
+const AuthLayout = () => {
+    return (
+        <div className="App">
+            <Titlebar />
+            <div className="app-body">
+                <main className="content-area auth-content">
+                    <Outlet />
+                </main>
+            </div>
+        </div>
+    );
+};
+
 // 메인 레이아웃 (타이틀바 + 사이드바 + 콘텐츠)
 const MainLayout = () => {
     return (
@@ -47,12 +61,16 @@ export default function App() {
             <Route path="/files/:roomId" element={<FileDrawerPage />} />
             <Route path="/notices/:roomId" element={<NoticeListPage />} />
 
-            {/* 메인 앱 라우트 */}
-            <Route element={<MainLayout />}>
-                <Route path="/" element={<Navigate to="/chat" replace />} />
+            {/* 인증 라우트 (사이드바 없음) */}
+            <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            </Route>
+
+            {/* 메인 앱 라우트 (사이드바 있음) */}
+            <Route element={<MainLayout />}>
+                <Route path="/" element={<Navigate to="/chat" replace />} />
 
                 <Route path="/chat" element={
                     <ProtectedRoute><RoomPage /></ProtectedRoute>
