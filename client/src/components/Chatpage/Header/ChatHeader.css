@@ -108,12 +108,12 @@
     flex: 1;
     display: flex;
     align-items: center;
+    gap: 4px;
 }
 
 .search-input-wrapper input {
-    width: 100%;
+    flex: 1;
     padding: 6px 10px;
-    padding-right: 50px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     font-size: var(--font-size-sm);
@@ -124,12 +124,29 @@
     border-color: var(--color-primary);
 }
 
+/* 검색 실행 버튼 */
+.search-submit-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--color-primary);
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+}
+
+.search-submit-btn:hover {
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
 .search-count {
-    position: absolute;
-    right: 8px;
     font-size: var(--font-size-xs);
     color: var(--text-muted);
-    pointer-events: none;
+    white-space: nowrap;
+    min-width: 35px;
+    text-align: center;
 }
 
 .search-nav-buttons {
@@ -138,7 +155,7 @@
 }
 
 .search-nav-buttons button {
-    padding: 4px 8px;
+    padding: 3px 3px;
     border: 1px solid var(--border-color);
     background-color: var(--bg-card);
     cursor: pointer;
@@ -166,7 +183,7 @@
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     cursor: pointer;
     text-decoration: underline;
 }

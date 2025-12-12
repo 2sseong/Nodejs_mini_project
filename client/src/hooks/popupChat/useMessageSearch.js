@@ -49,7 +49,17 @@ export function useMessageSearch({ roomId, messages, overrideMessages }) {
         }
     };
 
-    // 검색 결과로 이동
+    // 현재 로드된 메시지 ID 집합 (빠른 조회용)
+    const loadedMsgIdsRef = useRef(new Set());
+
+    // messages 변경 시 로드된 ID 집합 업데이트
+    useEffect(() => {
+        loadedMsgIdsRef.current = new Set(
+            messages.map(m => String(m.MSG_ID || m.msg_id))
+        );
+    }, [messages]);
+
+    // 검색 결과로 이동 (messages 의존성 제거)
     useEffect(() => {
         const moveToMatch = async () => {
             if (currentMatchIndex < 0 || searchMatches.length === 0 || currentMatchIndex >= searchMatches.length) return;
@@ -57,13 +67,17 @@ export function useMessageSearch({ roomId, messages, overrideMessages }) {
             const target = searchMatches[currentMatchIndex];
             if (!target) return;
 
-            const targetId = target.MSG_ID || target.msg_id;
-            const isAlreadyLoaded = messages.some(m =>
-                String(m.MSG_ID || m.msg_id) === String(targetId)
-            );
+            const targetId = String(target.MSG_ID || target.msg_id);
+            const isAlreadyLoaded = loadedMsgIdsRef.current.has(targetId);
+
+            // 먼저 null로 초기화하여 동일 ID 재설정 시에도 React가 변화를 감지하도록 함
+            setScrollToMsgId(null);
 
             if (isAlreadyLoaded) {
-                setScrollToMsgId(targetId);
+                // setTimeout으로 다음 렌더 사이클에서 설정
+                setTimeout(() => {
+                    setScrollToMsgId(targetId);
+                }, 10);
             } else {
                 try {
                     const response = await getMessagesContextApi(roomId, targetId);
@@ -75,7 +89,7 @@ export function useMessageSearch({ roomId, messages, overrideMessages }) {
 
                     setTimeout(() => {
                         setScrollToMsgId(targetId);
-                    }, 100);
+                    }, 150);
 
                 } catch (err) {
                     console.error("Failed to fetch context:", err);
@@ -83,7 +97,7 @@ export function useMessageSearch({ roomId, messages, overrideMessages }) {
             }
         };
         moveToMatch();
-    }, [currentMatchIndex, searchMatches, messages, roomId, overrideMessages]);
+    }, [currentMatchIndex, searchMatches, roomId, overrideMessages]);
 
     // 이전 검색 결과
     const handlePrevMatch = () => {

@@ -217,6 +217,7 @@ export async function getRoomReadStatus(roomId) {
 
 // 6. 메시지 검색 (오래된 순으로 정렬: 인덱스 0 = 가장 오래된, 마지막 = 가장 최신)
 // userId가 제공되면 해당 사용자의 입장 시점 이후 메시지만 검색
+// 시스템 메시지 제외, TEXT/FILE 타입만 검색
 export async function searchMessages(roomId, keyword, userId = null) {
     let joinedAtFilter = '';
     const binds = { roomId: Number(roomId), keyword: `%${keyword}%` };
@@ -236,7 +237,9 @@ export async function searchMessages(roomId, keyword, userId = null) {
         ) - 32400000 AS SENT_AT,
         NVL(u.NICKNAME, 'SYSTEM') AS NICKNAME, u.PROFILE_PIC 
         FROM T_MESSAGE m LEFT JOIN T_USER u ON m.SENDER_ID = u.USER_ID 
-        WHERE m.ROOM_ID = :roomId AND (m.CONTENT LIKE :keyword OR m.FILE_NAME LIKE :keyword)${joinedAtFilter}
+        WHERE m.ROOM_ID = :roomId 
+          AND m.MESSAGE_TYPE IN ('TEXT', 'FILE')
+          AND m.CONTENT LIKE :keyword${joinedAtFilter}
         ORDER BY m.MSG_ID ASC
     `;
     console.log('[searchMessages] userId:', userId, 'joinedAtFilter:', joinedAtFilter ? 'applied' : 'none');
