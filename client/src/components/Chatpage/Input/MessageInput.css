@@ -14,7 +14,7 @@
 .input-area textarea {
     flex: 1;
     min-width: 0;
-    padding: 10px 14px;
+    padding: 12px 14px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
@@ -24,9 +24,31 @@
     box-sizing: border-box;
     resize: none;
     line-height: 1.4;
-    min-height: 40px;
+    min-height: 46px;
     max-height: 100px;
-    overflow-y: auto;
+    overflow-y: overlay;
+    /* 오버레이 스크롤 (콘텐츠 위에 표시) */
+}
+
+/* 메시지 입력창 전용 스크롤바 - 호버 시에만 표시 */
+.input-area textarea::-webkit-scrollbar {
+    width: 6px;
+    background: transparent;
+}
+
+.input-area textarea::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 6px;
+}
+
+/* 호버 시에만 스크롤바 표시 */
+.input-area textarea:hover::-webkit-scrollbar-thumb,
+.input-area textarea:focus::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.input-area textarea::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .input-area textarea:focus {
@@ -35,6 +57,7 @@
 
 .input-area textarea::placeholder {
     color: var(--text-muted);
+    font-size: 13px;
 }
 
 /* 전송 버튼 */

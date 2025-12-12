@@ -13,7 +13,7 @@
 
 /* 닉네임 (상대방) */
 .sender-nickname {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
     font-weight: 600;
     color: var(--text-secondary);
     margin-bottom: 4px;

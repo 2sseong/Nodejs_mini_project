@@ -72,18 +72,42 @@ export default function ChatHeader({
         }
     };
 
+    // 마지막으로 검색한 키워드 추적
+    const [lastSearchedKeyword, setLastSearchedKeyword] = useState('');
+
     const handleSearchChange = (e) => {
         setKeyword(e.target.value);
-        if (onSearch) onSearch(e.target.value);
+        // 실시간 검색 하지 않음 - Enter/버튼으로만 검색
+    };
+
+    // 검색 실행
+    const handleSearchSubmit = () => {
+        if (onSearch && keyword.trim()) {
+            onSearch(keyword.trim());
+            setLastSearchedKeyword(keyword.trim());
+        }
     };
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (e.shiftKey) {
-                if (onPrevMatch) onPrevMatch();
+
+            // 키워드가 변경되었으면 새로 검색
+            if (keyword.trim() !== lastSearchedKeyword) {
+                handleSearchSubmit();
+                return;
+            }
+
+            // 키워드가 같고 검색 결과가 있으면 이동
+            if (matchCount > 0) {
+                if (e.shiftKey) {
+                    if (onPrevMatch) onPrevMatch();
+                } else {
+                    if (onNextMatch) onNextMatch();
+                }
             } else {
-                if (onNextMatch) onNextMatch();
+                // 검색 결과가 없으면 검색 실행
+                handleSearchSubmit();
             }
         }
     };
@@ -189,19 +213,26 @@ export default function ChatHeader({
                         <input
                             ref={searchInputRef}
                             type="text"
-                            placeholder="대화 내용 검색"
+                            placeholder="검색어 입력 후 Enter"
                             value={keyword}
                             onChange={handleSearchChange}
                             onKeyDown={handleKeyDown}
                         />
+                        <button
+                            className="search-submit-btn"
+                            onClick={handleSearchSubmit}
+                            title="검색"
+                        >
+                            <i className="bi bi-search"></i>
+                        </button>
                         <span className="search-count">
                             {matchCount > 0 ? `${currentMatchIdx + 1}/${matchCount}` : '0/0'}
                         </span>
                     </div>
 
                     <div className="search-nav-buttons">
-                        <button onClick={onPrevMatch} title="이전(위) 내용"><i className="bi bi-chevron-up"></i></button>
-                        <button onClick={onNextMatch} title="다음(아래) 내용"><i className="bi bi-chevron-down"></i></button>
+                        <button onClick={onPrevMatch} title="이전(위) 내용" disabled={matchCount === 0}><i className="bi bi-chevron-up"></i></button>
+                        <button onClick={onNextMatch} title="다음(아래) 내용" disabled={matchCount === 0}><i className="bi bi-chevron-down"></i></button>
                     </div>
 
                     <button className="search-close-btn" onClick={toggleSearch}>닫기</button>

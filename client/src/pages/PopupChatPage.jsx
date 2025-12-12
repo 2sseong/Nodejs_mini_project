@@ -1,16 +1,24 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/AuthContext';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { useChatHandlers } from '../hooks/useChatHandlers';
+
+// 팝업 채팅 페이지 전용 훅들
+import {
+    useReadStatus,
+    useNotice,
+    useMessageSearch,
+    useMessageEdit,
+    useRoomNotification,
+    useMemberPanel
+} from '../hooks/popupChat';
 
 import ChatHeader from '../components/Chatpage/Header/ChatHeader.jsx';
 import MessageList from '../components/Chatpage/Messages/MessageList.jsx';
 import MessageInput from '../components/Chatpage/Input/MessageInput.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import NoticeBar from '../components/Chatpage/NoticeBar/NoticeBar.jsx';
-import { searchMessagesApi, getMessagesContextApi } from '../api/chatApi';
-import { apiGetRoomMembers, apiGetNotificationSetting, apiSetNotificationSetting } from '../api/roomApi';
 import Titlebar from '../components/Titlebar/Titlebar.jsx';
 
 import '../styles/PopupChatPage.css';
@@ -25,7 +33,7 @@ export default function PopupChatPage() {
         sendMessage, loadMoreMessages, isLoadingMore, hasMoreMessages,
         markAsRead, isInitialLoad, isReadStatusLoaded,
         editMessage, deleteMessage, selectRoom, loadNewerMessages,
-        hasFutureMessages, isLoadingNewer, firstUnreadMsgId
+        hasFutureMessages, isLoadingNewer, firstUnreadMsgId, overrideMessages
     } = chatSocket;
 
     const { handleLeaveRoom, handleSendFile } = useChatHandlers({
@@ -36,305 +44,34 @@ export default function PopupChatPage() {
 
     const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-    // --- [멤버 패널 상태] ---
-    const [isMemberPanelOpen, setIsMemberPanelOpen] = useState(false);
-    const [members, setMembers] = useState([]);
-    const [loadingMembers, setLoadingMembers] = useState(false);
+    // ===== 커스텀 훅 사용 =====
 
-    // --- [검색 기능 상태] ---
-    const [searchMatches, setSearchMatches] = useState([]);
-    const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
-    const [scrollToMsgId, setScrollToMsgId] = useState(null);
-    const [searchKeyword, setSearchKeyword] = useState(''); // 검색 키워드 상태 추가
-    const lastSearchReqId = useRef(0);
+    // 읽음 처리
+    useReadStatus({ socket, connected, roomId, userId });
 
-    // --- [메시지 수정 상태] ---
-    const [editingMessage, setEditingMessage] = useState(null); // { msgId, content }
+    // 공지사항
+    const { roomNotice, isNoticeVisible, setIsNoticeVisible, handleSetNotice } = useNotice({
+        socket, connected, roomId
+    });
 
-    // --- [공지 상태] ---
-    const [roomNotice, setRoomNotice] = useState(null);
-    const [isNoticeVisible, setIsNoticeVisible] = useState(true); // 공지 표시 여부
+    // 메시지 검색
+    const {
+        searchMatches, currentMatchIndex, scrollToMsgId, searchKeyword,
+        handleServerSearch, handlePrevMatch, handleNextMatch
+    } = useMessageSearch({ roomId, messages, overrideMessages });
 
-    // --- [채팅방 알림 상태] ---
-    const [isRoomNotificationEnabled, setIsRoomNotificationEnabled] = useState(true);
+    // 메시지 수정
+    const { editingMessage, handleStartEdit, handleCancelEdit, handleSaveEdit } = useMessageEdit(editMessage);
 
-    // 채팅방 알림 상태 조회
-    useEffect(() => {
-        if (roomId) {
-            apiGetNotificationSetting(roomId)
-                .then(res => {
-                    if (res.data?.success) {
-                        setIsRoomNotificationEnabled(res.data.enabled);
-                    }
-                })
-                .catch(err => console.error('알림 설정 조회 실패:', err));
-        }
-    }, [roomId]);
+    // 채팅방 알림
+    const { isRoomNotificationEnabled, handleToggleRoomNotification } = useRoomNotification({
+        socket, roomId, userId
+    });
 
-    // 다른 창에서 알림 설정 변경 시 현재 창 상태 갱신
-    useEffect(() => {
-        if (!socket) return;
-        const handleNotificationUpdated = ({ roomId: updatedRoomId, enabled }) => {
-            if (String(updatedRoomId) === String(roomId)) {
-                setIsRoomNotificationEnabled(enabled);
-            }
-        };
-        socket.on('room:notification_updated', handleNotificationUpdated);
-        return () => socket.off('room:notification_updated', handleNotificationUpdated);
-    }, [socket, roomId]);
+    // 멤버 패널
+    const { isMemberPanelOpen, members, loadingMembers, handleToggleMemberPanel, closeMemberPanel } = useMemberPanel(roomId);
 
-    // 채팅방 알림 토글 핸들러
-    const handleToggleRoomNotification = async () => {
-        const newEnabled = !isRoomNotificationEnabled;
-        try {
-            const res = await apiSetNotificationSetting(roomId, newEnabled);
-            if (res.data?.success) {
-                setIsRoomNotificationEnabled(newEnabled);
-                // 소켓을 통해 방 목록 갱신 요청 (자신 포함 모든 창에서 반영)
-                if (socket) {
-                    socket.emit('room:notification_changed', { roomId, enabled: newEnabled, userId });
-                }
-            }
-        } catch (err) {
-            console.error('알림 설정 변경 실패:', err);
-        }
-    };
-
-    // 수정 시작 핸들러 (MessageItem에서 호출)
-    const handleStartEdit = ({ msgId, content }) => {
-        setEditingMessage({ msgId, content });
-    };
-
-    // 수정 취소 핸들러
-    const handleCancelEdit = () => {
-        setEditingMessage(null);
-    };
-
-    // 수정 저장 핸들러
-    const handleSaveEdit = (msgId, newContent) => {
-        if (editMessage) {
-            editMessage(msgId, newContent);
-        }
-        setEditingMessage(null);
-    };
-
-    // =========================================================
-    // [START] 읽음 처리 최적화 로직 (RoomPage 동기화 수정 완료)
-    // =========================================================
-
-    // 1. 윈도우 포커스 상태 추적
-    const isWindowFocusedRef = useRef(document.hasFocus());
-    // 2. 쓰로틀링(3초 제한) 기준 시간
-    const lastFocusTimeRef = useRef(0);
-    // 3. [핵심 추가] 화면이 꺼진 동안 메시지가 왔는지 체크하는 Ref
-    const hasUnreadSinceLastFocusRef = useRef(false);
-
-    // [통합 함수] 서버로 읽음 처리 요청 전송
-    const sendMarkAsRead = (triggerSource) => {
-        const now = Date.now();
-
-        // '포커스 이벤트'일 때만 쓰로틀링 로직을 적용
-        if (triggerSource === 'FOCUS_EVENT') {
-            // [수정됨] "새로 온 안 읽은 메시지가 없다면" -> 3초 쿨타임 적용
-            // (반대로 안 읽은 메시지가 쌓여 있다면(true), 3초가 안 지났어도 즉시 보냄)
-            if (!hasUnreadSinceLastFocusRef.current) {
-                if (now - lastFocusTimeRef.current < 3000) return;
-            }
-        }
-
-        if (socket && connected && roomId) {
-            socket.emit('chat:mark_as_read', {
-                roomId,
-                lastReadTimestamp: now
-            });
-            lastFocusTimeRef.current = now;
-
-            // 읽음 요청을 보냈으므로 "쌓인 안 읽은 메시지" 상태 초기화
-            hasUnreadSinceLastFocusRef.current = false;
-            // console.log(`[${triggerSource}] 읽음 처리 전송 완료`);
-        }
-    };
-
-    // A. 윈도우 포커스 감지 (딴짓하다가 돌아왔을 때 처리)
-    useEffect(() => {
-        const handleFocus = () => {
-            isWindowFocusedRef.current = true;
-            sendMarkAsRead('FOCUS_EVENT');
-        };
-        const handleBlur = () => {
-            isWindowFocusedRef.current = false;
-        };
-
-        window.addEventListener('focus', handleFocus);
-        window.addEventListener('blur', handleBlur);
-
-        // 초기 진입 시 이미 포커스 상태라면 즉시 요청
-        if (document.hasFocus()) {
-            sendMarkAsRead('FOCUS_EVENT');
-        }
-
-        return () => {
-            window.removeEventListener('focus', handleFocus);
-            window.removeEventListener('blur', handleBlur);
-        };
-    }, [roomId, socket, connected]);
-
-    // B. 실시간 메시지 수신 감지 (화면 보고 있을 때 처리)
-    useEffect(() => {
-        if (!socket || !connected) return;
-
-        const handleNewMessage = (msg) => {
-            // 현재 방의 메시지이고 + 내가 보낸 게 아닐 때
-            if (String(msg.ROOM_ID) === String(roomId) && msg.SENDER_ID !== userId) {
-
-                if (isWindowFocusedRef.current) {
-                    // 화면을 보고 있다면 -> 즉시 읽음 처리 (NEW_MESSAGE는 쓰로틀링 무시)
-                    sendMarkAsRead('NEW_MESSAGE');
-                } else {
-                    // [핵심] 화면을 안 보고 있다면 -> "안 읽은 메시지 있음" 플래그 세움
-                    // 나중에 돌아왔을 때(Focus) 3초 제한을 무시하고 바로 읽음 처리하기 위함
-                    hasUnreadSinceLastFocusRef.current = true;
-                }
-            }
-        };
-
-        socket.on('chat:message', handleNewMessage);
-
-        return () => {
-            socket.off('chat:message', handleNewMessage);
-        };
-    }, [socket, connected, roomId, userId]);
-
-    // =========================================================
-    // [END] 읽음 처리 최적화 로직
-    // =========================================================
-
-    // =========================================================
-    // [START] 공지사항 로직
-    // =========================================================
-
-    // 방 입장 시 공지 조회
-    useEffect(() => {
-        if (!socket || !connected || !roomId) return;
-
-        socket.emit('room:get_notice', { roomId });
-    }, [socket, connected, roomId]);
-
-    // 공지 이벤트 리스너
-    useEffect(() => {
-        if (!socket) return;
-
-        const handleNotice = ({ roomId: rid, notice }) => {
-            if (String(rid) === String(roomId)) {
-                setRoomNotice(notice);
-            }
-        };
-
-        const handleNoticeUpdated = ({ roomId: rid, notice }) => {
-            if (String(rid) === String(roomId)) {
-                setRoomNotice(notice);
-            }
-        };
-
-        socket.on('room:notice', handleNotice);
-        socket.on('room:notice_updated', handleNoticeUpdated);
-
-        return () => {
-            socket.off('room:notice', handleNotice);
-            socket.off('room:notice_updated', handleNoticeUpdated);
-        };
-    }, [socket, roomId]);
-
-    // 공지 설정 핸들러 (MessageItem에서 호출)
-    const handleSetNotice = (msgId, content) => {
-        if (socket && roomId) {
-            socket.emit('room:set_notice', { roomId, msgId, content });
-        }
-    };
-
-    // =========================================================
-    // [END] 공지사항 로직
-    // =========================================================
-
-    // ... (이하 handleServerSearch 등 기존 로직 동일하게 유지) ...
-    const handleServerSearch = async (keyword) => {
-        // 키워드 상태 저장 (하이라이트용)
-        setSearchKeyword(keyword);
-
-        if (!keyword.trim()) {
-            setSearchMatches([]);
-            setCurrentMatchIndex(-1);
-            return;
-        }
-
-        const reqId = Date.now();
-        lastSearchReqId.current = reqId;
-
-        try {
-            const response = await searchMessagesApi(roomId, keyword);
-
-            if (lastSearchReqId.current !== reqId) return;
-
-            const matches = response.data?.data || [];
-            setSearchMatches(matches);
-
-            if (matches.length > 0) {
-                setCurrentMatchIndex(matches.length - 1);
-            } else {
-                setCurrentMatchIndex(-1);
-            }
-        } catch (error) {
-            console.error("Search failed:", error);
-        }
-    };
-
-    useEffect(() => {
-        const moveToMatch = async () => {
-            if (currentMatchIndex < 0 || searchMatches.length === 0 || currentMatchIndex >= searchMatches.length) return;
-
-            const target = searchMatches[currentMatchIndex];
-            if (!target) return;
-
-            const targetId = target.MSG_ID || target.msg_id;
-            const isAlreadyLoaded = messages.some(m =>
-                String(m.MSG_ID || m.msg_id) === String(targetId)
-            );
-
-            if (isAlreadyLoaded) {
-                setScrollToMsgId(targetId);
-            } else {
-                try {
-                    const response = await getMessagesContextApi(roomId, targetId);
-                    const newContextMessages = response.data?.data || [];
-
-                    if (chatSocket.overrideMessages) {
-                        chatSocket.overrideMessages(newContextMessages);
-                    }
-
-                    setTimeout(() => {
-                        setScrollToMsgId(targetId);
-                    }, 100);
-
-                } catch (err) {
-                    console.error("Failed to fetch context:", err);
-                }
-            }
-        };
-        moveToMatch();
-    }, [currentMatchIndex, searchMatches, messages, roomId, chatSocket]);
-
-    const handlePrevMatch = () => {
-        if (searchMatches.length === 0) return;
-        // 이전(위로) = 더 오래된 메시지 = 인덱스 감소
-        setCurrentMatchIndex(prev => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
-    };
-
-    const handleNextMatch = () => {
-        if (searchMatches.length === 0) return;
-        // 다음(아래로) = 더 최근 메시지 = 인덱스 증가
-        setCurrentMatchIndex(prev => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
-    };
-
+    // ===== 방 선택 =====
     useEffect(() => {
         if (socket && connected && roomId) {
             selectRoom(roomId);
@@ -345,18 +82,16 @@ export default function PopupChatPage() {
     const roomName = currentRoom ? currentRoom.ROOM_NAME : '채팅방';
     const memberCount = currentRoom ? currentRoom.MEMBER_COUNT : 0;
 
-    // 서브 창을 채팅방 창 기준으로 위치 계산하여 열기
+    // ===== 서브 창 열기 유틸리티 =====
     const openSubWindow = (url, windowName, width = 400, height = 600) => {
         const currentX = window.screenX || window.screenLeft || 0;
         const currentY = window.screenY || window.screenTop || 0;
         const currentWidth = window.outerWidth || window.innerWidth;
         const screenWidth = window.screen.availWidth;
 
-        // 기본: 채팅방 창의 오른쪽 상단
         let left = currentX + currentWidth;
         let top = currentY;
 
-        // 오른쪽 공간이 부족하면 왼쪽 상단에 배치
         if (left + width > screenWidth) {
             left = currentX - width;
             if (left < 0) left = 0;
@@ -372,40 +107,20 @@ export default function PopupChatPage() {
         openSubWindow(`#/files/${roomId}`, `FileDrawerWindow_${roomId}`);
     };
 
-    // 멤버 패널 토글
-    const handleToggleMemberPanel = async () => {
-        if (isMemberPanelOpen) {
-            setIsMemberPanelOpen(false);
-            return;
-        }
-
-        setLoadingMembers(true);
-        setIsMemberPanelOpen(true);
-        try {
-            const res = await apiGetRoomMembers(roomId);
-            if (res.data?.success) {
-                setMembers(res.data.members || []);
-            }
-        } catch (error) {
-            console.error('멤버 목록 조회 실패:', error);
-        } finally {
-            setLoadingMembers(false);
-        }
-    };
-
+    // ===== 렌더링 =====
     return (
         <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
-            <Titlebar title={`채팅방 - ${roomName}`} />
+            <Titlebar title="" />
             <div className="chat-main" style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
 
                 {/* 멤버 모달 */}
                 {isMemberPanelOpen && (
                     <>
-                        <div className="member-modal-overlay" onClick={() => setIsMemberPanelOpen(false)} />
+                        <div className="member-modal-overlay" onClick={closeMemberPanel} />
                         <div className="member-modal">
                             <div className="member-modal-header">
                                 <span>참여자 ({memberCount})</span>
-                                <button onClick={() => setIsMemberPanelOpen(false)} className="close-btn">
+                                <button onClick={closeMemberPanel} className="close-btn">
                                     <i className="bi bi-x"></i>
                                 </button>
                             </div>
@@ -437,7 +152,7 @@ export default function PopupChatPage() {
                             <div className="member-modal-footer">
                                 <button
                                     className="invite-btn"
-                                    onClick={() => { setIsMemberPanelOpen(false); setIsInviteOpen(true); }}
+                                    onClick={() => { closeMemberPanel(); setIsInviteOpen(true); }}
                                 >
                                     <i className="bi bi-person-plus"></i> 대화 상대 초대하기
                                 </button>
