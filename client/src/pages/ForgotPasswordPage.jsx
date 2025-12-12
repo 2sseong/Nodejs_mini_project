@@ -32,6 +32,7 @@ export default function ForgotPasswordPage() {
                 setMessage({ type: 'error', text: result.message });
             }
         } catch (error) {
+            console.error('Forgot Password Error:', error);
             setMessage({ type: 'error', text: '서버 오류가 발생했습니다.' });
         } finally {
             setLoading(false);

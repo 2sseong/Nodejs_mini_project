@@ -144,6 +144,32 @@ export async function updateProfileImage(userId, newFile) {
     return webPath;
 }
 
+// 프로필 사진을 기본 이미지로 리셋 (기존 파일 삭제 및 DB null 설정)
+export async function resetProfileImage(userId) {
+
+    // 1. 기존 파일 정보 조회
+    const user = await authRepository.findUserById(userId);
+
+    if (user && user.PROFILE_PIC) {
+        try {
+            const fileName = path.basename(user.PROFILE_PIC);
+            const oldPath = path.join(process.cwd(), '..', 'public', 'profile', fileName);
+
+            await fs.access(oldPath).then(() => {
+                return fs.unlink(oldPath);
+            });
+        } catch (e) {
+            console.error('[Service] 파일 삭제 로직 중 예외 발생:', e);
+        }
+    } else {
+        console.log('[Service] 기존 프로필 사진이 없어 삭제를 건너뜁니다.');
+    }
+
+    // 2. DB에서 PROFILE_PIC를 null로 업데이트
+    await authRepository.updateProfilePic(userId, null);
+    return { success: true };
+}
+
 // 정보 수정
 export async function updateUserInfo(userId, { nickname, deptId, posId, phone, address, addressDetail, newPassword }) {
     // 1. 닉네임, 부서, 직급, 전화번호, 주소 업데이트

@@ -20,6 +20,7 @@ import MessageInput from '../components/Chatpage/Input/MessageInput.jsx';
 import InviteUserModal from '../components/Chatpage/Modals/InviteUserModal.jsx';
 import NoticeBar from '../components/Chatpage/NoticeBar/NoticeBar.jsx';
 import Titlebar from '../components/Titlebar/Titlebar.jsx';
+import DefaultAvatar from '../assets/default-avatar.png';
 
 import '../styles/PopupChatPage.css';
 
@@ -130,17 +131,12 @@ export default function PopupChatPage() {
                                 ) : (
                                     members.map((member) => (
                                         <div key={member.USER_ID} className="member-modal-item">
-                                            {member.PROFILE_PIC ? (
-                                                <img
-                                                    src={`http://localhost:1337${member.PROFILE_PIC}`}
-                                                    alt={member.NICKNAME}
-                                                    className="member-avatar"
-                                                />
-                                            ) : (
-                                                <div className="member-avatar-placeholder">
-                                                    {member.NICKNAME?.charAt(0) || '?'}
-                                                </div>
-                                            )}
+                                            <img
+                                                src={member.PROFILE_PIC ? `http://localhost:1337${member.PROFILE_PIC}` : DefaultAvatar}
+                                                alt={member.NICKNAME}
+                                                className="member-avatar"
+                                                onError={(e) => { e.target.src = DefaultAvatar; }}
+                                            />
                                             <span className="member-nickname">
                                                 {member.USER_ID === userId && <span className="me-badge">나</span>}
                                                 {member.NICKNAME}

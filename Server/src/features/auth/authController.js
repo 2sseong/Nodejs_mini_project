@@ -1,6 +1,7 @@
 // src/features/auth/authController.js
 
 import * as authService from './authService.js';
+import * as roomService from '../chat/rooms/room.service.js';
 
 /**
  * POST /api/auth/signup 요청 처리
@@ -135,12 +136,25 @@ export async function uploadProfile(req, res) {
         const webPath = await authService.updateProfileImage(userId, req.file);
         const io = req.app.get('io');
         if (io) {
-            // 모든 접속자에게 'profile_updated' 이벤트를 쏩니다.
-            io.emit('profile_updated', {
+            // 1. 본인 개인 room에 전송 (본인의 모든 창 동기화)
+            io.to(userId).emit('profile_updated', {
                 userId: userId,
                 profilePic: webPath
             });
-            console.log(`[Socket] 프로필 업데이트 이벤트 발송: ${userId}`);
+
+            // 2. 유저가 속한 채팅방들에만 전송 (다른 사용자들의 채팅 목록 업데이트)
+            try {
+                const rooms = await roomService.listRoomsForUser({ userId });
+                rooms.forEach(room => {
+                    io.to(String(room.ROOM_ID)).emit('profile_updated', {
+                        userId: userId,
+                        profilePic: webPath
+                    });
+                });
+            } catch (e) {
+                console.error('[Socket] 채팅방 조회 실패, 전체 브로드캐스트:', e.message);
+                io.emit('profile_updated', { userId, profilePic: webPath });
+            }
         }
 
         console.log('[SUCCESS] 업로드 완료 경로:', webPath);
@@ -148,6 +162,43 @@ export async function uploadProfile(req, res) {
     } catch (error) {
         console.error('[ERROR] 업로드 처리 중 에러:', error);
         res.status(500).json({ message: '업로드 실패' });
+    }
+}
+
+// 프로필 사진 기본으로 리셋
+export async function resetProfile(req, res) {
+    try {
+        const userId = req.user.userId;
+        await authService.resetProfileImage(userId);
+
+        const io = req.app.get('io');
+        if (io) {
+            // 1. 본인 개인 room에 전송
+            io.to(userId).emit('profile_updated', {
+                userId: userId,
+                profilePic: null
+            });
+
+            // 2. 유저가 속한 채팅방들에만 전송
+            try {
+                const rooms = await roomService.listRoomsForUser({ userId });
+                rooms.forEach(room => {
+                    io.to(String(room.ROOM_ID)).emit('profile_updated', {
+                        userId: userId,
+                        profilePic: null
+                    });
+                });
+            } catch (e) {
+                console.error('[Socket] 채팅방 조회 실패, 전체 브로드캐스트:', e.message);
+                io.emit('profile_updated', { userId, profilePic: null });
+            }
+        }
+
+        console.log('[SUCCESS] 프로필 리셋 완료');
+        res.json({ success: true, message: '프로필 사진이 기본 이미지로 변경되었습니다.' });
+    } catch (error) {
+        console.error('[ERROR] 프로필 리셋 중 에러:', error);
+        res.status(500).json({ message: '프로필 리셋 실패' });
     }
 }
 

@@ -90,7 +90,6 @@ export const searchUsers = async (req, res) => {
         // deptId가 없으면 null로 전달
         const filterDeptId = deptId ? parseInt(deptId, 10) : null;
         const results = await searchUsersService(userId, query, filterDeptId);
-        console.log("컨트롤러에서 받은 results:", results);
         return res.status(200).json(results);
     } catch (error) {
         console.error("searchUsersService 실행 중 오류 발생:", error);

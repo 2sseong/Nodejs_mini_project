@@ -1,11 +1,13 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, memo } from "react";
 import './MessageItem.css';
 import ConfirmModal from '../Modals/ConfirmModal'; // [추가] 모달 컴포넌트 import
+import DefaultAvatar from '../../../assets/default-avatar.png'; // 기본 프로필 이미지
 
 // [수정] 백엔드 포트 5000으로 설정 (server.js 포트와 일치해야 함)
 const API_BASE_URL = 'http://localhost:1337';
 
-export default function MessageItem(props) {
+// React.memo로 감싸서 props가 변경될 때만 리렌더링
+function MessageItem(props) {
     const {
         msgId,
         mine,
@@ -48,7 +50,25 @@ export default function MessageItem(props) {
         // 파일 메시지는 삭제만 가능, 텍스트 메시지는 수정/삭제/공지 등록 가능
         if (!mine) return;
         e.preventDefault();
-        setContextMenu({ x: e.pageX, y: e.pageY });
+
+        const menuWidth = 100;
+        const menuHeight = 100;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        let x = e.clientX;
+        let y = e.clientY;
+
+        // 오른쪽 경계 넘을 경우 왼쪽으로
+        if (x + menuWidth > windowWidth) {
+            x = windowWidth - menuWidth - 10;
+        }
+        // 아래 경계 넘을 경우 위로
+        if (y + menuHeight > windowHeight) {
+            y = windowHeight - menuHeight - 10;
+        }
+
+        setContextMenu({ x, y });
     };
 
     useEffect(() => {
@@ -216,19 +236,13 @@ export default function MessageItem(props) {
                     {showProfile && <div className="sender-nickname">{nickname}</div>}
                     <div className="message-row-theirs">
                         {showProfile ? (
-                            avatarUrl ? (
-                                <img
-                                    key={avatarUrl}
-                                    src={avatarUrl}
-                                    alt={nickname}
-                                    className="chat-profile-img"
-                                    onError={(e) => { e.target.style.display = 'none'; }}
-                                />
-                            ) : (
-                                <div className="chat-profile-initials">
-                                    {getInitials(nickname)}
-                                </div>
-                            )
+                            <img
+                                key={avatarUrl || 'default'}
+                                src={avatarUrl || DefaultAvatar}
+                                alt={nickname}
+                                className="chat-profile-img"
+                                onError={(e) => { e.target.src = DefaultAvatar; }}
+                            />
                         ) : (
                             <div className="chat-profile-placeholder"></div>
                         )}
@@ -292,3 +306,5 @@ export default function MessageItem(props) {
         </div>
     );
 }
+
+export default memo(MessageItem);

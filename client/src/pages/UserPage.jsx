@@ -91,7 +91,7 @@ export default function UserPage() {
                             : user
                     )
                 );
-                console.log(result.message);
+                // console.log(result.message);
             } else {
                 console.error("즐겨찾기 토글 실패:", result.message);
                 alert(`작업 실패: ${result.message}`);

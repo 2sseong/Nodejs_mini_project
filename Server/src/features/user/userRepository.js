@@ -182,7 +182,7 @@ WHERE
         const result = await connection.execute(sql, binds, options);
 
         // 디버깅 코드
-        console.log("DB 응답 결과:", result.rows);
+        // console.log("DB 응답 결과:", result.rows);
 
         return result.rows;
     } catch (error) {
