@@ -101,3 +101,32 @@ export const getMyProfile = async () => {
         throw new Error("본인 프로필을 조회하는 데 실패했습니다.");
     }
 };
+
+/**
+ * 전체 알림 설정 조회 API
+ * @returns {Promise<boolean>} - 알림 활성화 여부
+ */
+export const getNotificationSetting = async () => {
+    try {
+        const response = await api.get('/users/notification');
+        return response.data.enabled;
+    } catch (error) {
+        console.error("API Error: 알림 설정 조회 실패", error);
+        return true; // 기본값: 켜짐
+    }
+};
+
+/**
+ * 전체 알림 설정 변경 API
+ * @param {boolean} enabled - 알림 활성화 여부
+ * @returns {Promise<boolean>} - 변경된 알림 활성화 여부
+ */
+export const setNotificationSetting = async (enabled) => {
+    try {
+        const response = await api.put('/users/notification', { enabled });
+        return response.data.enabled;
+    } catch (error) {
+        console.error("API Error: 알림 설정 변경 실패", error);
+        throw error;
+    }
+};

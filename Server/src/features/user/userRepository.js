@@ -192,3 +192,66 @@ WHERE
         if (connection) await connection.close()
     }
 };
+
+/**
+ * 사용자의 전체 알림 설정 조회
+ * @param {string} userId - 사용자 ID
+ * @returns {Promise<boolean>} - 알림 활성화 여부 (기본값: true)
+ */
+export const getNotificationEnabled = async (userId) => {
+    const sql = `
+        SELECT NOTIFICATION_ENABLED 
+        FROM T_USER 
+        WHERE USER_ID = :userId
+    `;
+
+    let connection;
+    try {
+        connection = await getConnection();
+        const options = { outFormat: oracledb.OUT_FORMAT_OBJECT };
+        const result = await connection.execute(sql, { userId }, options);
+
+        if (result.rows && result.rows.length > 0) {
+            return result.rows[0].NOTIFICATION_ENABLED === 1;
+        }
+        return true; // 기본값: 켜짐
+    } catch (error) {
+        console.error("Repository Error: 알림 설정 조회 실패:", error);
+        throw error;
+    } finally {
+        if (connection) await connection.close();
+    }
+};
+
+/**
+ * 사용자의 전체 알림 설정 변경
+ * @param {string} userId - 사용자 ID
+ * @param {boolean} enabled - 알림 활성화 여부
+ * @returns {Promise<boolean>} - 성공 여부
+ */
+export const setNotificationEnabled = async (userId, enabled) => {
+    const sql = `
+        UPDATE T_USER 
+        SET NOTIFICATION_ENABLED = :enabled 
+        WHERE USER_ID = :userId
+    `;
+
+    let connection;
+    try {
+        connection = await getConnection();
+        const result = await connection.execute(sql, {
+            userId,
+            enabled: enabled ? 1 : 0
+        });
+        await connection.commit();
+        return result.rowsAffected > 0;
+    } catch (error) {
+        if (connection) {
+            try { await connection.rollback(); } catch (e) { console.error("Rollback error:", e); }
+        }
+        console.error("Repository Error: 알림 설정 변경 실패:", error);
+        throw error;
+    } finally {
+        if (connection) await connection.close();
+    }
+};

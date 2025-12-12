@@ -103,6 +103,10 @@ export const AuthProvider = ({ children }) => {
 
     // 3. 로그아웃 기능 함수
     const logout = () => {
+        // Electron 환경에서 모든 채팅 창 닫기
+        if (window.electronAPI?.closeAllChatWindows) {
+            window.electronAPI.closeAllChatWindows();
+        }
         performLogout(); // authUtils의 실제 로직 호출 및 리액트 상태 업데이트
     }
 

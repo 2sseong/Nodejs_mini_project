@@ -142,3 +142,23 @@ export const getMyProfile = async (userId) => {
         throw error;
     }
 };
+
+/**
+ * 사용자의 전체 알림 설정 조회
+ */
+export const getNotificationEnabled = async (userId) => {
+    if (!userId) {
+        throw new Error("사용자 ID가 필요합니다.");
+    }
+    return await userRepository.getNotificationEnabled(userId);
+};
+
+/**
+ * 사용자의 전체 알림 설정 변경
+ */
+export const setNotificationEnabled = async (userId, enabled) => {
+    if (!userId) {
+        throw new Error("사용자 ID가 필요합니다.");
+    }
+    return await userRepository.setNotificationEnabled(userId, enabled);
+};

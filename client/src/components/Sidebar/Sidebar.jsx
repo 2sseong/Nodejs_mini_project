@@ -2,26 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import './Sidebar.css'
 import { useAuth } from '../../hooks/AuthContext';
+import { getNotificationSetting, setNotificationSetting } from '../../api/usersApi';
 
 export default function Sidebar() {
     const loc = useLocation()
     const nav = useNavigate()
 
-    const { isAuthenticated, userNickname, logout } = useAuth();
+    const { isAuthenticated, userNickname, logout, userId } = useAuth();
 
-    // 알림 상태 (localStorage에서 불러오기)
-    const [isNotificationEnabled, setIsNotificationEnabled] = useState(() => {
-        const saved = localStorage.getItem('notificationEnabled');
-        return saved !== null ? JSON.parse(saved) : true;
-    });
+    // 알림 상태 (DB에서 불러오기)
+    const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // 알림 상태 변경 시 localStorage에 저장 및 main process에 알림
+    // 로그인 시 서버에서 알림 설정 불러오기
     useEffect(() => {
-        localStorage.setItem('notificationEnabled', JSON.stringify(isNotificationEnabled));
-        if (window.electronAPI?.setNotificationEnabled) {
-            window.electronAPI.setNotificationEnabled(isNotificationEnabled);
-        }
-    }, [isNotificationEnabled]);
+        const loadNotificationSetting = async () => {
+            if (isAuthenticated && userId) {
+                try {
+                    const enabled = await getNotificationSetting();
+                    setIsNotificationEnabled(enabled);
+                    // Electron에 알림 상태 전달
+                    if (window.electronAPI?.setNotificationEnabled) {
+                        window.electronAPI.setNotificationEnabled(enabled);
+                    }
+                } catch (error) {
+                    console.error('알림 설정 로드 실패:', error);
+                }
+            }
+        };
+        loadNotificationSetting();
+    }, [isAuthenticated, userId]);
 
     const handleLogout = () => {
         logout();
@@ -29,8 +39,25 @@ export default function Sidebar() {
         nav('/login', { replace: true });
     };
 
-    const handleToggleNotification = () => {
-        setIsNotificationEnabled(prev => !prev);
+    const handleToggleNotification = async () => {
+        if (isLoading) return;
+
+        const newValue = !isNotificationEnabled;
+        setIsLoading(true);
+
+        try {
+            await setNotificationSetting(newValue);
+            setIsNotificationEnabled(newValue);
+
+            // Electron에 알림 상태 전달
+            if (window.electronAPI?.setNotificationEnabled) {
+                window.electronAPI.setNotificationEnabled(newValue);
+            }
+        } catch (error) {
+            console.error('알림 설정 변경 실패:', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // 상단 메인 네비게이션 항목

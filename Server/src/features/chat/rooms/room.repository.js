@@ -199,7 +199,8 @@ export async function listRoomsByUser({ userId }) {
                 FROM T_MESSAGE msg
                 WHERE msg.ROOM_ID = r.ROOM_ID
                   AND msg.SENT_AT > NVL(
-                      TO_DATE('1970-01-01','YYYY-MM-DD') + (urs.LASTREADTIMESTAMP / 86400000) + (9/24), 
+                      -- [수정] +9/24 오프셋 제거 (DB가 KST 사용 시 중복 적용됨)
+                      TO_DATE('1970-01-01','YYYY-MM-DD') + (urs.LASTREADTIMESTAMP / 86400000), 
                       r.CREATED_AT
                   )
                   AND msg.SENDER_ID != :userId 

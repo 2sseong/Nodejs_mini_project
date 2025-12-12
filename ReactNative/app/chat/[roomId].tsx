@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Image } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useChatSocket } from '../../hooks/useChatSocket';
-import { Message, searchMessages, SearchResult } from '../../api/chat';
+import { Message, searchMessages, SearchResult, uploadFile } from '../../api/chat';
 import { Colors, Spacing, BorderRadius, FontSize } from '../../constants/theme';
+import { API_BASE_URL } from '../../api/client';
 import * as SecureStore from 'expo-secure-store';
 
 // 날짜 포맷팅 헬퍼
@@ -43,6 +45,12 @@ export default function ChatScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    // 메시지 수정/삭제 상태
+    const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+    const [actionModalVisible, setActionModalVisible] = useState(false);
+    const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+
     const flatListRef = useRef<FlatList>(null);
     const isFirstLoad = useRef(true);
 
@@ -52,7 +60,11 @@ export default function ChatScreen() {
         isLoading,
         isLoadingMore,
         hasMoreMessages,
+        currentNotice,
         sendMessage,
+        editMessage,
+        deleteMessage,
+        setNotice,
         loadMoreMessages,
         markAsRead
     } = useChatSocket(roomId ? Number(roomId) : null);
@@ -117,6 +129,103 @@ export default function ChatScreen() {
         }
     }, [isLoadingMore, hasMoreMessages, loadMoreMessages]);
 
+    // 이미지 선택 및 업로드
+    const handleImagePick = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('권한 필요', '이미지를 선택하려면 갤러리 접근 권한이 필요합니다.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                const formData = new FormData();
+
+                formData.append('file', {
+                    uri: asset.uri,
+                    type: asset.mimeType || 'image/jpeg',
+                    name: asset.fileName || `image_${Date.now()}.jpg`,
+                } as any);
+
+                formData.append('roomId', String(roomId));
+
+                const uploadResult = await uploadFile(formData);
+                if (uploadResult && uploadResult.fileUrl) {
+                    // 이미지 메시지 전송
+                    sendMessage(`[이미지] ${API_BASE_URL}${uploadResult.fileUrl}`);
+                }
+            }
+        } catch (error) {
+            console.error('이미지 업로드 오류:', error);
+            Alert.alert('오류', '이미지 업로드에 실패했습니다.');
+        }
+    };
+
+    // 메시지 롱프레스 핸들러
+    const handleMessageLongPress = (msg: Message) => {
+        setSelectedMessage(msg);
+        setActionModalVisible(true);
+    };
+
+    // 메시지 수정 시작
+    const handleStartEdit = () => {
+        if (!selectedMessage) return;
+        setEditingMessage(selectedMessage);
+        setInputText(selectedMessage.CONTENT);
+        setActionModalVisible(false);
+    };
+
+    // 메시지 수정 취소
+    const handleCancelEdit = () => {
+        setEditingMessage(null);
+        setInputText('');
+    };
+
+    // 메시지 수정 전송
+    const handleSaveEdit = () => {
+        if (!editingMessage || !inputText.trim()) return;
+        editMessage(editingMessage.MSG_ID, inputText.trim());
+        setEditingMessage(null);
+        setInputText('');
+    };
+
+    // 메시지 삭제
+    const handleDeleteMessage = () => {
+        if (!selectedMessage) return;
+        Alert.alert(
+            '메시지 삭제',
+            '이 메시지를 삭제하시겠습니까?',
+            [
+                { text: '취소', style: 'cancel' },
+                {
+                    text: '삭제',
+                    style: 'destructive',
+                    onPress: () => {
+                        deleteMessage(selectedMessage.MSG_ID);
+                        setActionModalVisible(false);
+                        setSelectedMessage(null);
+                    }
+                }
+            ]
+        );
+    };
+
+    // 공지로 설정
+    const handleSetNotice = () => {
+        if (!selectedMessage) return;
+        setNotice(selectedMessage.MSG_ID, selectedMessage.CONTENT);
+        setActionModalVisible(false);
+        setSelectedMessage(null);
+        Alert.alert('알림', '공지로 설정되었습니다.');
+    };
+
     // 메시지 검색
     const handleSearch = async () => {
         if (!searchQuery.trim() || !roomId) return;
@@ -175,37 +284,46 @@ export default function ChatScreen() {
                 {/* 날짜 구분선 */}
                 {showDateSeparator && renderDateSeparator(item.CREATED_AT)}
 
-                <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
-                    {/* 상대방 메시지 - 아바타 */}
-                    {!isMine && showAvatar && (
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {item.NICKNAME?.charAt(0) || '?'}
-                            </Text>
-                        </View>
-                    )}
-                    {!isMine && !showAvatar && <View style={styles.avatarPlaceholder} />}
-
-                    <View style={[styles.messageContainer, isMine && styles.messageContainerMine]}>
-                        {/* 닉네임 (상대방만) */}
+                <TouchableOpacity
+                    activeOpacity={0.7}
+                    onLongPress={() => handleMessageLongPress(item)}
+                    delayLongPress={500}
+                >
+                    <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
+                        {/* 상대방 메시지 - 아바타 */}
                         {!isMine && showAvatar && (
-                            <Text style={styles.nickname}>{item.NICKNAME}</Text>
+                            <View style={styles.avatar}>
+                                <Text style={styles.avatarText}>
+                                    {item.NICKNAME?.charAt(0) || '?'}
+                                </Text>
+                            </View>
                         )}
+                        {!isMine && !showAvatar && <View style={styles.avatarPlaceholder} />}
 
-                        <View style={[styles.messageBubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                            <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
-                                {item.CONTENT}
-                            </Text>
-                        </View>
-
-                        <View style={[styles.messageInfo, isMine && styles.messageInfoMine]}>
-                            {(item.UNREAD_COUNT ?? 0) > 0 && (
-                                <Text style={styles.unreadCount}>{item.UNREAD_COUNT}</Text>
+                        <View style={[styles.messageContainer, isMine && styles.messageContainerMine]}>
+                            {/* 닉네임 (상대방만) */}
+                            {!isMine && showAvatar && (
+                                <Text style={styles.nickname}>{item.NICKNAME}</Text>
                             )}
-                            <Text style={styles.messageTime}>{formatTime(item.CREATED_AT)}</Text>
+
+                            <View style={[styles.messageBubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
+                                <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
+                                    {item.CONTENT}
+                                </Text>
+                                {(item as any).IS_EDITED && (
+                                    <Text style={styles.editedLabel}>(수정됨)</Text>
+                                )}
+                            </View>
+
+                            <View style={[styles.messageInfo, isMine && styles.messageInfoMine]}>
+                                {(item.UNREAD_COUNT ?? 0) > 0 && (
+                                    <Text style={styles.unreadCount}>{item.UNREAD_COUNT}</Text>
+                                )}
+                                <Text style={styles.messageTime}>{formatTime(item.CREATED_AT)}</Text>
+                            </View>
                         </View>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
         );
     };
@@ -249,12 +367,23 @@ export default function ChatScreen() {
                         </TouchableOpacity>
                     ),
                     headerRight: () => (
-                        <TouchableOpacity
-                            onPress={() => setSearchModalVisible(true)}
-                            style={{ marginRight: 10 }}
-                        >
-                            <Text style={{ color: Colors.textInverse, fontSize: 16 }}>🔍</Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <TouchableOpacity
+                                onPress={() => setSearchModalVisible(true)}
+                                style={{ marginRight: 15 }}
+                            >
+                                <Text style={{ color: Colors.textInverse, fontSize: 16 }}>🔍</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => router.push({
+                                    pathname: '/chat/settings',
+                                    params: { roomId, roomName }
+                                })}
+                                style={{ marginRight: 10 }}
+                            >
+                                <Text style={{ color: Colors.textInverse, fontSize: 16 }}>⚙️</Text>
+                            </TouchableOpacity>
+                        </View>
                     ),
                 }}
             />
@@ -295,26 +424,84 @@ export default function ChatScreen() {
                     }
                 />
 
+                {/* 수정 모드 표시 */}
+                {editingMessage && (
+                    <View style={styles.editingBar}>
+                        <Text style={styles.editingText}>메시지 수정 중...</Text>
+                        <TouchableOpacity onPress={handleCancelEdit}>
+                            <Text style={styles.editingCancel}>취소</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* 입력창 */}
                 <View style={styles.inputContainer}>
+                    {!editingMessage && (
+                        <TouchableOpacity
+                            style={styles.attachButton}
+                            onPress={handleImagePick}
+                        >
+                            <Text style={styles.attachButtonText}>📎</Text>
+                        </TouchableOpacity>
+                    )}
                     <TextInput
                         style={styles.input}
                         value={inputText}
                         onChangeText={setInputText}
-                        placeholder="메시지를 입력하세요"
+                        placeholder={editingMessage ? "수정할 내용을 입력하세요" : "메시지를 입력하세요"}
                         placeholderTextColor={Colors.textMuted}
                         multiline
                         maxLength={1000}
                     />
                     <TouchableOpacity
                         style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-                        onPress={handleSend}
+                        onPress={editingMessage ? handleSaveEdit : handleSend}
                         disabled={!inputText.trim()}
                     >
-                        <Text style={styles.sendButtonText}>전송</Text>
+                        <Text style={styles.sendButtonText}>{editingMessage ? '수정' : '전송'}</Text>
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* 액션 모달 */}
+            <Modal
+                visible={actionModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setActionModalVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.actionModalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setActionModalVisible(false)}
+                >
+                    <View style={styles.actionModalContent}>
+                        <Text style={styles.actionModalTitle}>메시지 옵션</Text>
+
+                        {selectedMessage && String(selectedMessage.USER_ID) === String(userId) && (
+                            <>
+                                <TouchableOpacity style={styles.actionButton} onPress={handleStartEdit}>
+                                    <Text style={styles.actionButtonText}>✏️ 수정하기</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.actionButton} onPress={handleDeleteMessage}>
+                                    <Text style={[styles.actionButtonText, { color: Colors.danger }]}>🗑️ 삭제하기</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
+                        <TouchableOpacity style={styles.actionButton} onPress={handleSetNotice}>
+                            <Text style={styles.actionButtonText}>📢 공지로 설정</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.actionButtonCancel]}
+                            onPress={() => setActionModalVisible(false)}
+                        >
+                            <Text style={styles.actionButtonText}>취소</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
 
             {/* 검색 모달 */}
             <Modal
@@ -559,6 +746,68 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: Colors.textMuted,
+    },
+    attachButton: {
+        marginRight: Spacing.sm,
+        padding: Spacing.sm,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    attachButtonText: {
+        fontSize: 20,
+    },
+    editedLabel: {
+        fontSize: FontSize.xs,
+        color: Colors.textMuted,
+        marginTop: 2,
+    },
+    editingBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: Spacing.sm,
+        backgroundColor: Colors.primary + '20',
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.borderColor,
+    },
+    editingText: {
+        color: Colors.primary,
+        fontSize: FontSize.sm,
+    },
+    editingCancel: {
+        color: Colors.danger,
+        fontWeight: '600',
+    },
+    actionModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    actionModalContent: {
+        backgroundColor: Colors.bgCard,
+        borderTopLeftRadius: BorderRadius.xl,
+        borderTopRightRadius: BorderRadius.xl,
+        padding: Spacing.lg,
+    },
+    actionModalTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: '600',
+        color: Colors.textPrimary,
+        marginBottom: Spacing.md,
+        textAlign: 'center',
+    },
+    actionButton: {
+        padding: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.borderColor,
+    },
+    actionButtonText: {
+        fontSize: FontSize.base,
+        color: Colors.textPrimary,
+    },
+    actionButtonCancel: {
+        borderBottomWidth: 0,
+        marginTop: Spacing.sm,
     },
     sendButtonText: {
         color: Colors.textInverse,

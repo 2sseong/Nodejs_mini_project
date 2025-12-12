@@ -10,7 +10,6 @@ export default function LoginPage() {
     const nav = useNavigate()
     const { login: loginAuth } = useAuth();
 
-    const [password, setPassword] = useState('');
     const [form, setForm] = useState({ email: '', password: '' })
     const [showPw, setShowPw] = useState(false)
     const [loading, setLoading] = useState(false)

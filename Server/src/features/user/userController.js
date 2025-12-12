@@ -2,7 +2,9 @@
     searchUsers as searchUsersService,
     addPick as addPickService,
     removePick as removePickService,
-    getMyProfile as getMyProfileService
+    getMyProfile as getMyProfileService,
+    getNotificationEnabled as getNotificationEnabledService,
+    setNotificationEnabled as setNotificationEnabledService
 } from './userService.js';
 import { addPick, removePick, searchUsersByQuery } from './userRepository.js';
 
@@ -135,5 +137,42 @@ export const togglePick = async (req, res) => {
             success: false,
             message: '서버 내부 오류가 발생했습니다.'
         });
+    }
+};
+
+/**
+ * 전체 알림 설정 조회 API
+ * GET /api/users/notification
+ */
+export const getNotificationSetting = async (req, res) => {
+    const userId = req.user.userId;
+
+    try {
+        const enabled = await getNotificationEnabledService(userId);
+        return res.status(200).json({ success: true, enabled });
+    } catch (error) {
+        console.error("Controller Error: 알림 설정 조회 실패:", error);
+        return res.status(500).json({ success: false, message: '알림 설정 조회 실패' });
+    }
+};
+
+/**
+ * 전체 알림 설정 변경 API
+ * PUT /api/users/notification
+ */
+export const setNotificationSetting = async (req, res) => {
+    const userId = req.user.userId;
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'enabled 값이 필요합니다.' });
+    }
+
+    try {
+        await setNotificationEnabledService(userId, enabled);
+        return res.status(200).json({ success: true, enabled });
+    } catch (error) {
+        console.error("Controller Error: 알림 설정 변경 실패:", error);
+        return res.status(500).json({ success: false, message: '알림 설정 변경 실패' });
     }
 };

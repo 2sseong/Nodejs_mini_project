@@ -446,7 +446,7 @@ ipcMain.on('open-chat-window', (event, roomId) => {
 
   // [수정] 채팅방 팝업이 열릴 때 개발자 도구(F12)도 같이 열리도록 설정
   // mode: 'detach'는 별도 창으로 띄우는 옵션입니다.
-  win.webContents.openDevTools({ mode: 'detach' });
+  // win.webContents.openDevTools({ mode: 'detach' });
 
   chatWindows[windowKey] = win;
 
@@ -598,4 +598,20 @@ ipcMain.handle('download-file', async (event, { url, fileName }) => {
 // [추가] 외부 URL 열기 (브라우저에서)
 ipcMain.on('open-external-url', (event, url) => {
   shell.openExternal(url);
+});
+
+// [추가] 로그아웃 시 해당 창에서 열린 모든 채팅 창 닫기
+ipcMain.on('close-all-chat-windows', (event) => {
+  const parentId = event.sender.id;
+  console.log(`[Main] Closing all chat windows for parent: ${parentId}`);
+
+  Object.keys(chatWindows).forEach(key => {
+    if (key.startsWith(`${parentId}:`)) {
+      const chatWin = chatWindows[key];
+      if (chatWin && !chatWin.isDestroyed()) {
+        chatWin.close();
+      }
+      delete chatWindows[key];
+    }
+  });
 });

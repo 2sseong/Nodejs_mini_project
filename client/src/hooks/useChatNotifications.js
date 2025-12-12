@@ -89,10 +89,17 @@ export function useChatNotifications({
             // ---------------------------------------------------
 
             const targetRoom = roomsRef.current.find(r => String(r.ROOM_ID) === msgRoomId);
-            const roomName = targetRoom ? targetRoom.ROOM_NAME : '새로운 메시지';
+
+            // 나간 채팅방(목록에 없는 방)에서 오는 메시지는 알림 생략
+            if (!targetRoom) {
+                console.log('🚪 해당 채팅방에 속하지 않아 알림 생략 (나간 방):', msgRoomId);
+                return;
+            }
+
+            const roomName = targetRoom.ROOM_NAME || '새로운 메시지';
 
             // 해당 채팅방의 알림이 꺼져 있으면 알림 생략
-            if (targetRoom && targetRoom.NOTIFICATION_ENABLED === 0) {
+            if (targetRoom.NOTIFICATION_ENABLED === 0) {
                 console.log('🔕 해당 채팅방의 알림이 꺼져 있어 생략:', roomName);
                 return;
             }
