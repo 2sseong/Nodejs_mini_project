@@ -211,6 +211,21 @@ export function useChatRooms(socket, userId, connected) {
         socket.on('room:update_count', onRoomUpdateCount);
         socket.on('room:force_join', onForceJoin);
 
+        // 프로필 업데이트 시 채팅방 목록의 MEMBER_PROFILES 갱신
+        const onProfileUpdated = ({ userId: changedUserId, profilePic }) => {
+            setRooms((prevRooms) =>
+                prevRooms.map((room) => ({
+                    ...room,
+                    MEMBER_PROFILES: (room.MEMBER_PROFILES || []).map((member) =>
+                        String(member.USER_ID) === String(changedUserId)
+                            ? { ...member, PROFILE_PIC: profilePic }
+                            : member
+                    )
+                }))
+            );
+        };
+        socket.on('profile_updated', onProfileUpdated);
+
         return () => {
             socket.off('rooms:list', onRoomsList);
             socket.off('rooms:refresh', onRoomsRefresh);
@@ -220,6 +235,7 @@ export function useChatRooms(socket, userId, connected) {
             socket.off('chat:read_update', onReadUpdate);
             socket.off('room:update_count', onRoomUpdateCount);
             socket.off('room:force_join', onForceJoin);
+            socket.off('profile_updated', onProfileUpdated);
         };
     }, [socket, userId, connected, refreshRooms]);
 

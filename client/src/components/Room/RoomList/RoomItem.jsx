@@ -1,13 +1,15 @@
 // src/components/Room/RoomList/RoomItem.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import ConfirmModal from '../../Chatpage/Modals/ConfirmModal';
+import DefaultAvatar from '../../../assets/default-avatar.png'; // 기본 프로필 이미지
 
 const API_BASE_URL = 'http://localhost:1337';
 
 /**
  * 개별 채팅방 아이템 컴포넌트
+ * React.memo로 감싸서 props가 변경될 때만 리렌더링
  */
-export default function RoomItem({ room, active, onClick, currentUser, onLeaveRoom, onToggleNotification }) {
+function RoomItem({ room, active, onClick, currentUser, onLeaveRoom, onToggleNotification }) {
     const [contextMenu, setContextMenu] = useState(null);
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     // [추가/수정] 채팅방 이름을 동적으로 결정하는 로직
@@ -80,11 +82,29 @@ export default function RoomItem({ room, active, onClick, currentUser, onLeaveRo
         return `${API_BASE_URL}${profilePic.startsWith('/') ? '' : '/'}${profilePic}`;
     };
 
-    // 우클릭 메뉴 핸들러
+    // 우클릭 메뉴 핸들러 - 창 경계 감지
     const handleContextMenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setContextMenu({ x: e.pageX, y: e.pageY });
+
+        const menuWidth = 140;
+        const menuHeight = 80;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        let x = e.clientX;
+        let y = e.clientY;
+
+        // 오른쪽 경계 넘을 경우 왼쪽으로
+        if (x + menuWidth > windowWidth) {
+            x = windowWidth - menuWidth - 10;
+        }
+        // 아래 경계 넘을 경우 위로
+        if (y + menuHeight > windowHeight) {
+            y = windowHeight - menuHeight - 10;
+        }
+
+        setContextMenu({ x, y });
     };
 
     // 클릭 시 컨텍스트 메뉴 닫기
@@ -127,11 +147,11 @@ export default function RoomItem({ room, active, onClick, currentUser, onLeaveRo
             const profile = profiles[0];
             return (
                 <div className="avatar-single">
-                    {profile.PROFILE_PIC ? (
-                        <img src={getProfileUrl(profile.PROFILE_PIC)} alt={profile.NICKNAME} />
-                    ) : (
-                        <span className="avatar-initial">{profile.NICKNAME?.charAt(0) || '?'}</span>
-                    )}
+                    <img
+                        src={profile.PROFILE_PIC ? getProfileUrl(profile.PROFILE_PIC) : DefaultAvatar}
+                        alt={profile.NICKNAME}
+                        onError={(e) => { e.target.src = DefaultAvatar; }}
+                    />
                 </div>
             );
         }
@@ -142,11 +162,11 @@ export default function RoomItem({ room, active, onClick, currentUser, onLeaveRo
                 <div className="avatar-grid-2">
                     {profiles.slice(0, 2).map((p, i) => (
                         <div key={p.USER_ID || i} className="avatar-item">
-                            {p.PROFILE_PIC ? (
-                                <img src={getProfileUrl(p.PROFILE_PIC)} alt={p.NICKNAME} />
-                            ) : (
-                                <span className="avatar-initial">{p.NICKNAME?.charAt(0) || '?'}</span>
-                            )}
+                            <img
+                                src={p.PROFILE_PIC ? getProfileUrl(p.PROFILE_PIC) : DefaultAvatar}
+                                alt={p.NICKNAME}
+                                onError={(e) => { e.target.src = DefaultAvatar; }}
+                            />
                         </div>
                     ))}
                 </div>
@@ -158,20 +178,20 @@ export default function RoomItem({ room, active, onClick, currentUser, onLeaveRo
             return (
                 <div className="avatar-grid-3">
                     <div className="avatar-item top">
-                        {profiles[0].PROFILE_PIC ? (
-                            <img src={getProfileUrl(profiles[0].PROFILE_PIC)} alt={profiles[0].NICKNAME} />
-                        ) : (
-                            <span className="avatar-initial">{profiles[0].NICKNAME?.charAt(0) || '?'}</span>
-                        )}
+                        <img
+                            src={profiles[0].PROFILE_PIC ? getProfileUrl(profiles[0].PROFILE_PIC) : DefaultAvatar}
+                            alt={profiles[0].NICKNAME}
+                            onError={(e) => { e.target.src = DefaultAvatar; }}
+                        />
                     </div>
                     <div className="avatar-bottom-row">
                         {profiles.slice(1, 3).map((p, i) => (
                             <div key={p.USER_ID || i} className="avatar-item">
-                                {p.PROFILE_PIC ? (
-                                    <img src={getProfileUrl(p.PROFILE_PIC)} alt={p.NICKNAME} />
-                                ) : (
-                                    <span className="avatar-initial">{p.NICKNAME?.charAt(0) || '?'}</span>
-                                )}
+                                <img
+                                    src={p.PROFILE_PIC ? getProfileUrl(p.PROFILE_PIC) : DefaultAvatar}
+                                    alt={p.NICKNAME}
+                                    onError={(e) => { e.target.src = DefaultAvatar; }}
+                                />
                             </div>
                         ))}
                     </div>
@@ -184,11 +204,11 @@ export default function RoomItem({ room, active, onClick, currentUser, onLeaveRo
             <div className="avatar-grid-4">
                 {profiles.slice(0, 4).map((p, i) => (
                     <div key={p.USER_ID || i} className="avatar-item">
-                        {p.PROFILE_PIC ? (
-                            <img src={getProfileUrl(p.PROFILE_PIC)} alt={p.NICKNAME} />
-                        ) : (
-                            <span className="avatar-initial">{p.NICKNAME?.charAt(0) || '?'}</span>
-                        )}
+                        <img
+                            src={p.PROFILE_PIC ? getProfileUrl(p.PROFILE_PIC) : DefaultAvatar}
+                            alt={p.NICKNAME}
+                            onError={(e) => { e.target.src = DefaultAvatar; }}
+                        />
                     </div>
                 ))}
             </div>
@@ -274,3 +294,5 @@ export default function RoomItem({ room, active, onClick, currentUser, onLeaveRo
         </>
     );
 }
+
+export default memo(RoomItem);

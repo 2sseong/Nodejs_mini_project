@@ -133,6 +133,17 @@ export async function uploadProfileImage(file) {
     return response.json();
 }
 
+// 프로필 사진 기본으로 리셋
+export async function resetProfileImage() {
+    const response = await fetch(`${API_URL}/profile-image`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        }
+    });
+    return response.json();
+}
+
 /**
  * 팀별 사용자 목록 조회 (그룹핑됨)
  * @returns {object} { success, data: { "팀이름": [...users], ... } }

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import DaumPostcode from 'react-daum-postcode';
-import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage, getDepartments, getPositions } from '../api/authApi';
+import { getMyInfo, verifyPassword, updateUserInfo, uploadProfileImage, resetProfileImage, getDepartments, getPositions } from '../api/authApi';
 import ConfirmModal from '../components/Chatpage/Modals/ConfirmModal';
 import { useAuth } from '../hooks/AuthContext.jsx';
 import { useChatSocket } from '../hooks/useChatSocket.js';
 import { useChatNotifications } from '../hooks/useChatNotifications.js';
+import DefaultAvatar from '../assets/default-avatar.png';
 import '../styles/MyInfoPage.css';
 
 export default function MyInfoPage() {
@@ -40,6 +41,10 @@ export default function MyInfoPage() {
         isDanger: false,
         onConfirm: null
     });
+
+    // 프로필 드롭다운 상태
+    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         loadUserInfo();
@@ -168,6 +173,7 @@ export default function MyInfoPage() {
             const res = await uploadProfileImage(file);
             if (res.success) {
                 setUser(prev => ({ ...prev, PROFILE_PIC: res.filePath }));
+                openModal('성공', '프로필 사진이 변경되었습니다.');
             } else {
                 openModal('업로드 실패', res.message, true);
             }
@@ -176,6 +182,36 @@ export default function MyInfoPage() {
             openModal('오류', '이미지 업로드 중 오류가 발생했습니다.', true);
         } finally {
             e.target.value = '';
+            setIsProfileMenuOpen(false);
+        }
+    };
+
+    // 기본 프로필로 변경
+    const handleResetProfile = async () => {
+        setIsProfileMenuOpen(false);
+        try {
+            const res = await resetProfileImage();
+            if (res.success) {
+                setUser(prev => ({ ...prev, PROFILE_PIC: null }));
+                openModal('성공', '프로필 사진이 기본 이미지로 변경되었습니다.');
+            } else {
+                openModal('실패', res.message, true);
+            }
+        } catch (err) {
+            console.error(err);
+            openModal('오류', '프로필 사진 리셋 중 오류가 발생했습니다.', true);
+        }
+    };
+
+    // 프로필 메뉴 토글
+    const toggleProfileMenu = () => {
+        setIsProfileMenuOpen(prev => !prev);
+    };
+
+    // 사진 선택 클릭 시 파일 선택 트리거
+    const handleSelectPhoto = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
         }
     };
 
@@ -194,17 +230,40 @@ export default function MyInfoPage() {
             {/* 프로필 헤더 */}
             <div className="profile-header">
                 <div className="profile-avatar-wrap">
-                    {profileSrc ? (
-                        <img src={profileSrc} alt="프로필" className="profile-avatar" />
-                    ) : (
-                        <div className="profile-avatar-placeholder">
-                            {getInitials(user.NICKNAME)}
+                    <img
+                        src={profileSrc || DefaultAvatar}
+                        alt="프로필"
+                        className="profile-avatar"
+                        onError={(e) => { e.target.src = DefaultAvatar; }}
+                    />
+                    <button
+                        className="avatar-edit-btn"
+                        onClick={toggleProfileMenu}
+                        type="button"
+                    >
+                        <i className="bi bi-camera-fill"></i>
+                    </button>
+
+                    {/* 숨겨진 파일 입력 */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        hidden
+                    />
+
+                    {/* 프로필 옵션 드롭다운 */}
+                    {isProfileMenuOpen && (
+                        <div className="profile-menu-dropdown">
+                            <button onClick={handleSelectPhoto}>
+                                <i className="bi bi-image"></i> 사진 선택
+                            </button>
+                            <button onClick={handleResetProfile}>
+                                <i className="bi bi-person-circle"></i> 기본 프로필로 변경
+                            </button>
                         </div>
                     )}
-                    <label className="avatar-edit-btn">
-                        <i className="bi bi-camera-fill"></i>
-                        <input type="file" accept="image/*" onChange={handleFileChange} hidden />
-                    </label>
                 </div>
                 <h2 className="profile-name">{user.NICKNAME}</h2>
                 <p className="profile-username">{user.USERNAME}</p>
